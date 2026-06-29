@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir \"c:\\\\Projects\\\\toastmasters-app\")",
+      "PowerShell($env:NODE_TLS_REJECT_UNAUTHORIZED=\"0\"; $env:REACT_NATIVE_PACKAGER_HOSTNAME=\"192.168.1.8\"; cd c:\\\\Projects\\\\toastmasters-app\\\\mobile; npx expo start)",
+      "PowerShell($pid8081 = \\(netstat -ano | findstr \":8081 \" | Select-Object -First 1\\) -split '\\\\s+' | Select-Object -Last 1; if \\($pid8081\\) { taskkill /PID $pid8081 /F; Write-Host \"Killed PID $pid8081\" } else { Write-Host \"Nothing on 8081\" })",
+      "PowerShell($env:NODE_TLS_REJECT_UNAUTHORIZED=\"0\"; $env:REACT_NATIVE_PACKAGER_HOSTNAME=\"192.168.1.8\"; cd c:\\\\Projects\\\\toastmasters-app\\\\mobile; npx expo start --port 8081)"
+    ]
+  }
+}

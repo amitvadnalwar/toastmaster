@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>Welcome — Toastmasters</title>
+  <style>
+    :root {
+      --brand: #8B1A1A;
+      --brand-light: #fdf2f2;
+      --text: #111827;
+      --muted: #6b7280;
+      --border: #d1d5db;
+      --radius: 12px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f3f4f6;
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 24px 16px 48px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 20px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 8px 24px rgba(0,0,0,0.06);
+      padding: 32px 24px;
+      width: 100%;
+      max-width: 420px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 28px;
+    }
+
+    .brand-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 9px;
+      background: var(--brand);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .brand-icon svg {
+      width: 20px;
+      height: 20px;
+      fill: none;
+      stroke: #fff;
+      stroke-width: 2.2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .brand-name {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--brand);
+      letter-spacing: -0.01em;
+    }
+
+    h1 {
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.02em;
+      margin-bottom: 6px;
+      line-height: 1.2;
+    }
+
+    .subtitle {
+      font-size: 15px;
+      color: var(--muted);
+      line-height: 1.55;
+      margin-bottom: 28px;
+    }
+
+    .field { margin-bottom: 18px; }
+
+    label {
+      display: block;
+      font-size: 14px;
+      font-weight: 500;
+      color: #374151;
+      margin-bottom: 6px;
+    }
+
+    .req { color: var(--brand); margin-left: 2px; }
+
+    input, select {
+      width: 100%;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: 13px 16px;
+      font-size: 16px;
+      color: var(--text);
+      background: #fff;
+      outline: none;
+      transition: border-color 0.15s;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+
+    input:focus, select:focus { border-color: var(--brand); }
+
+    .select-wrap { position: relative; }
+
+    .select-wrap::after {
+      content: '';
+      position: absolute;
+      right: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 0; height: 0;
+      border-left: 5px solid transparent;
+      border-right: 5px solid transparent;
+      border-top: 6px solid var(--muted);
+      pointer-events: none;
+    }
+
+    /* Placeholder color for select */
+    select:invalid { color: #9ca3af; }
+    select option { color: var(--text); }
+
+    .btn {
+      width: 100%;
+      background: var(--brand);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      padding: 15px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: opacity 0.15s, transform 0.1s;
+      letter-spacing: -0.01em;
+    }
+
+    .btn:hover:not(:disabled) { opacity: 0.9; }
+    .btn:active:not(:disabled) { transform: scale(0.98); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .error-banner {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: 8px;
+      padding: 11px 14px;
+      font-size: 14px;
+      color: #b91c1c;
+      margin-bottom: 18px;
+      display: none;
+    }
+
+    .error-banner.show { display: block; }
+
+    /* ── Success state ── */
+    .success-wrap {
+      text-align: center;
+      padding: 12px 0 8px;
+    }
+
+    .success-icon {
+      width: 68px;
+      height: 68px;
+      border-radius: 50%;
+      background: var(--brand-light);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+    }
+
+    .success-icon svg {
+      width: 34px;
+      height: 34px;
+      stroke: var(--brand);
+      stroke-width: 2.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      fill: none;
+    }
+
+    .success-wrap h2 {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -0.02em;
+      margin-bottom: 10px;
+    }
+
+    .success-wrap p {
+      font-size: 15px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    /* ── Invalid / error state ── */
+    .invalid-wrap {
+      text-align: center;
+      padding: 12px 0 8px;
+    }
+
+    .invalid-icon {
+      width: 68px;
+      height: 68px;
+      border-radius: 50%;
+      background: #fef2f2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+    }
+
+    .invalid-icon svg {
+      width: 34px;
+      height: 34px;
+      stroke: #b91c1c;
+      stroke-width: 2.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      fill: none;
+    }
+
+    .invalid-wrap h2 {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+
+    .invalid-wrap p {
+      font-size: 15px;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="brand">
+      <div class="brand-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+      </div>
+      <span class="brand-name">Toastmasters</span>
+    </div>
+
+    <!-- Form -->
+    <div id="form-view">
+      <h1>Nice to meet you!</h1>
+      <p class="subtitle">Tell us a bit about yourself to join today's meeting.</p>
+
+      <div id="error-banner" class="error-banner" role="alert"></div>
+
+      <form id="reg-form" novalidate>
+        <div class="field">
+          <label for="name">Full name <span class="req">*</span></label>
+          <input id="name" type="text" placeholder="Your full name" autocomplete="name" inputmode="text" />
+        </div>
+
+        <div class="field">
+          <label for="phone">Mobile number</label>
+          <input id="phone" type="tel" placeholder="98765 43210" autocomplete="tel" inputmode="numeric" />
+        </div>
+
+        <div class="field">
+          <label for="source">How did you find us? <span class="req">*</span></label>
+          <div class="select-wrap">
+            <select id="source" required>
+              <option value="" disabled selected>Select an option</option>
+              <option value="Google">Google</option>
+              <option value="Word of mouth">Word of mouth</option>
+              <option value="LinkedIn">LinkedIn</option>
+              <option value="Instagram">Instagram</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+        </div>
+
+        <button type="submit" id="submit-btn" class="btn">Register</button>
+      </form>
+    </div>
+
+    <!-- Success -->
+    <div id="success-view" hidden>
+      <div class="success-wrap">
+        <div class="success-icon">
+          <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
+        </div>
+        <h2>You're all set!</h2>
+        <p>Thanks for joining us today.<br>Enjoy the meeting!</p>
+      </div>
+    </div>
+
+    <!-- Invalid link -->
+    <div id="invalid-view" hidden>
+      <div class="invalid-wrap">
+        <div class="invalid-icon">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        </div>
+        <h2>Invalid link</h2>
+        <p>This QR code is not valid or the meeting has ended.<br>Please scan the QR code at the venue.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ── Set this to your FastAPI base URL before deploying ──
+    const API_BASE = 'http://localhost:8000';
+    // ────────────────────────────────────────────────────────
+
+    const meetingId = new URLSearchParams(window.location.search).get('meeting_id');
+
+    if (!meetingId) {
+      document.getElementById('form-view').hidden = true;
+      document.getElementById('invalid-view').hidden = false;
+    }
+
+    const form = document.getElementById('reg-form');
+    const nameInput = document.getElementById('name');
+    const phoneInput = document.getElementById('phone');
+    const sourceSelect = document.getElementById('source');
+    const submitBtn = document.getElementById('submit-btn');
+    const errorBanner = document.getElementById('error-banner');
+
+    function showError(msg) {
+      errorBanner.textContent = msg;
+      errorBanner.classList.add('show');
+    }
+
+    function clearError() {
+      errorBanner.classList.remove('show');
+    }
+
+    function setLoading(loading) {
+      submitBtn.disabled = loading;
+      submitBtn.textContent = loading ? 'Saving…' : 'Register';
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearError();
+
+      const name = nameInput.value.trim();
+      const phone = phoneInput.value.trim();
+      const source = sourceSelect.value;
+
+      if (!name) {
+        showError('Please enter your full name.');
+        nameInput.focus();
+        return;
+      }
+      const phoneDigits = phone.replace(/\D/g, '');
+      if (phone && phoneDigits.length !== 10) {
+        showError('Please enter a valid 10-digit mobile number.');
+        phoneInput.focus();
+        return;
+      }
+      if (!source) {
+        showError('Please select how you found us.');
+        sourceSelect.focus();
+        return;
+      }
+
+      setLoading(true);
+
+      try {
+        const res = await fetch(`${API_BASE}/guests/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            meeting_id: meetingId,
+            name,
+            phone: phone || null,
+            source,
+          }),
+        });
+
+        if (res.status === 404) {
+          document.getElementById('form-view').hidden = true;
+          document.getElementById('invalid-view').hidden = false;
+          return;
+        }
+
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          showError(body.detail || 'Something went wrong. Please try again.');
+          setLoading(false);
+          return;
+        }
+
+        document.getElementById('form-view').hidden = true;
+        document.getElementById('success-view').hidden = false;
+
+      } catch {
+        showError('Could not connect. Please check your internet and try again.');
+        setLoading(false);
+      }
+    });
+  </script>
+</body>
+</html>

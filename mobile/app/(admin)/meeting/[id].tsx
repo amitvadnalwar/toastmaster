@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView,
   Alert, ActivityIndicator, Modal, Platform, FlatList, Keyboard, KeyboardAvoidingView,
@@ -7,8 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import QRCode from 'react-native-qrcode-svg';
-import * as FileSystem from 'expo-file-system';
-import * as Sharing from 'expo-sharing';
+import { Linking, Share } from 'react-native';
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useAuthStore } from '@/store';
 import {
@@ -319,9 +318,6 @@ export default function MeetingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const session = useAuthStore((s) => s.session);
 
-  const memberQrRef = useRef<any>(null);
-  const guestQrRef = useRef<any>(null);
-
   const [data, setData] = useState<MeetingWithRoster | null>(null);
   const [fetching, setFetching] = useState(true);
   const [acting, setActing] = useState(false);
@@ -562,22 +558,28 @@ export default function MeetingDetailScreen() {
     ]);
   }
 
-  async function shareQR(qrRef: React.MutableRefObject<any>, label: string) {
-    if (!qrRef.current) return;
-    qrRef.current.toDataURL(async (data: string) => {
-      try {
-        const fileUri = FileSystem.cacheDirectory + `${label}-qr.png`;
-        await FileSystem.writeAsStringAsync(fileUri, data, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-        await Sharing.shareAsync(fileUri, {
-          mimeType: 'image/png',
-          dialogTitle: `Share ${label} QR Code`,
-        });
-      } catch {
-        Alert.alert('Error', 'Could not share QR code. Please try again.');
+  async function shareOnWhatsApp(type: 'member' | 'guest') {
+    const meetingId = meeting.id;
+    let message = '';
+
+    if (type === 'guest') {
+      const guestUrl = `https://amitvadnalwar.github.io/toastmaster/guest-web/?meeting_id=${meetingId}`;
+      message = `You're invited to our Toastmasters meeting! 🎤\n\nRegister as a guest here:\n${guestUrl}`;
+    } else {
+      message = `Join our Toastmasters meeting in the app!\n\nMeeting ID: ${meetingId}`;
+    }
+
+    const whatsappUrl = `whatsapp://send?text=${encodeURIComponent(message)}`;
+    try {
+      const supported = await Linking.canOpenURL(whatsappUrl);
+      if (supported) {
+        await Linking.openURL(whatsappUrl);
+      } else {
+        await Share.share({ message });
       }
-    });
+    } catch {
+      Alert.alert('Error', 'Could not open WhatsApp. Please try again.');
+    }
   }
 
   // ── Render ────────────────────────────────────────────────────────────
@@ -809,11 +811,10 @@ export default function MeetingDetailScreen() {
                   size={200}
                   color="#111827"
                   backgroundColor="#ffffff"
-                  getRef={(c) => { memberQrRef.current = c; }}
                 />
               </View>
               <Text style={styles.qrId}>{meeting.id}</Text>
-              <TouchableOpacity style={styles.shareBtn} onPress={() => shareQR(memberQrRef, 'Member')}>
+              <TouchableOpacity style={styles.shareBtn} onPress={() => shareOnWhatsApp('member')}>
                 <Feather name="share-2" size={16} color="#8B1A1A" />
                 <Text style={styles.shareBtnText}>Share on WhatsApp</Text>
               </TouchableOpacity>
@@ -829,11 +830,10 @@ export default function MeetingDetailScreen() {
                   size={200}
                   color="#111827"
                   backgroundColor="#ffffff"
-                  getRef={(c) => { guestQrRef.current = c; }}
                 />
               </View>
               <Text style={styles.qrId}>{meeting.id}</Text>
-              <TouchableOpacity style={styles.shareBtn} onPress={() => shareQR(guestQrRef, 'Guest')}>
+              <TouchableOpacity style={styles.shareBtn} onPress={() => shareOnWhatsApp('guest')}>
                 <Feather name="share-2" size={16} color="#8B1A1A" />
                 <Text style={styles.shareBtnText}>Share on WhatsApp</Text>
               </TouchableOpacity>

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView,
   Alert, ActivityIndicator, Modal, Platform, FlatList, Keyboard, KeyboardAvoidingView,
@@ -7,6 +7,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import QRCode from 'react-native-qrcode-svg';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useAuthStore } from '@/store';
 import {
@@ -317,6 +319,9 @@ export default function MeetingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const session = useAuthStore((s) => s.session);
 
+  const memberQrRef = useRef<any>(null);
+  const guestQrRef = useRef<any>(null);
+
   const [data, setData] = useState<MeetingWithRoster | null>(null);
   const [fetching, setFetching] = useState(true);
   const [acting, setActing] = useState(false);
@@ -557,6 +562,24 @@ export default function MeetingDetailScreen() {
     ]);
   }
 
+  async function shareQR(qrRef: React.MutableRefObject<any>, label: string) {
+    if (!qrRef.current) return;
+    qrRef.current.toDataURL(async (data: string) => {
+      try {
+        const fileUri = FileSystem.cacheDirectory + `${label}-qr.png`;
+        await FileSystem.writeAsStringAsync(fileUri, data, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        await Sharing.shareAsync(fileUri, {
+          mimeType: 'image/png',
+          dialogTitle: `Share ${label} QR Code`,
+        });
+      } catch {
+        Alert.alert('Error', 'Could not share QR code. Please try again.');
+      }
+    });
+  }
+
   // ── Render ────────────────────────────────────────────────────────────
 
   if (fetching) {
@@ -781,9 +804,19 @@ export default function MeetingDetailScreen() {
             <View style={styles.qrCard}>
               <Text style={styles.qrHint}>Members scan this to join the meeting (requires app)</Text>
               <View style={styles.qrWrapper}>
-                <QRCode value={`toastmasters://join?meeting_id=${meeting.id}`} size={200} color="#111827" backgroundColor="#ffffff" />
+                <QRCode
+                  value={`toastmasters://join?meeting_id=${meeting.id}`}
+                  size={200}
+                  color="#111827"
+                  backgroundColor="#ffffff"
+                  getRef={(c) => { memberQrRef.current = c; }}
+                />
               </View>
               <Text style={styles.qrId}>{meeting.id}</Text>
+              <TouchableOpacity style={styles.shareBtn} onPress={() => shareQR(memberQrRef, 'Member')}>
+                <Feather name="share-2" size={16} color="#8B1A1A" />
+                <Text style={styles.shareBtnText}>Share on WhatsApp</Text>
+              </TouchableOpacity>
             </View>
 
             {/* Guest QR Code */}
@@ -791,9 +824,19 @@ export default function MeetingDetailScreen() {
             <View style={styles.qrCard}>
               <Text style={styles.qrHint}>Guests scan this to register (no app needed)</Text>
               <View style={styles.qrWrapper}>
-                <QRCode value={`https://amitvadnalwar.github.io/toastmaster/guest-web/?meeting_id=${meeting.id}`} size={200} color="#111827" backgroundColor="#ffffff" />
+                <QRCode
+                  value={`https://amitvadnalwar.github.io/toastmaster/guest-web/?meeting_id=${meeting.id}`}
+                  size={200}
+                  color="#111827"
+                  backgroundColor="#ffffff"
+                  getRef={(c) => { guestQrRef.current = c; }}
+                />
               </View>
               <Text style={styles.qrId}>{meeting.id}</Text>
+              <TouchableOpacity style={styles.shareBtn} onPress={() => shareQR(guestQrRef, 'Guest')}>
+                <Feather name="share-2" size={16} color="#8B1A1A" />
+                <Text style={styles.shareBtnText}>Share on WhatsApp</Text>
+              </TouchableOpacity>
             </View>
           </>
         )}
@@ -934,6 +977,13 @@ const styles = StyleSheet.create({
   qrHint: { fontSize: 13, color: '#6b7280', marginBottom: 20, textAlign: 'center' },
   qrWrapper: { padding: 16, backgroundColor: '#fff', borderRadius: 12, borderWidth: 1, borderColor: '#e5e7eb' },
   qrId: { fontSize: 10, color: '#d1d5db', marginTop: 16, textAlign: 'center' },
+  shareBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    marginTop: 16, paddingVertical: 10, paddingHorizontal: 20,
+    backgroundColor: '#fef2f2', borderRadius: 10,
+    borderWidth: 1, borderColor: '#fecaca',
+  },
+  shareBtnText: { fontSize: 14, color: '#8B1A1A', fontWeight: '600' },
 
   // Edit mode
   fieldLabel: {

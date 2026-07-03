@@ -776,12 +776,22 @@ export default function MeetingDetailScreen() {
               acting={acting}
             />
 
-            {/* QR Code */}
+            {/* Member QR Code */}
             <Text style={[styles.sectionTitle, { marginTop: 24 }]}>MEMBER QR CODE</Text>
             <View style={styles.qrCard}>
-              <Text style={styles.qrHint}>Members scan this to join the meeting</Text>
+              <Text style={styles.qrHint}>Members scan this to join the meeting (requires app)</Text>
               <View style={styles.qrWrapper}>
                 <QRCode value={`toastmasters://join?meeting_id=${meeting.id}`} size={200} color="#111827" backgroundColor="#ffffff" />
+              </View>
+              <Text style={styles.qrId}>{meeting.id}</Text>
+            </View>
+
+            {/* Guest QR Code */}
+            <Text style={[styles.sectionTitle, { marginTop: 24 }]}>GUEST QR CODE</Text>
+            <View style={styles.qrCard}>
+              <Text style={styles.qrHint}>Guests scan this to register (no app needed)</Text>
+              <View style={styles.qrWrapper}>
+                <QRCode value={`https://amitvadnalwar.github.io/toastmaster/guest-web/?meeting_id=${meeting.id}`} size={200} color="#111827" backgroundColor="#ffffff" />
               </View>
               <Text style={styles.qrId}>{meeting.id}</Text>
             </View>

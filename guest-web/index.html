@@ -35,91 +35,118 @@
       max-width: 420px;
     }
 
+    /* ── Brand ── */
     .brand {
       display: flex;
       align-items: center;
       gap: 10px;
-      margin-bottom: 28px;
+      margin-bottom: 24px;
     }
-
     .brand-icon {
-      width: 36px;
-      height: 36px;
+      width: 36px; height: 36px;
       border-radius: 9px;
       background: var(--brand);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .brand-icon svg {
+      width: 20px; height: 20px;
+      fill: none; stroke: #fff; stroke-width: 2.2;
+      stroke-linecap: round; stroke-linejoin: round;
+    }
+    .brand-name { font-size: 15px; font-weight: 700; color: var(--brand); letter-spacing: -0.01em; }
+
+    /* ── Progress bar ── */
+    .progress-wrap { margin-bottom: 28px; }
+    .progress-track {
       display: flex;
       align-items: center;
-      justify-content: center;
+      margin-bottom: 8px;
     }
-
-    .brand-icon svg {
-      width: 20px;
-      height: 20px;
-      fill: none;
-      stroke: #fff;
-      stroke-width: 2.2;
-      stroke-linecap: round;
-      stroke-linejoin: round;
-    }
-
-    .brand-name {
-      font-size: 15px;
-      font-weight: 700;
-      color: var(--brand);
-      letter-spacing: -0.01em;
-    }
-
-    h1 {
-      font-size: 26px;
-      font-weight: 700;
-      color: var(--text);
-      letter-spacing: -0.02em;
-      margin-bottom: 6px;
-      line-height: 1.2;
-    }
-
-    .subtitle {
-      font-size: 15px;
+    .step-node {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      background: #fff;
       color: var(--muted);
-      line-height: 1.55;
-      margin-bottom: 28px;
+      font-size: 12px;
+      font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      transition: all 0.2s;
+    }
+    .step-node.done {
+      background: var(--brand);
+      border-color: var(--brand);
+      color: #fff;
+    }
+    .step-node.active {
+      background: var(--brand);
+      border-color: var(--brand);
+      color: #fff;
+      box-shadow: 0 0 0 3px rgba(139,26,26,0.15);
+    }
+    .step-track-line {
+      flex: 1;
+      height: 2px;
+      background: var(--border);
+      transition: background 0.2s;
+    }
+    .step-track-line.done { background: var(--brand); }
+    .progress-labels {
+      display: flex;
+      justify-content: space-between;
+      padding: 0 4px;
+    }
+    .progress-labels span {
+      font-size: 11px;
+      color: var(--muted);
+      flex: 1;
+      text-align: center;
+    }
+    .progress-labels span:first-child { text-align: left; }
+    .progress-labels span:last-child  { text-align: right; }
+
+    /* ── Headings ── */
+    h1 {
+      font-size: 24px; font-weight: 700;
+      color: var(--text); letter-spacing: -0.02em;
+      margin-bottom: 6px; line-height: 1.2;
+    }
+    h2 {
+      font-size: 16px; font-weight: 700;
+      color: var(--text); margin-bottom: 14px;
+    }
+    .subtitle {
+      font-size: 15px; color: var(--muted);
+      line-height: 1.55; margin-bottom: 24px;
     }
 
+    /* ── Form fields ── */
     .field { margin-bottom: 18px; }
-
-    label {
+    label, .field-label {
       display: block;
-      font-size: 14px;
-      font-weight: 500;
-      color: #374151;
-      margin-bottom: 6px;
+      font-size: 14px; font-weight: 500;
+      color: #374151; margin-bottom: 6px;
     }
-
     .req { color: var(--brand); margin-left: 2px; }
-
-    input, select {
+    input, select, textarea {
       width: 100%;
       border: 1.5px solid var(--border);
       border-radius: var(--radius);
       padding: 13px 16px;
-      font-size: 16px;
-      color: var(--text);
-      background: #fff;
-      outline: none;
+      font-size: 16px; color: var(--text);
+      background: #fff; outline: none;
       transition: border-color 0.15s;
-      -webkit-appearance: none;
-      appearance: none;
+      -webkit-appearance: none; appearance: none;
+      font-family: inherit;
     }
-
-    input:focus, select:focus { border-color: var(--brand); }
-
+    textarea { resize: vertical; min-height: 72px; }
+    input:focus, select:focus, textarea:focus { border-color: var(--brand); }
     .select-wrap { position: relative; }
-
     .select-wrap::after {
       content: '';
-      position: absolute;
-      right: 16px;
-      top: 50%;
+      position: absolute; right: 16px; top: 50%;
       transform: translateY(-50%);
       width: 0; height: 0;
       border-left: 5px solid transparent;
@@ -127,129 +154,183 @@
       border-top: 6px solid var(--muted);
       pointer-events: none;
     }
-
-    /* Placeholder color for select */
     select:invalid { color: #9ca3af; }
-    select option { color: var(--text); }
+    select option  { color: var(--text); }
 
+    /* ── Button ── */
     .btn {
       width: 100%;
-      background: var(--brand);
-      color: #fff;
-      border: none;
-      border-radius: var(--radius);
-      padding: 15px;
-      font-size: 16px;
-      font-weight: 600;
-      cursor: pointer;
-      margin-top: 8px;
+      background: var(--brand); color: #fff;
+      border: none; border-radius: var(--radius);
+      padding: 15px; font-size: 16px; font-weight: 600;
+      cursor: pointer; margin-top: 8px;
       transition: opacity 0.15s, transform 0.1s;
-      letter-spacing: -0.01em;
+      letter-spacing: -0.01em; font-family: inherit;
     }
-
     .btn:hover:not(:disabled) { opacity: 0.9; }
     .btn:active:not(:disabled) { transform: scale(0.98); }
     .btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
+    /* ── Error banner ── */
     .error-banner {
-      background: #fef2f2;
-      border: 1px solid #fecaca;
-      border-radius: 8px;
-      padding: 11px 14px;
-      font-size: 14px;
-      color: #b91c1c;
-      margin-bottom: 18px;
-      display: none;
+      background: #fef2f2; border: 1px solid #fecaca;
+      border-radius: 8px; padding: 11px 14px;
+      font-size: 14px; color: #b91c1c;
+      margin-bottom: 18px; display: none;
     }
-
     .error-banner.show { display: block; }
 
-    /* ── Success state ── */
-    .success-wrap {
-      text-align: center;
-      padding: 12px 0 8px;
+    /* ── Feedback card ── */
+    .feedback-card {
+      background: #f9fafb;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px 18px;
+      margin-bottom: 16px;
     }
+    .speaker-header {
+      display: flex; align-items: center; gap: 8px;
+      margin-bottom: 18px;
+    }
+    .speaker-num {
+      font-size: 11px; font-weight: 700;
+      color: var(--brand); background: var(--brand-light);
+      padding: 2px 8px; border-radius: 20px;
+      text-transform: uppercase; letter-spacing: 0.03em;
+    }
+    .speaker-name-text { font-size: 16px; font-weight: 700; color: var(--text); }
 
-    .success-icon {
-      width: 68px;
-      height: 68px;
+    /* ── Emoji rating row ── */
+    .rating-rows { display: flex; flex-direction: column; gap: 14px; margin-bottom: 18px; }
+    .rating-row {
+      display: flex; align-items: center;
+      justify-content: space-between; gap: 12px;
+    }
+    .rating-label {
+      font-size: 14px; font-weight: 500; color: #374151;
+      min-width: 84px; flex-shrink: 0;
+    }
+    .emoji-group { display: flex; gap: 6px; }
+    .face-btn {
+      width: 38px; height: 38px;
       border-radius: 50%;
-      background: var(--brand-light);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin: 0 auto 20px;
-    }
-
-    .success-icon svg {
-      width: 34px;
-      height: 34px;
-      stroke: var(--brand);
-      stroke-width: 2.5;
-      stroke-linecap: round;
-      stroke-linejoin: round;
-      fill: none;
-    }
-
-    .success-wrap h2 {
-      font-size: 22px;
-      font-weight: 700;
-      color: var(--text);
-      letter-spacing: -0.02em;
-      margin-bottom: 10px;
-    }
-
-    .success-wrap p {
-      font-size: 15px;
-      color: var(--muted);
-      line-height: 1.6;
-    }
-
-    /* ── Invalid / error state ── */
-    .invalid-wrap {
-      text-align: center;
-      padding: 12px 0 8px;
-    }
-
-    .invalid-icon {
-      width: 68px;
-      height: 68px;
-      border-radius: 50%;
-      background: #fef2f2;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin: 0 auto 20px;
-    }
-
-    .invalid-icon svg {
-      width: 34px;
-      height: 34px;
-      stroke: #b91c1c;
-      stroke-width: 2.5;
-      stroke-linecap: round;
-      stroke-linejoin: round;
-      fill: none;
-    }
-
-    .invalid-wrap h2 {
+      border: 2px solid transparent;
+      background: #fff;
       font-size: 20px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s;
+      padding: 0;
+    }
+    .face-btn:hover:not(.selected) { background: #f3f4f6; transform: scale(1.08); }
+    .face-btn.selected {
+      background: var(--brand-light);
+      border-color: var(--brand);
+      transform: scale(1.15);
+    }
+
+    /* ── Overall scale (vertical radio-style) ── */
+    .scale-options { display: flex; flex-direction: column; gap: 6px; }
+    .scale-option {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 14px;
+      border: 1.5px solid var(--border); border-radius: 10px;
+      cursor: pointer; background: #fff;
+      font-size: 14px; color: var(--text);
+      transition: all 0.15s; font-family: inherit;
+    }
+    .scale-option:hover:not(.selected) { border-color: #9ca3af; background: #f9fafb; }
+    .scale-option.selected {
+      border-color: var(--brand);
+      background: var(--brand-light);
+      color: var(--brand);
+      font-weight: 600;
+    }
+    .scale-dot {
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      flex-shrink: 0; transition: all 0.15s;
+    }
+    .scale-option.selected .scale-dot {
+      border-color: var(--brand); background: var(--brand);
+    }
+
+    /* ── Nominee section ── */
+    .nominee-section { margin-bottom: 24px; }
+    .award-label {
+      font-size: 14px; font-weight: 700;
+      color: var(--brand); margin-bottom: 10px;
+      text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .nominee-options { display: flex; flex-direction: column; gap: 6px; }
+    .nominee-btn {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 16px;
+      border: 1.5px solid var(--border); border-radius: 10px;
+      background: #fff; cursor: pointer;
+      font-size: 15px; font-weight: 500; color: var(--text);
+      text-align: left; transition: all 0.15s; font-family: inherit;
+    }
+    .nominee-btn::before {
+      content: '';
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      flex-shrink: 0; transition: all 0.15s;
+    }
+    .nominee-btn:hover:not(.selected) { border-color: #9ca3af; background: #f9fafb; }
+    .nominee-btn.selected {
+      border-color: var(--brand);
+      background: var(--brand-light);
+      color: var(--brand);
       font-weight: 700;
-      color: var(--text);
-      margin-bottom: 8px;
+    }
+    .nominee-btn.selected::before {
+      border-color: var(--brand); background: var(--brand);
     }
 
-    .invalid-wrap p {
-      font-size: 15px;
-      color: var(--muted);
-      line-height: 1.55;
+    /* ── Empty state ── */
+    .empty-state {
+      text-align: center; padding: 24px 0;
+      font-size: 15px; color: var(--muted); line-height: 1.6;
     }
 
+    /* ── Success / invalid ── */
+    .success-wrap, .invalid-wrap {
+      text-align: center; padding: 12px 0 8px;
+    }
+    .success-icon, .invalid-icon {
+      width: 68px; height: 68px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 20px;
+    }
+    .success-icon { background: var(--brand-light); }
+    .invalid-icon { background: #fef2f2; }
+    .success-icon svg, .invalid-icon svg {
+      width: 34px; height: 34px;
+      stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round;
+      fill: none;
+    }
+    .success-icon svg { stroke: var(--brand); }
+    .invalid-icon svg { stroke: #b91c1c; }
+    .success-wrap h2, .invalid-wrap h2 {
+      font-size: 22px; font-weight: 700;
+      color: var(--text); letter-spacing: -0.02em; margin-bottom: 10px;
+    }
+    .success-wrap p, .invalid-wrap p {
+      font-size: 15px; color: var(--muted); line-height: 1.6;
+    }
+
+    .mt-18 { margin-top: 18px; }
     [hidden] { display: none !important; }
   </style>
 </head>
 <body>
   <div class="card">
+
+    <!-- Brand header (always visible) -->
     <div class="brand">
       <div class="brand-icon">
         <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
@@ -257,24 +338,38 @@
       <span class="brand-name">Toastmaster Pune South East</span>
     </div>
 
-    <!-- Form -->
-    <div id="form-view">
+    <!-- Progress bar (steps 2–4) -->
+    <div id="progress-wrap" hidden>
+      <div class="progress-wrap">
+        <div class="progress-track">
+          <div class="step-node" id="node-2">1</div>
+          <div class="step-track-line" id="line-23"></div>
+          <div class="step-node" id="node-3">2</div>
+          <div class="step-track-line" id="line-34"></div>
+          <div class="step-node" id="node-4">3</div>
+        </div>
+        <div class="progress-labels">
+          <span>Speakers</span>
+          <span>Meeting</span>
+          <span>Votes</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Step 1: Register ── -->
+    <div id="v-register">
       <h1>Nice to meet you!</h1>
       <p class="subtitle">Tell us a bit about yourself to join today's meeting.</p>
-
-      <div id="error-banner" class="error-banner" role="alert"></div>
-
+      <div id="reg-error" class="error-banner" role="alert"></div>
       <form id="reg-form" novalidate>
         <div class="field">
           <label for="name">Full name <span class="req">*</span></label>
           <input id="name" type="text" placeholder="Your full name" autocomplete="name" inputmode="text" />
         </div>
-
         <div class="field">
           <label for="phone">Mobile number</label>
           <input id="phone" type="tel" placeholder="98765 43210" autocomplete="tel" inputmode="numeric" />
         </div>
-
         <div class="field">
           <label for="source">How did you find us? <span class="req">*</span></label>
           <div class="select-wrap">
@@ -288,24 +383,111 @@
             </select>
           </div>
         </div>
-
-        <button type="submit" id="submit-btn" class="btn">Register</button>
+        <button type="submit" id="reg-btn" class="btn">Register</button>
       </form>
     </div>
 
-    <!-- Success -->
-    <div id="success-view" hidden>
+    <!-- ── Step 2: Speaker feedback ── -->
+    <div id="v-speakers" hidden>
+      <h1>Rate the Speakers</h1>
+      <p class="subtitle">Share your thoughts on each speaker.</p>
+      <div id="speakers-error" class="error-banner" role="alert"></div>
+      <div id="speakers-list"></div>
+      <button type="button" id="btn-speakers-next" class="btn">Next: Meeting Quality</button>
+    </div>
+
+    <!-- ── Step 3: Meeting quality ── -->
+    <div id="v-meeting" hidden>
+      <h1>Rate the Meeting</h1>
+      <p class="subtitle">How was today's overall session?</p>
+      <div id="meeting-error" class="error-banner" role="alert"></div>
+
+      <div class="feedback-card" id="meeting-card">
+        <div class="rating-rows">
+          <div class="rating-row">
+            <span class="rating-label">Punctual</span>
+            <div class="emoji-group" data-field="punctual">
+              <button type="button" class="face-btn" data-val="1" onclick="selectFace(this)">😞</button>
+              <button type="button" class="face-btn" data-val="2" onclick="selectFace(this)">😕</button>
+              <button type="button" class="face-btn" data-val="3" onclick="selectFace(this)">😐</button>
+              <button type="button" class="face-btn" data-val="4" onclick="selectFace(this)">🙂</button>
+              <button type="button" class="face-btn" data-val="5" onclick="selectFace(this)">😊</button>
+            </div>
+          </div>
+          <div class="rating-row">
+            <span class="rating-label">Agenda</span>
+            <div class="emoji-group" data-field="agenda">
+              <button type="button" class="face-btn" data-val="1" onclick="selectFace(this)">😞</button>
+              <button type="button" class="face-btn" data-val="2" onclick="selectFace(this)">😕</button>
+              <button type="button" class="face-btn" data-val="3" onclick="selectFace(this)">😐</button>
+              <button type="button" class="face-btn" data-val="4" onclick="selectFace(this)">🙂</button>
+              <button type="button" class="face-btn" data-val="5" onclick="selectFace(this)">😊</button>
+            </div>
+          </div>
+          <div class="rating-row">
+            <span class="rating-label">Inclusive</span>
+            <div class="emoji-group" data-field="inclusive">
+              <button type="button" class="face-btn" data-val="1" onclick="selectFace(this)">😞</button>
+              <button type="button" class="face-btn" data-val="2" onclick="selectFace(this)">😕</button>
+              <button type="button" class="face-btn" data-val="3" onclick="selectFace(this)">😐</button>
+              <button type="button" class="face-btn" data-val="4" onclick="selectFace(this)">🙂</button>
+              <button type="button" class="face-btn" data-val="5" onclick="selectFace(this)">😊</button>
+            </div>
+          </div>
+          <div class="rating-row">
+            <span class="rating-label">Experience</span>
+            <div class="emoji-group" data-field="experience">
+              <button type="button" class="face-btn" data-val="1" onclick="selectFace(this)">😞</button>
+              <button type="button" class="face-btn" data-val="2" onclick="selectFace(this)">😕</button>
+              <button type="button" class="face-btn" data-val="3" onclick="selectFace(this)">😐</button>
+              <button type="button" class="face-btn" data-val="4" onclick="selectFace(this)">🙂</button>
+              <button type="button" class="face-btn" data-val="5" onclick="selectFace(this)">😊</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="field-label">Overall</label>
+          <div class="scale-options">
+            <button type="button" class="scale-option" data-val="1" onclick="selectScale(this)"><span class="scale-dot"></span><span>Could be better</span></button>
+            <button type="button" class="scale-option" data-val="2" onclick="selectScale(this)"><span class="scale-dot"></span><span>Average</span></button>
+            <button type="button" class="scale-option" data-val="3" onclick="selectScale(this)"><span class="scale-dot"></span><span>Good</span></button>
+            <button type="button" class="scale-option" data-val="4" onclick="selectScale(this)"><span class="scale-dot"></span><span>Super</span></button>
+            <button type="button" class="scale-option" data-val="5" onclick="selectScale(this)"><span class="scale-dot"></span><span>Outstanding</span></button>
+          </div>
+        </div>
+
+        <div class="field mt-18">
+          <label class="field-label" for="meeting-comment">Comments (optional)</label>
+          <textarea id="meeting-comment" placeholder="What worked? What can be improved?" rows="3"></textarea>
+        </div>
+      </div>
+
+      <button type="button" id="btn-meeting-next" class="btn">Next: Vote for Awards</button>
+    </div>
+
+    <!-- ── Step 4: Votes ── -->
+    <div id="v-votes" hidden>
+      <h1>Cast Your Vote</h1>
+      <p class="subtitle">Choose your favourite for each award.</p>
+      <div id="votes-error" class="error-banner" role="alert"></div>
+      <div id="nominees-list"></div>
+      <button type="button" id="btn-votes-submit" class="btn">Submit Feedback</button>
+    </div>
+
+    <!-- ── Step 5: Thank you ── -->
+    <div id="v-thanks" hidden>
       <div class="success-wrap">
         <div class="success-icon">
           <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"></polyline></svg>
         </div>
-        <h2>You're all set!</h2>
-        <p>Thanks for joining us today.<br>Enjoy the meeting!</p>
+        <h2>Thank you, <span id="thanks-name"></span>!</h2>
+        <p>Your feedback helps make our meetings better.<br>Enjoy the session!</p>
       </div>
     </div>
 
-    <!-- Invalid link -->
-    <div id="invalid-view" hidden>
+    <!-- Invalid meeting link -->
+    <div id="v-invalid" hidden>
       <div class="invalid-wrap">
         <div class="invalid-icon">
           <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
@@ -314,99 +496,380 @@
         <p>This QR code is not valid or the meeting has ended.<br>Please scan the QR code at the venue.</p>
       </div>
     </div>
-  </div>
+
+  </div><!-- /card -->
 
   <script>
-    // ── Set this to your FastAPI base URL before deploying ──
-    const API_BASE = 'https://toastmaster.onrender.com';
-    // ────────────────────────────────────────────────────────
-
+    const API_BASE  = 'https://toastmaster.onrender.com';
     const meetingId = new URLSearchParams(window.location.search).get('meeting_id');
 
+    let guestId   = null;
+    let guestName = null;
+    let speakers  = [];
+    let nomineeCategories = [];
+
+    const FACES = { 1: '😞', 2: '😕', 3: '😐', 4: '🙂', 5: '😊' };
+    const SPEAKER_FIELDS = ['content', 'structure', 'interaction', 'confidence'];
+    const SCALE_LABELS   = ['Could be better', 'Average', 'Good', 'Super', 'Outstanding'];
+
+    // ── Initialise ──────────────────────────────────────────────
     if (!meetingId) {
-      document.getElementById('form-view').hidden = true;
-      document.getElementById('invalid-view').hidden = false;
+      document.getElementById('v-register').hidden = true;
+      document.getElementById('v-invalid').hidden   = false;
     }
 
-    const form = document.getElementById('reg-form');
-    const nameInput = document.getElementById('name');
-    const phoneInput = document.getElementById('phone');
-    const sourceSelect = document.getElementById('source');
-    const submitBtn = document.getElementById('submit-btn');
-    const errorBanner = document.getElementById('error-banner');
+    // ── Step management ─────────────────────────────────────────
+    const STEP_IDS = ['v-register', 'v-speakers', 'v-meeting', 'v-votes', 'v-thanks'];
 
-    function showError(msg) {
-      errorBanner.textContent = msg;
-      errorBanner.classList.add('show');
+    function showStep(num) {
+      STEP_IDS.forEach((id, i) => {
+        document.getElementById(id).hidden = (i + 1 !== num);
+      });
+
+      const bar = document.getElementById('progress-wrap');
+      bar.hidden = (num < 2 || num === 5);
+
+      if (num >= 2 && num <= 4) {
+        [2, 3, 4].forEach(n => {
+          const node = document.getElementById('node-' + n);
+          node.classList.remove('active', 'done');
+          if (n < num) node.classList.add('done');
+          else if (n === num) node.classList.add('active');
+        });
+        document.getElementById('line-23').classList.toggle('done', num > 2);
+        document.getElementById('line-34').classList.toggle('done', num > 3);
+      }
+
+      if (num === 5 && guestName) {
+        document.getElementById('thanks-name').textContent = guestName;
+      }
+
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
-    function clearError() {
-      errorBanner.classList.remove('show');
+    function showError(bannerId, msg) {
+      const el = document.getElementById(bannerId);
+      el.textContent = msg;
+      el.classList.add('show');
     }
 
-    function setLoading(loading) {
-      submitBtn.disabled = loading;
-      submitBtn.textContent = loading ? 'Saving…' : 'Register';
+    function clearError(bannerId) {
+      const el = document.getElementById(bannerId);
+      el.textContent = '';
+      el.classList.remove('show');
     }
 
-    form.addEventListener('submit', async (e) => {
+    function setBtnLoading(id, loading, label) {
+      const btn = document.getElementById(id);
+      btn.disabled = loading;
+      if (loading) {
+        btn._orig = btn.textContent;
+        btn.textContent = 'Saving…';
+      } else {
+        btn.textContent = btn._orig || label;
+      }
+    }
+
+    // ── Emoji & scale helpers ────────────────────────────────────
+    function selectFace(btn) {
+      btn.closest('.emoji-group').querySelectorAll('.face-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+    }
+
+    function selectScale(btn) {
+      btn.closest('.scale-options').querySelectorAll('.scale-option').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+    }
+
+    function selectNominee(btn) {
+      btn.closest('.nominee-options').querySelectorAll('.nominee-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+    }
+
+    function getEmojiRating(scope, field) {
+      const btn = scope.querySelector('.emoji-group[data-field="' + field + '"] .face-btn.selected');
+      return btn ? parseInt(btn.dataset.val) : null;
+    }
+
+    function getScaleRating(scope) {
+      const btn = scope.querySelector('.scale-options .scale-option.selected');
+      return btn ? parseInt(btn.dataset.val) : null;
+    }
+
+    function escHtml(s) {
+      return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    // ── Build speaker cards ──────────────────────────────────────
+    function buildSpeakerCards() {
+      const container = document.getElementById('speakers-list');
+
+      if (!speakers.length) {
+        container.innerHTML = '<p class="empty-state">No speakers have been enrolled for this meeting yet.<br>Tap Next to continue.</p>';
+        return;
+      }
+
+      container.innerHTML = speakers.map((s, idx) => `
+        <div class="feedback-card" data-speaker-id="${escHtml(s.member_id)}">
+          <div class="speaker-header">
+            <span class="speaker-num">Speaker ${idx + 1}</span>
+            <span class="speaker-name-text">${escHtml(s.name)}</span>
+          </div>
+
+          <div class="rating-rows">
+            ${SPEAKER_FIELDS.map(field => `
+              <div class="rating-row">
+                <span class="rating-label">${field.charAt(0).toUpperCase() + field.slice(1)}</span>
+                <div class="emoji-group" data-field="${field}">
+                  ${[1,2,3,4,5].map(v => `<button type="button" class="face-btn" data-val="${v}" onclick="selectFace(this)">${FACES[v]}</button>`).join('')}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+
+          <div class="field">
+            <label class="field-label">Overall</label>
+            <div class="scale-options">
+              ${SCALE_LABELS.map((label, i) => `
+                <button type="button" class="scale-option" data-val="${i + 1}" onclick="selectScale(this)">
+                  <span class="scale-dot"></span><span>${label}</span>
+                </button>
+              `).join('')}
+            </div>
+          </div>
+
+          <div class="field mt-18">
+            <label class="field-label">Comments (optional)</label>
+            <textarea class="speaker-comment" placeholder="Any specific feedback for ${escHtml(s.name)}?" rows="2"></textarea>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // ── Build nominee sections ───────────────────────────────────
+    function buildNomineeSections() {
+      const container = document.getElementById('nominees-list');
+
+      if (!nomineeCategories.length) {
+        container.innerHTML = '<p class="empty-state">No nominees available for this meeting.</p>';
+        return;
+      }
+
+      container.innerHTML = nomineeCategories.map(cat => `
+        <div class="nominee-section">
+          <div class="award-label">${escHtml(cat.label)}</div>
+          <div class="nominee-options">
+            ${cat.nominees.map(n => `
+              <button type="button" class="nominee-btn"
+                data-member-id="${escHtml(n.member_id)}"
+                data-category="${escHtml(cat.category)}"
+                onclick="selectNominee(this)">
+                ${escHtml(n.name)}
+              </button>
+            `).join('')}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // ── Validation & data collection ─────────────────────────────
+    function collectSpeakerFeedbacks() {
+      for (const s of speakers) {
+        const card = document.querySelector('[data-speaker-id="' + s.member_id + '"]');
+        for (const field of SPEAKER_FIELDS) {
+          if (!getEmojiRating(card, field)) {
+            return { error: 'Please rate ' + field + ' for ' + s.name, feedbacks: null };
+          }
+        }
+        if (!getScaleRating(card)) {
+          return { error: 'Please select an overall rating for ' + s.name, feedbacks: null };
+        }
+      }
+
+      const feedbacks = speakers.map(s => {
+        const card = document.querySelector('[data-speaker-id="' + s.member_id + '"]');
+        return {
+          speaker_member_id: s.member_id,
+          content_rating:     getEmojiRating(card, 'content'),
+          structure_rating:   getEmojiRating(card, 'structure'),
+          interaction_rating: getEmojiRating(card, 'interaction'),
+          confidence_rating:  getEmojiRating(card, 'confidence'),
+          overall_rating:     getScaleRating(card),
+          comment:            card.querySelector('.speaker-comment').value.trim() || null,
+        };
+      });
+
+      return { error: null, feedbacks };
+    }
+
+    function collectMeetingFeedback() {
+      const card = document.getElementById('meeting-card');
+      const meetingFields = ['punctual', 'agenda', 'inclusive', 'experience'];
+      for (const field of meetingFields) {
+        if (!getEmojiRating(card, field)) {
+          return { error: 'Please rate ' + field.charAt(0).toUpperCase() + field.slice(1), data: null };
+        }
+      }
+      if (!getScaleRating(card)) {
+        return { error: 'Please select an overall meeting quality rating', data: null };
+      }
+      return {
+        error: null,
+        data: {
+          punctual_rating:   getEmojiRating(card, 'punctual'),
+          agenda_rating:     getEmojiRating(card, 'agenda'),
+          inclusive_rating:  getEmojiRating(card, 'inclusive'),
+          experience_rating: getEmojiRating(card, 'experience'),
+          overall_rating:    getScaleRating(card),
+          comment:           document.getElementById('meeting-comment').value.trim() || null,
+        }
+      };
+    }
+
+    function collectVotes() {
+      const votes = [];
+      for (const cat of nomineeCategories) {
+        const selected = document.querySelector('.nominee-btn[data-category="' + cat.category + '"].selected');
+        if (!selected) {
+          return { error: 'Please vote for ' + cat.label, votes: null };
+        }
+        votes.push({ category: cat.category, nominee_id: selected.dataset.memberId });
+      }
+      return { error: null, votes };
+    }
+
+    // ── Registration ─────────────────────────────────────────────
+    const regForm  = document.getElementById('reg-form');
+    const regBtn   = document.getElementById('reg-btn');
+
+    regForm.addEventListener('submit', async (e) => {
       e.preventDefault();
-      clearError();
+      clearError('reg-error');
 
-      const name = nameInput.value.trim();
-      const phone = phoneInput.value.trim();
-      const source = sourceSelect.value;
+      const name  = document.getElementById('name').value.trim();
+      const phone = document.getElementById('phone').value.trim();
+      const source = document.getElementById('source').value;
 
-      if (!name) {
-        showError('Please enter your full name.');
-        nameInput.focus();
-        return;
-      }
-      const phoneDigits = phone.replace(/\D/g, '');
-      if (phone && phoneDigits.length !== 10) {
-        showError('Please enter a valid 10-digit mobile number.');
-        phoneInput.focus();
-        return;
-      }
-      if (!source) {
-        showError('Please select how you found us.');
-        sourceSelect.focus();
-        return;
-      }
+      if (!name) { showError('reg-error', 'Please enter your full name.'); return; }
+      const digits = phone.replace(/\D/g, '');
+      if (phone && digits.length !== 10) { showError('reg-error', 'Please enter a valid 10-digit mobile number.'); return; }
+      if (!source) { showError('reg-error', 'Please select how you found us.'); return; }
 
-      setLoading(true);
+      regBtn.disabled = true;
+      regBtn.textContent = 'Registering…';
 
       try {
-        const res = await fetch(`${API_BASE}/guests/register`, {
+        const res = await fetch(API_BASE + '/guests/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            meeting_id: meetingId,
-            name,
-            phone: phone || null,
-            source,
-          }),
+          body: JSON.stringify({ meeting_id: meetingId, name, phone: phone || null, source }),
         });
 
         if (res.status === 404) {
-          document.getElementById('form-view').hidden = true;
-          document.getElementById('invalid-view').hidden = false;
+          document.getElementById('v-register').hidden = true;
+          document.getElementById('v-invalid').hidden  = false;
           return;
         }
-
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
-          showError(body.detail || 'Something went wrong. Please try again.');
-          setLoading(false);
+          showError('reg-error', body.detail || 'Something went wrong. Please try again.');
           return;
         }
 
-        document.getElementById('form-view').hidden = true;
-        document.getElementById('success-view').hidden = false;
+        const json = await res.json();
+        guestId   = json.data.id;
+        guestName = json.data.name;
+
+        // Fetch speakers and nominees in parallel
+        const [spRes, nmRes] = await Promise.all([
+          fetch(API_BASE + '/guests/meetings/' + meetingId + '/speakers'),
+          fetch(API_BASE + '/guests/meetings/' + meetingId + '/nominees'),
+        ]);
+        speakers          = spRes.ok  ? (await spRes.json()).data  : [];
+        nomineeCategories = nmRes.ok  ? (await nmRes.json()).data  : [];
+
+        buildSpeakerCards();
+        buildNomineeSections();
+        showStep(2);
 
       } catch {
-        showError('Could not connect. Please check your internet and try again.');
-        setLoading(false);
+        showError('reg-error', 'Could not connect. Please check your internet and try again.');
+      } finally {
+        regBtn.disabled    = false;
+        regBtn.textContent = 'Register';
+      }
+    });
+
+    // ── Step 2 → 3 ──────────────────────────────────────────────
+    document.getElementById('btn-speakers-next').addEventListener('click', async () => {
+      clearError('speakers-error');
+
+      if (!speakers.length) { showStep(3); return; }
+
+      const { error, feedbacks } = collectSpeakerFeedbacks();
+      if (error) { showError('speakers-error', error); return; }
+
+      setBtnLoading('btn-speakers-next', true);
+      try {
+        const res = await fetch(API_BASE + '/guests/' + guestId + '/speaker-feedback', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ meeting_id: meetingId, feedbacks }),
+        });
+        if (!res.ok) throw new Error();
+        showStep(3);
+      } catch {
+        showError('speakers-error', 'Could not save. Please check your internet and try again.');
+      } finally {
+        setBtnLoading('btn-speakers-next', false, 'Next: Meeting Quality');
+      }
+    });
+
+    // ── Step 3 → 4 ──────────────────────────────────────────────
+    document.getElementById('btn-meeting-next').addEventListener('click', async () => {
+      clearError('meeting-error');
+
+      const { error, data } = collectMeetingFeedback();
+      if (error) { showError('meeting-error', error); return; }
+
+      setBtnLoading('btn-meeting-next', true);
+      try {
+        const res = await fetch(API_BASE + '/guests/' + guestId + '/meeting-feedback', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ meeting_id: meetingId, ...data }),
+        });
+        if (!res.ok) throw new Error();
+        showStep(nomineeCategories.length ? 4 : 5);
+      } catch {
+        showError('meeting-error', 'Could not save. Please check your internet and try again.');
+      } finally {
+        setBtnLoading('btn-meeting-next', false, 'Next: Vote for Awards');
+      }
+    });
+
+    // ── Step 4 → 5 ──────────────────────────────────────────────
+    document.getElementById('btn-votes-submit').addEventListener('click', async () => {
+      clearError('votes-error');
+
+      if (!nomineeCategories.length) { showStep(5); return; }
+
+      const { error, votes } = collectVotes();
+      if (error) { showError('votes-error', error); return; }
+
+      setBtnLoading('btn-votes-submit', true);
+      try {
+        const res = await fetch(API_BASE + '/guests/' + guestId + '/votes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ meeting_id: meetingId, votes }),
+        });
+        if (!res.ok) throw new Error();
+        showStep(5);
+      } catch {
+        showError('votes-error', 'Could not save. Please check your internet and try again.');
+      } finally {
+        setBtnLoading('btn-votes-submit', false, 'Submit Feedback');
       }
     });
   </script>

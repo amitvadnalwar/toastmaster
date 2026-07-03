@@ -1,8 +1,10 @@
 import { ConfigContext, ExpoConfig } from 'expo/config';
 
+const IS_PROD = process.env.APP_ENV === 'production';
+
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
-  name: 'Toastmasters',
+  name: IS_PROD ? 'Toastmaster PSE' : 'Toastmaster PSE (Dev)',
   slug: 'toastmasters-app',
   version: '1.0.0',
   orientation: 'portrait',
@@ -15,13 +17,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   assetBundlePatterns: ['**/*'],
   ios: {
     supportsTablet: false,
-    bundleIdentifier: 'com.toastmasters.app',
+    bundleIdentifier: IS_PROD ? 'com.toastmasters.app' : 'com.toastmasters.app.dev',
   },
   android: {
     adaptiveIcon: {
       backgroundColor: '#ffffff',
     },
-    package: 'com.toastmasters.app',
+    package: IS_PROD ? 'com.toastmasters.app' : 'com.toastmasters.app.dev',
   },
   scheme: 'toastmasters',
   plugins: [
@@ -36,6 +38,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ],
   ],
   extra: {
+    appEnv: process.env.APP_ENV ?? 'development',
     supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
     supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
     apiBaseUrl: process.env.EXPO_PUBLIC_API_BASE_URL,

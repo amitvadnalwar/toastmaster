@@ -70,10 +70,10 @@ async def get_meeting_nominees(meeting_id: str) -> list[NomineeCategoryOut]:
 
     for row in rows:
         role = row.get("role")
-        members = row.get("members")
-        if not members:
+        member = row.get("member")
+        if not member:
             continue
-        nominee = NomineeOut(member_id=row["member_id"], name=members["name"])
+        nominee = NomineeOut(member_id=row["member_id"], name=member["name"])
         for category, roles in _CATEGORY_ROLES.items():
             if role in roles:
                 by_category[category].append(nominee)

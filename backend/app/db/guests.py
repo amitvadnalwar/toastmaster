@@ -53,24 +53,26 @@ async def insert_guest(
 
 
 async def get_speakers_for_meeting(meeting_id: str) -> list[dict]:
+    # Alias + explicit FK hint needed: meeting_roles has two FKs to members
+    # (member_id and evaluates_member_id), making the plain join ambiguous.
     result = (
         supabase.table("meeting_roles")
-        .select("member_id, members(name)")
+        .select("member_id, member:members!member_id(name)")
         .eq("meeting_id", meeting_id)
         .eq("role", "speaker")
         .execute()
     )
     return [
-        {"member_id": row["member_id"], "name": row["members"]["name"]}
+        {"member_id": row["member_id"], "name": row["member"]["name"]}
         for row in result.data
-        if row.get("members")
+        if row.get("member")
     ]
 
 
 async def get_nominees_for_meeting(meeting_id: str) -> list[dict]:
     result = (
         supabase.table("meeting_roles")
-        .select("member_id, role, members(name)")
+        .select("member_id, role, member:members!member_id(name)")
         .eq("meeting_id", meeting_id)
         .in_(
             "role",

@@ -1,0 +1,31 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-gray-50 text-gray-900;
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+* {
+  touch-action: manipulation;
+}
+
+.pb-safe {
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 1rem);
+}
+
+.scrollbar-none {
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}

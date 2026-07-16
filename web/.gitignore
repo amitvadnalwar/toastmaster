@@ -1,0 +1,7 @@
+node_modules/
+dist/
+*.tsbuildinfo
+vite.config.js
+.env
+.env.production
+.env.local

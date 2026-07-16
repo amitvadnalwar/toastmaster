@@ -1,0 +1,1 @@
+if('serviceWorker' in navigator) {window.addEventListener('load', () => {navigator.serviceWorker.register('/toastmaster/app/sw.js', { scope: '/toastmaster/app/' })})}

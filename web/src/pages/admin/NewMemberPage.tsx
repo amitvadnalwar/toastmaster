@@ -1,19 +1,21 @@
-import { useState, FormEvent } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ChevronLeft, Calendar, X } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { createMember } from '@/services/memberService';
-import PageHeader from '@/components/layout/PageHeader';
 import Button from '@/components/ui/Button';
-import Input from '@/components/ui/Input';
-import Select from '@/components/ui/Select';
-import { AdminBottomNav } from '@/components/layout/BottomNav';
-import { CLUB_ROLE_LABELS } from '@/types';
 
-const APP_ROLES = [
-  { value: 'member', label: 'Member' },
-  { value: 'admin', label: 'Admin' },
-  { value: 'super_admin', label: 'Super Admin' },
-];
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PHONE_RE = /^\+?[\d\s\-().]{7,15}$/;
+
+function validate(name: string, email: string, phone: string) {
+  if (!name.trim()) return { field: 'name', msg: 'Full name is required' };
+  if (!email.trim()) return { field: 'email', msg: 'Email is required' };
+  if (!EMAIL_RE.test(email.trim())) return { field: 'email', msg: 'Enter a valid email address' };
+  if (!phone.trim()) return { field: 'phone', msg: 'Mobile number is required' };
+  if (!PHONE_RE.test(phone.trim())) return { field: 'phone', msg: 'Enter a valid mobile number' };
+  return null;
+}
 
 export default function AdminNewMemberPage() {
   const navigate = useNavigate();
@@ -22,109 +24,90 @@ export default function AdminNewMemberPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [birthday, setBirthday] = useState('');
-  const [clubRole, setClubRole] = useState('member');
-  const [appRole, setAppRole] = useState('member');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [dob, setDob] = useState(''); // yyyy-mm-dd from date input
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitting, setSubmitting] = useState(false);
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
+  function touch(field: string) {
+    setErrors((prev) => ({ ...prev, [field]: '' }));
+  }
+
+  async function handleSubmit() {
+    const err = validate(name, email, phone);
+    if (err) {
+      setErrors({ [err.field]: err.msg });
+      return;
+    }
     if (!session) return;
-    if (!name.trim() || !email.trim()) return setError('Name and email are required');
-
-    setError('');
-    setLoading(true);
+    setSubmitting(true);
     try {
+      // Backend stores MM-DD only
+      let birthday: string | undefined;
+      if (dob) {
+        const [, mm, dd] = dob.split('-');
+        birthday = `${mm}-${dd}`;
+      }
       await createMember(
-        {
-          name: name.trim(),
-          email: email.trim(),
-          phone: phone.trim() || undefined,
-          birthday: birthday || undefined,
-          club_role: clubRole,
-          app_role: appRole,
-        },
+        { name: name.trim(), email: email.trim().toLowerCase(), phone: phone.trim(), birthday },
         session.access_token,
       );
+      alert(`An invitation email has been sent to ${email.trim()} to set up their account.`);
       navigate('/admin/members', { replace: true });
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to create member');
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : 'Failed to create member');
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   }
 
   return (
     <div className="flex flex-col min-h-full bg-gray-50">
-      <PageHeader title="Add Member" back backPath="/admin/members" />
-
-      <div className="flex-1 overflow-y-auto px-4 pt-5 pb-28 max-w-lg mx-auto w-full">
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <Input
-            label="Full Name"
-            placeholder="e.g. Rahul Sharma"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            required
-          />
-          <Input
-            label="Email"
-            type="email"
-            placeholder="rahul@example.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-          <Input
-            label="Phone (optional)"
-            type="tel"
-            placeholder="+91 98765 43210"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-          />
-          <Input
-            label="Birthday (optional)"
-            type="date"
-            value={birthday}
-            onChange={(e) => setBirthday(e.target.value)}
-          />
-          <Select
-            label="Club Role"
-            value={clubRole}
-            onChange={(e) => setClubRole(e.target.value)}
-          >
-            {Object.entries(CLUB_ROLE_LABELS).map(([val, label]) => (
-              <option key={val} value={val}>{label}</option>
-            ))}
-          </Select>
-          <Select
-            label="App Role"
-            value={appRole}
-            onChange={(e) => setAppRole(e.target.value)}
-          >
-            {APP_ROLES.map(({ value, label }) => (
-              <option key={value} value={value}>{label}</option>
-            ))}
-          </Select>
-
-          <p className="text-xs text-gray-500 bg-gray-100 rounded-xl px-4 py-3">
-            An invite email will be sent to the member with a temporary password.
-          </p>
-
-          {error && (
-            <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3">
-              <p className="text-sm text-red-600 font-medium">{error}</p>
-            </div>
-          )}
-
-          <Button type="submit" fullWidth size="lg" loading={loading} className="mt-2">
-            Create Member
-          </Button>
-        </form>
+      <div className="bg-white border-b border-gray-100 px-4 py-3 sticky top-0 z-20">
+        <div className="max-w-lg mx-auto flex items-center justify-between">
+          <button onClick={() => navigate(-1)} className="flex items-center text-brand font-semibold text-base w-[70px]">
+            <ChevronLeft size={20} /> Cancel
+          </button>
+          <h1 className="text-lg font-bold text-gray-900">New Member</h1>
+          <div className="w-[70px]" />
+        </div>
       </div>
 
-      <AdminBottomNav isSuperAdmin />
+      <div className="flex-1 overflow-y-auto px-5 pt-6 pb-12 max-w-lg mx-auto w-full">
+        <Label>Full Name <span className="text-red-500">*</span></Label>
+        <input value={name} onChange={(e) => { setName(e.target.value); touch('name'); }} placeholder="e.g. Priya Sharma" className={inputCls(errors.name)} />
+        {errors.name && <p className="text-xs text-red-500 -mt-3.5 mb-3.5">{errors.name}</p>}
+
+        <Label>Email <span className="text-red-500">*</span></Label>
+        <input type="email" value={email} onChange={(e) => { setEmail(e.target.value); touch('email'); }} placeholder="member@example.com" className={inputCls(errors.email)} />
+        {errors.email && <p className="text-xs text-red-500 -mt-3.5 mb-3.5">{errors.email}</p>}
+
+        <Label>Mobile <span className="text-red-500">*</span></Label>
+        <input type="tel" value={phone} onChange={(e) => { setPhone(e.target.value); touch('phone'); }} placeholder="+91 98765 43210" className={inputCls(errors.phone)} />
+        {errors.phone && <p className="text-xs text-red-500 -mt-3.5 mb-3.5">{errors.phone}</p>}
+
+        <Label>Date of Birth <span className="text-gray-400 font-normal">(optional)</span></Label>
+        <div className="flex items-center gap-2.5 mb-1.5">
+          <div className="flex-1 flex items-center gap-2 bg-white border border-gray-300 rounded-[10px] px-3.5 py-3.5">
+            <Calendar size={15} className="text-gray-500" />
+            <input type="date" value={dob} onChange={(e) => setDob(e.target.value)} max={new Date().toISOString().slice(0, 10)} className="flex-1 bg-transparent outline-none text-[15px] text-gray-900" />
+          </div>
+          {dob && (
+            <button onClick={() => setDob('')} className="p-2.5"><X size={16} className="text-gray-400" /></button>
+          )}
+        </div>
+        <p className="text-xs text-gray-400 mb-7">Only month and day are stored for birthday reminders.</p>
+
+        <Button fullWidth size="lg" loading={submitting} onClick={handleSubmit}>
+          Add Member &amp; Send Invite
+        </Button>
+      </div>
     </div>
   );
+}
+
+function inputCls(err?: string) {
+  return `w-full bg-white border rounded-[10px] px-4 py-3.5 text-base text-gray-900 outline-none focus:border-brand mb-4 ${err ? 'border-red-500' : 'border-gray-300'}`;
+}
+function Label({ children }: { children: React.ReactNode }) {
+  return <p className="text-[13px] font-semibold text-gray-700 mb-2">{children}</p>;
 }

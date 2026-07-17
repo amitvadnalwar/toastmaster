@@ -1,13 +1,24 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, MapPin, Clock, ChevronRight } from 'lucide-react';
+import { Calendar, Clock, MapPin, ArrowRight } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { getAllMeetings } from '@/services/meetingService';
 import { MemberBottomNav } from '@/components/layout/BottomNav';
-import Badge from '@/components/ui/Badge';
-import { PageSpinner } from '@/components/ui/Spinner';
-import type { Meeting } from '@/types';
+import Spinner from '@/components/ui/Spinner';
+import type { Meeting, MeetingStatus } from '@/types';
 import { formatDate, formatTime } from '@/lib/utils';
+
+const STATUS_BADGE: Record<MeetingStatus, { label: string; bg: string; color: string }> = {
+  draft: { label: 'Scheduled', bg: '#f3f4f6', color: '#6b7280' },
+  published: { label: 'Published', bg: '#dcfce7', color: '#16a34a' },
+  completed: { label: 'Completed', bg: '#f3f4f6', color: '#6b7280' },
+};
+
+function appStatus(m: Meeting): { text: string; color: string } {
+  if (m.status === 'published') return { text: 'Application window open', color: '#16a34a' };
+  if (m.status === 'draft') return { text: 'Application not opened yet', color: '#9ca3af' };
+  return { text: 'Meeting completed', color: '#9ca3af' };
+}
 
 export default function MemberMeetingsPage() {
   const navigate = useNavigate();
@@ -18,88 +29,79 @@ export default function MemberMeetingsPage() {
   useEffect(() => {
     if (!session) return;
     getAllMeetings(session.access_token)
-      .then(setMeetings)
+      .then((all) => {
+        const now = new Date();
+        const upcoming = all
+          .filter((m) => m.status !== 'completed')
+          .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
+        const past = all
+          .filter((m) => m.status === 'completed')
+          .sort((a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime());
+        void now;
+        setMeetings([...upcoming, ...past]);
+      })
+      .catch(() => {})
       .finally(() => setLoading(false));
   }, [session]);
 
-  const upcoming = meetings.filter((m) => m.status !== 'completed');
-  const past = meetings.filter((m) => m.status === 'completed');
-
   return (
-    <div className="flex flex-col min-h-full bg-gray-50">
-      <div className="bg-white border-b border-gray-100 px-4 pt-5 pb-4 sticky top-0 z-20">
+    <div className="flex flex-col min-h-full bg-[#f4f4f8]">
+      <div className="bg-white border-b border-gray-100 px-5 py-4 sticky top-0 z-20">
         <div className="max-w-lg mx-auto">
-          <h1 className="text-xl font-black text-gray-900">Meetings</h1>
+          <h1 className="text-xl font-bold text-gray-900">Meetings</h1>
         </div>
       </div>
 
       {loading ? (
-        <PageSpinner />
+        <div className="flex-1 flex items-center justify-center py-16"><Spinner size="lg" /></div>
+      ) : meetings.length === 0 ? (
+        <div className="flex-1 flex flex-col items-center justify-center gap-3 py-20">
+          <Calendar size={36} className="text-gray-300" />
+          <p className="text-sm text-gray-400">No meetings available.</p>
+        </div>
       ) : (
-        <div className="flex-1 overflow-y-auto pb-28 max-w-lg mx-auto w-full px-4 pt-5">
-          {upcoming.length === 0 && past.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-20 gap-3 text-center">
-              <Calendar size={40} className="text-gray-300" />
-              <p className="text-gray-500 font-medium">No meetings found</p>
-            </div>
-          )}
-
-          {upcoming.length > 0 && (
-            <>
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Upcoming</p>
-              <div className="flex flex-col gap-3 mb-6">
-                {upcoming.map((m) => (
-                  <MeetingCard key={m.id} meeting={m} onPress={() => navigate(`/meetings/${m.id}`)} />
-                ))}
-              </div>
-            </>
-          )}
-
-          {past.length > 0 && (
-            <>
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Past</p>
-              <div className="flex flex-col gap-3">
-                {past.map((m) => (
-                  <MeetingCard key={m.id} meeting={m} onPress={() => navigate(`/meetings/${m.id}`)} />
-                ))}
-              </div>
-            </>
-          )}
+        <div className="flex-1 overflow-y-auto p-4 pb-28 max-w-lg mx-auto w-full flex flex-col gap-3">
+          {meetings.map((m) => {
+            const badge = STATUS_BADGE[m.status];
+            const app = appStatus(m);
+            const isCompleted = m.status === 'completed';
+            return (
+              <button
+                key={m.id}
+                onClick={() => navigate(`/meetings/${m.id}`)}
+                className={`bg-white rounded-2xl p-4 shadow-sm text-left ${isCompleted ? 'opacity-75' : ''}`}
+              >
+                <div className="flex items-start justify-between gap-2.5 mb-2">
+                  <p className="flex-1 text-[15px] font-bold text-gray-900 truncate">{m.title}</p>
+                  <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full" style={{ backgroundColor: badge.bg, color: badge.color }}>{badge.label}</span>
+                </div>
+                <div className="flex items-center gap-2.5 mb-1.5">
+                  <span className="text-xs text-gray-700 font-medium">{formatDate(m.scheduled_at)}</span>
+                  <span className="flex items-center gap-1 text-xs text-gray-500"><Clock size={11} />{formatTime(m.scheduled_at)}</span>
+                </div>
+                {m.venue && (
+                  <div className="flex items-center gap-1.5 mb-2 text-xs text-gray-500">
+                    <MapPin size={12} className="text-gray-400" />{m.venue}
+                  </div>
+                )}
+                <div className="flex items-center justify-between mt-2">
+                  <span className="text-xs font-semibold" style={{ color: app.color }}>{app.text}</span>
+                  {m.status === 'published' && (
+                    <span
+                      onClick={(e) => { e.stopPropagation(); navigate(`/meetings/${m.id}/apply`); }}
+                      className="flex items-center gap-1 bg-[#fff5f5] border border-red-300 rounded-md py-1.5 px-2.5 text-brand text-xs font-bold"
+                    >
+                      Apply <ArrowRight size={11} />
+                    </span>
+                  )}
+                </div>
+              </button>
+            );
+          })}
         </div>
       )}
 
       <MemberBottomNav />
     </div>
-  );
-}
-
-function MeetingCard({ meeting, onPress }: { meeting: Meeting; onPress: () => void }) {
-  return (
-    <button
-      onClick={onPress}
-      className="w-full text-left bg-white rounded-2xl p-4 shadow-sm border border-gray-100 active:scale-[0.98] transition-transform"
-    >
-      <div className="flex items-start justify-between gap-3 mb-2">
-        <h3 className="font-bold text-gray-900 text-base leading-tight flex-1 min-w-0">
-          {meeting.title}
-        </h3>
-        <Badge variant={meeting.status === 'published' ? 'published' : meeting.status === 'draft' ? 'draft' : 'completed'}>
-          {meeting.status.charAt(0).toUpperCase() + meeting.status.slice(1)}
-        </Badge>
-      </div>
-      <div className="flex items-center gap-2 text-gray-500 text-xs mb-1">
-        <Calendar size={12} />
-        <span>{formatDate(meeting.scheduled_at)}</span>
-        <span className="text-gray-300">·</span>
-        <Clock size={12} />
-        <span>{formatTime(meeting.scheduled_at)}</span>
-      </div>
-      {meeting.venue && (
-        <div className="flex items-center gap-2 text-gray-500 text-xs">
-          <MapPin size={12} />
-          <span className="truncate">{meeting.venue}</span>
-        </div>
-      )}
-    </button>
   );
 }

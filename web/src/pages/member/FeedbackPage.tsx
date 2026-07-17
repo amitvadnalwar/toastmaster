@@ -1,54 +1,27 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { ChevronLeft, CheckCircle, MicOff, Star } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
-import { getMeetingRoster } from '@/services/meetingService';
-import PageHeader from '@/components/layout/PageHeader';
-import Button from '@/components/ui/Button';
-import { PageSpinner } from '@/components/ui/Spinner';
-import { CheckCircle } from 'lucide-react';
-import type { RosterEntry } from '@/types';
-import { ROLE_LABELS } from '@/types';
-import { apiRequest } from '@/lib/apiClient';
+import { getMeetingRoster, getMyFeedback, submitFeedback } from '@/services/meetingService';
+import Spinner from '@/components/ui/Spinner';
+import type { MeetingRoleAssignment, SpeakerFeedback, SpeakerFeedbackPayload } from '@/types';
 
-const EMOJIS = ['😞', '😕', '😐', '🙂', '😊'];
-
-function EmojiRating({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: number;
-  onChange: (v: number) => void;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-2 py-2">
-      <span className="text-sm text-gray-700 flex-1">{label}</span>
-      <div className="flex gap-1.5">
-        {EMOJIS.map((emoji, i) => (
-          <button
-            key={i}
-            type="button"
-            onClick={() => onChange(i + 1)}
-            className={`text-xl transition-all ${value === i + 1 ? 'scale-125' : 'opacity-40'}`}
-          >
-            {emoji}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
+interface SpeakerRow {
+  assignment: MeetingRoleAssignment;
+  rating: number;
+  comment: string;
 }
 
-interface SpeakerFeedbackState {
-  member_id: string;
-  name: string;
-  content: number;
-  structure: number;
-  interaction: number;
-  confidence: number;
-  overall: number;
-  comment: string;
+function StarRating({ value, onChange }: { value: number; onChange: (n: number) => void }) {
+  return (
+    <div className="flex gap-2.5 mb-3.5">
+      {[1, 2, 3, 4, 5].map((n) => (
+        <button key={n} onClick={() => onChange(n)} className="p-1 -m-1">
+          <Star size={30} className={n <= value ? 'fill-amber-400 text-amber-400' : 'text-gray-200'} />
+        </button>
+      ))}
+    </div>
+  );
 }
 
 export default function MemberFeedbackPage() {
@@ -56,222 +29,133 @@ export default function MemberFeedbackPage() {
   const navigate = useNavigate();
   const { session } = useAuthStore();
 
-  const [loading, setLoading] = useState(true);
-  const [step, setStep] = useState(1);
-  const [speakers, setSpeakers] = useState<RosterEntry[]>([]);
-  const [speakerFeedbacks, setSpeakerFeedbacks] = useState<SpeakerFeedbackState[]>([]);
-  const [meetingRatings, setMeetingRatings] = useState({
-    punctual: 0, agenda: 0, inclusive: 0, experience: 0, overall: 0, comment: '',
-  });
+  const [speakers, setSpeakers] = useState<SpeakerRow[]>([]);
+  const [meetingTitle, setMeetingTitle] = useState('');
+  const [fetching, setFetching] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [done, setDone] = useState(false);
-  const [error, setError] = useState('');
 
-  useEffect(() => {
+  const load = useCallback(async () => {
     if (!session || !id) return;
-    getMeetingRoster(id, session.access_token)
-      .then(({ roster }) => {
-        const spkrs = roster.filter((r) => r.role === 'speaker');
-        setSpeakers(spkrs);
-        setSpeakerFeedbacks(
-          spkrs.map((s) => ({
-            member_id: s.member_id,
-            name: s.member_name ?? 'Speaker',
-            content: 0,
-            structure: 0,
-            interaction: 0,
-            confidence: 0,
-            overall: 0,
-            comment: '',
-          })),
-        );
-      })
-      .finally(() => setLoading(false));
+    setFetching(true);
+    try {
+      const [rosterData, existing] = await Promise.all([
+        getMeetingRoster(id, session.access_token),
+        getMyFeedback(id, session.access_token).catch(() => [] as SpeakerFeedback[]),
+      ]);
+      setMeetingTitle(rosterData.meeting.title);
+      const feedbackMap = new Map<string, SpeakerFeedback>(existing.map((fb) => [fb.speaker_member_id, fb]));
+      const rows: SpeakerRow[] = rosterData.roster
+        .filter((r) => r.role === 'speaker')
+        .map((a) => {
+          const prev = feedbackMap.get(a.member_id);
+          return { assignment: a, rating: prev?.rating ?? 0, comment: prev?.comment ?? '' };
+        });
+      setSpeakers(rows);
+    } catch { /* ignore */ } finally {
+      setFetching(false);
+    }
   }, [session, id]);
 
-  function updateSpeakerFb(idx: number, field: keyof SpeakerFeedbackState, val: number | string) {
-    setSpeakerFeedbacks((prev) =>
-      prev.map((fb, i) => (i === idx ? { ...fb, [field]: val } : fb)),
-    );
+  useEffect(() => { load(); }, [load]);
+
+  function updateRating(index: number, rating: number) {
+    setSpeakers((prev) => prev.map((r, i) => (i === index ? { ...r, rating } : r)));
+  }
+  function updateComment(index: number, comment: string) {
+    setSpeakers((prev) => prev.map((r, i) => (i === index ? { ...r, comment } : r)));
   }
 
-  async function submit() {
+  async function handleSubmit() {
+    const unrated = speakers.filter((r) => r.rating === 0);
+    if (unrated.length > 0) {
+      alert('Please rate all speakers before submitting.');
+      return;
+    }
     if (!session || !id) return;
-    setError('');
     setSubmitting(true);
-
     try {
-      const token = session.access_token;
-
-      if (speakerFeedbacks.length > 0) {
-        await apiRequest(`/members/me/speaker-feedback`, {
-          method: 'POST',
-          token,
-          body: JSON.stringify({
-            meeting_id: id,
-            feedbacks: speakerFeedbacks.map((fb) => ({
-              speaker_member_id: fb.member_id,
-              content_rating: fb.content,
-              structure_rating: fb.structure,
-              interaction_rating: fb.interaction,
-              confidence_rating: fb.confidence,
-              overall_rating: fb.overall,
-              comment: fb.comment || null,
-            })),
-          }),
-        });
-      }
-
-      await apiRequest(`/members/me/meeting-feedback`, {
-        method: 'POST',
-        token,
-        body: JSON.stringify({
-          meeting_id: id,
-          punctual_rating: meetingRatings.punctual,
-          agenda_rating: meetingRatings.agenda,
-          inclusive_rating: meetingRatings.inclusive,
-          experience_rating: meetingRatings.experience,
-          overall_rating: meetingRatings.overall,
-          comment: meetingRatings.comment || null,
-        }),
-      });
-
-      setDone(true);
+      const payload: SpeakerFeedbackPayload[] = speakers.map((r) => ({
+        speaker_member_id: r.assignment.member_id,
+        rating: r.rating,
+        comment: r.comment.trim() || null,
+      }));
+      await submitFeedback(id, payload, session.access_token);
+      alert('Thank you for your feedback!');
+      navigate(`/meetings/${id}`);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Failed to submit feedback');
+      alert(e instanceof Error ? e.message : 'Failed to submit feedback. Please try again.');
     } finally {
       setSubmitting(false);
     }
   }
 
-  const totalSteps = speakers.length + 1;
-
-  if (loading) return <div className="flex flex-col min-h-full bg-gray-50"><PageHeader title="Feedback" back /><PageSpinner /></div>;
-
-  if (done) {
-    return (
-      <div className="flex flex-col min-h-full bg-gray-50">
-        <PageHeader title="Feedback" back backPath={`/meetings/${id}`} />
-        <div className="flex-1 flex flex-col items-center justify-center px-6 text-center gap-4">
-          <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center">
-            <CheckCircle size={44} className="text-green-500" />
-          </div>
-          <h2 className="text-2xl font-black text-gray-900">Thank You!</h2>
-          <p className="text-gray-500">Your feedback has been submitted.</p>
-          <Button onClick={() => navigate(`/meetings/${id}`)} variant="primary" className="mt-4">
-            Back to Meeting
-          </Button>
+  return (
+    <div className="flex flex-col min-h-full bg-[#f5f5f5]">
+      <div className="bg-white border-b border-gray-100 px-4 py-3 sticky top-0 z-20">
+        <div className="max-w-lg mx-auto flex items-center justify-between">
+          <button onClick={() => navigate(`/meetings/${id}`)} className="flex items-center text-brand font-semibold text-base w-[60px]">
+            <ChevronLeft size={20} /> Back
+          </button>
+          <h1 className="text-[17px] font-bold text-gray-900">Speaker Feedback</h1>
+          <div className="w-[60px]" />
         </div>
       </div>
-    );
-  }
 
-  return (
-    <div className="flex flex-col min-h-full bg-gray-50">
-      <PageHeader
-        title="Meeting Feedback"
-        back
-        backPath={`/meetings/${id}`}
-        subtitle={`Step ${step} of ${totalSteps}`}
-      />
-
-      {/* Progress bar */}
-      <div className="h-1 bg-gray-100">
-        <div
-          className="h-full bg-brand transition-all duration-300"
-          style={{ width: `${(step / totalSteps) * 100}%` }}
-        />
-      </div>
-
-      <div className="flex-1 overflow-y-auto pb-10 max-w-lg mx-auto w-full px-4 pt-5">
-        {/* Speaker feedback steps */}
-        {step <= speakers.length && speakerFeedbacks[step - 1] && (
-          <div className="flex flex-col gap-4">
-            <div className="bg-brand rounded-2xl px-4 py-3">
-              <p className="text-white/70 text-xs font-semibold uppercase tracking-wider">Speaker Feedback</p>
-              <p className="text-white font-black text-lg mt-0.5">{speakerFeedbacks[step - 1].name}</p>
+      {fetching ? (
+        <div className="flex-1 flex items-center justify-center"><Spinner size="lg" /></div>
+      ) : (
+        <>
+          <div className="flex-1 overflow-y-auto p-4 pb-28 max-w-lg mx-auto w-full">
+            <div className="inline-flex items-center gap-1.5 bg-green-50 border border-green-200 rounded-full px-3.5 py-2 mb-4">
+              <CheckCircle size={14} className="text-green-600" />
+              <span className="text-[13px] font-semibold text-green-700">Checked in · {meetingTitle}</span>
             </div>
 
-            <div className="bg-white rounded-2xl p-4 shadow-sm flex flex-col divide-y divide-gray-50">
-              <EmojiRating label="Content" value={speakerFeedbacks[step - 1].content} onChange={(v) => updateSpeakerFb(step - 1, 'content', v)} />
-              <EmojiRating label="Structure" value={speakerFeedbacks[step - 1].structure} onChange={(v) => updateSpeakerFb(step - 1, 'structure', v)} />
-              <EmojiRating label="Interaction" value={speakerFeedbacks[step - 1].interaction} onChange={(v) => updateSpeakerFb(step - 1, 'interaction', v)} />
-              <EmojiRating label="Confidence" value={speakerFeedbacks[step - 1].confidence} onChange={(v) => updateSpeakerFb(step - 1, 'confidence', v)} />
-              <EmojiRating label="Overall" value={speakerFeedbacks[step - 1].overall} onChange={(v) => updateSpeakerFb(step - 1, 'overall', v)} />
-            </div>
-
-            <textarea
-              placeholder="Comments (optional)"
-              rows={3}
-              value={speakerFeedbacks[step - 1].comment}
-              onChange={(e) => updateSpeakerFb(step - 1, 'comment', e.target.value)}
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm outline-none focus:border-brand resize-none"
-            />
-
-            <Button
-              fullWidth
-              size="lg"
-              onClick={() => {
-                const fb = speakerFeedbacks[step - 1];
-                if (!fb.content || !fb.structure || !fb.interaction || !fb.confidence || !fb.overall) {
-                  setError('Please fill all ratings');
-                  return;
-                }
-                setError('');
-                setStep((s) => s + 1);
-              }}
-            >
-              Next
-            </Button>
-            {error && <p className="text-sm text-red-500 text-center">{error}</p>}
+            {speakers.length === 0 ? (
+              <div className="flex flex-col items-center gap-3 pt-16">
+                <MicOff size={36} className="text-gray-300" />
+                <p className="text-sm text-gray-400">No speakers in this meeting.</p>
+              </div>
+            ) : (
+              <>
+                <p className="text-[13px] text-gray-500 mb-4">Rate each speaker's performance and leave optional comments.</p>
+                {speakers.map((row, i) => (
+                  <div key={row.assignment.id} className="bg-white rounded-2xl p-[18px] mb-3.5 shadow-sm">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-[42px] h-[42px] rounded-full bg-blue-50 flex items-center justify-center">
+                        <span className="text-lg font-bold text-blue-500">{(row.assignment.member_name ?? '?').charAt(0).toUpperCase()}</span>
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-[15px] font-bold text-gray-900">{row.assignment.member_name ?? '—'}</p>
+                        {row.assignment.speech_duration && <p className="text-xs text-gray-400 mt-0.5">{row.assignment.speech_duration}</p>}
+                      </div>
+                      {row.rating > 0 && <span className="text-sm font-bold text-amber-500">{row.rating}/5</span>}
+                    </div>
+                    <StarRating value={row.rating} onChange={(n) => updateRating(i, n)} />
+                    <textarea
+                      value={row.comment}
+                      onChange={(e) => updateComment(i, e.target.value)}
+                      placeholder="Add a comment (optional)…"
+                      rows={3}
+                      className="w-full border border-gray-200 rounded-[10px] p-3 text-sm text-gray-900 bg-[#fafafa] outline-none focus:border-brand resize-none"
+                    />
+                  </div>
+                ))}
+              </>
+            )}
           </div>
-        )}
 
-        {/* Meeting quality step */}
-        {step === speakers.length + 1 && (
-          <div className="flex flex-col gap-4">
-            <div className="bg-brand rounded-2xl px-4 py-3">
-              <p className="text-white/70 text-xs font-semibold uppercase tracking-wider">Meeting Quality</p>
-              <p className="text-white font-black text-lg mt-0.5">Overall Experience</p>
+          {speakers.length > 0 && (
+            <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-4">
+              <div className="max-w-lg mx-auto">
+                <button onClick={handleSubmit} disabled={submitting} className="w-full bg-brand text-white rounded-xl py-[15px] text-base font-bold disabled:opacity-60">
+                  {submitting ? 'Submitting…' : 'Submit Feedback'}
+                </button>
+              </div>
             </div>
-
-            <div className="bg-white rounded-2xl p-4 shadow-sm flex flex-col divide-y divide-gray-50">
-              <EmojiRating label="Punctuality" value={meetingRatings.punctual} onChange={(v) => setMeetingRatings((r) => ({ ...r, punctual: v }))} />
-              <EmojiRating label="Agenda Flow" value={meetingRatings.agenda} onChange={(v) => setMeetingRatings((r) => ({ ...r, agenda: v }))} />
-              <EmojiRating label="Inclusiveness" value={meetingRatings.inclusive} onChange={(v) => setMeetingRatings((r) => ({ ...r, inclusive: v }))} />
-              <EmojiRating label="Experience" value={meetingRatings.experience} onChange={(v) => setMeetingRatings((r) => ({ ...r, experience: v }))} />
-              <EmojiRating label="Overall" value={meetingRatings.overall} onChange={(v) => setMeetingRatings((r) => ({ ...r, overall: v }))} />
-            </div>
-
-            <textarea
-              placeholder="Comments (optional)"
-              rows={3}
-              value={meetingRatings.comment}
-              onChange={(e) => setMeetingRatings((r) => ({ ...r, comment: e.target.value }))}
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm outline-none focus:border-brand resize-none"
-            />
-
-            {error && <p className="text-sm text-red-500 text-center">{error}</p>}
-
-            <Button
-              fullWidth
-              size="lg"
-              loading={submitting}
-              onClick={() => {
-                const r = meetingRatings;
-                if (!r.punctual || !r.agenda || !r.inclusive || !r.experience || !r.overall) {
-                  setError('Please fill all ratings');
-                  return;
-                }
-                setError('');
-                submit();
-              }}
-            >
-              Submit Feedback
-            </Button>
-          </div>
-        )}
-      </div>
+          )}
+        </>
+      )}
     </div>
   );
 }

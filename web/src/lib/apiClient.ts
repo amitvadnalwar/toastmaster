@@ -2,7 +2,8 @@ const BASE_URL = import.meta.env.VITE_API_BASE_URL as string;
 
 interface ApiResponse<T> {
   data: T;
-  message?: string;
+  error: string | null;
+  meta?: Record<string, unknown>;
 }
 
 export class ApiError extends Error {
@@ -15,37 +16,47 @@ export class ApiError extends Error {
   }
 }
 
+type RequestOptions = {
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+  body?: unknown;
+  token?: string;
+};
+
 export async function apiRequest<T>(
   path: string,
-  options: RequestInit & { token?: string } = {},
+  { method = 'GET', body, token }: RequestOptions = {},
 ): Promise<T> {
-  const { token, ...fetchOptions } = options;
-
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...(fetchOptions.headers as Record<string, string>),
   };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+  let response: Response;
+  try {
+    response = await fetch(`${BASE_URL}${path}`, {
+      method,
+      headers,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+  } catch {
+    throw new ApiError(0, `Network error: cannot reach server at ${BASE_URL}`);
   }
 
-  const res = await fetch(`${BASE_URL}${path}`, {
-    ...fetchOptions,
-    headers,
-  });
-
-  if (!res.ok) {
-    let message = `HTTP ${res.status}`;
-    try {
-      const body = await res.json();
-      message = body?.detail ?? message;
-    } catch {
-      // ignore
-    }
-    throw new ApiError(res.status, message);
+  if (response.status === 204) {
+    return undefined as unknown as T;
   }
 
-  const json: ApiResponse<T> = await res.json();
+  let json: ApiResponse<T> & { detail?: string; error?: string };
+  try {
+    json = await response.json();
+  } catch {
+    throw new ApiError(response.status, `Server returned non-JSON response (status ${response.status})`);
+  }
+
+  if (!response.ok) {
+    const message = json?.detail ?? json?.error ?? `Request failed with status ${response.status}`;
+    throw new ApiError(response.status, message);
+  }
+
   return json.data;
 }

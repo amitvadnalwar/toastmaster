@@ -1,36 +1,32 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Calendar, MapPin, Clock, Mic, MessageSquare, Scan } from 'lucide-react';
+import {
+  ChevronLeft, Maximize, Calendar, MapPin, Star, MessageSquare, ArrowRight,
+} from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
-import { getMeetingRoster, applyForRole } from '@/services/meetingService';
-import { MemberBottomNav } from '@/components/layout/BottomNav';
-import PageHeader from '@/components/layout/PageHeader';
-import Badge from '@/components/ui/Badge';
-import Button from '@/components/ui/Button';
-import Select from '@/components/ui/Select';
-import { PageSpinner } from '@/components/ui/Spinner';
+import { getMeetingRoster } from '@/services/meetingService';
+import Spinner from '@/components/ui/Spinner';
+import type { MeetingWithRoster, MeetingRole } from '@/types';
 import { SINGLETON_ROLES, ROLE_LABELS } from '@/types';
-import type { MeetingWithRoster } from '@/types';
 import { formatDate, formatTime } from '@/lib/utils';
 
-const AVAILABLE_ROLES = [
-  'tmod', 'timer', 'general_evaluator', 'grammarian', 'ah_counter',
-  'table_topics_master', 'speaker', 'evaluator', 'table_topics_speaker', 'supporting_role',
-];
+const STATUS_CFG: Record<string, { label: string; bg: string; color: string }> = {
+  draft: { label: 'Draft', bg: '#f3f4f6', color: '#6b7280' },
+  published: { label: 'Published', bg: '#dcfce7', color: '#16a34a' },
+  completed: { label: 'Completed', bg: '#f3f4f6', color: '#374151' },
+};
 
-function RosterRow({ role, name, sub, isMe }: { role: string; name?: string | null; sub?: string; isMe?: boolean }) {
+function RosterRow({ role, name, isMe, sub }: { role: MeetingRole | string; name?: string | null; isMe?: boolean; sub?: string }) {
   return (
-    <div className="flex items-center gap-3 px-4 py-3.5">
+    <div className="flex items-center gap-2.5 px-4 py-3.5">
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-gray-800">{ROLE_LABELS[role] ?? role}</p>
-        {sub && <p className="text-xs text-gray-400 mt-0.5">{sub}</p>}
+        <p className="text-sm font-semibold text-gray-700">{ROLE_LABELS[role as MeetingRole] ?? role}</p>
+        {sub && <p className="text-[11px] text-gray-400 mt-0.5">{sub}</p>}
       </div>
       {name ? (
-        <span className={`text-sm font-semibold truncate max-w-[130px] ${isMe ? 'text-green-600' : 'text-gray-900'}`}>
-          {isMe ? 'You' : name}
-        </span>
+        <span className={`text-[13px] font-semibold truncate max-w-[130px] ${isMe ? 'text-green-600' : 'text-gray-900'}`}>{isMe ? 'You' : name}</span>
       ) : (
-        <span className="text-xs font-semibold text-gray-300">Open</span>
+        <span className="text-xs font-medium text-gray-300">Open</span>
       )}
     </div>
   );
@@ -43,155 +39,107 @@ export default function MemberMeetingDetailPage() {
   const myEmail = session?.user?.email ?? '';
 
   const [data, setData] = useState<MeetingWithRoster | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [showApply, setShowApply] = useState(false);
-  const [selectedRole, setSelectedRole] = useState('speaker');
-  const [speechTitle, setSpeechTitle] = useState('');
-  const [applying, setApplying] = useState(false);
-  const [applyError, setApplyError] = useState('');
+  const [fetching, setFetching] = useState(true);
 
   const load = useCallback(async () => {
     if (!session || !id) return;
-    setLoading(true);
+    setFetching(true);
     try {
       const result = await getMeetingRoster(id, session.access_token);
       setData(result);
-    } finally {
-      setLoading(false);
+    } catch { /* ignore */ } finally {
+      setFetching(false);
     }
   }, [session, id]);
 
   useEffect(() => { load(); }, [load]);
 
-  async function handleApply() {
-    if (!session || !id) return;
-    setApplyError('');
-    setApplying(true);
-    try {
-      await applyForRole(
-        id,
-        {
-          role: selectedRole,
-          speech_title: selectedRole === 'speaker' ? speechTitle.trim() || undefined : undefined,
-        },
-        session.access_token,
-      );
-      setShowApply(false);
-      await load();
-    } catch (e: unknown) {
-      setApplyError(e instanceof Error ? e.message : 'Failed to apply');
-    } finally {
-      setApplying(false);
-    }
+  if (fetching) {
+    return (
+      <div className="flex flex-col min-h-full bg-[#f5f5f5]">
+        <Header onBack={() => navigate('/meetings')} canScan={false} onScan={() => {}} />
+        <div className="flex-1 flex items-center justify-center"><Spinner size="lg" /></div>
+      </div>
+    );
   }
-
-  if (loading) return <div className="flex flex-col min-h-full bg-gray-50"><PageHeader title="Meeting Details" back /><PageSpinner /></div>;
-  if (!data) return <div className="flex flex-col min-h-full bg-gray-50"><PageHeader title="Meeting Details" back /><p className="text-center mt-20 text-gray-500">Not found</p></div>;
+  if (!data) return null;
 
   const { meeting, roster } = data;
+  const status = STATUS_CFG[meeting.status];
+  const isPublished = meeting.status === 'published';
   const speakers = roster.filter((r) => r.role === 'speaker');
   const evaluators = roster.filter((r) => r.role === 'evaluator');
-  const tableTopicsSpeakers = roster.filter((r) => r.role === 'table_topics_speaker');
   const myAssignment = roster.find((r) => r.member_email === myEmail);
-  const isPublished = meeting.status === 'published';
-
-  const isToday = (() => {
-    const now = new Date();
-    const d = new Date(meeting.scheduled_at);
-    return now.toDateString() === d.toDateString();
-  })();
 
   return (
-    <div className="flex flex-col min-h-full bg-gray-50">
-      <PageHeader
-        title="Meeting Details"
-        back
-        backPath="/meetings"
-        right={
-          isPublished ? (
-            <button
-              onClick={() => navigate('/scan')}
-              className="p-2 rounded-xl bg-brand-50 text-brand"
-            >
-              <Scan size={20} />
-            </button>
-          ) : undefined
-        }
-      />
+    <div className="flex flex-col min-h-full bg-[#f5f5f5]">
+      <Header onBack={() => navigate('/meetings')} canScan={isPublished} onScan={() => navigate('/scan')} />
 
-      <div className="flex-1 overflow-y-auto pb-28 max-w-lg mx-auto w-full">
+      <div className="flex-1 overflow-y-auto px-4 pt-5 pb-28 max-w-lg mx-auto w-full">
         {/* Info card */}
-        <div className="mx-4 mt-4 bg-white rounded-2xl p-4 shadow-sm mb-4">
-          <div className="flex items-start justify-between gap-3 mb-3">
-            <h2 className="text-lg font-black text-gray-900 flex-1 leading-tight">{meeting.title}</h2>
-            <Badge variant={meeting.status === 'published' ? 'published' : meeting.status === 'draft' ? 'draft' : 'completed'}>
-              {meeting.status.charAt(0).toUpperCase() + meeting.status.slice(1)}
-            </Badge>
+        <div className="bg-white rounded-2xl p-[18px] mb-4 shadow-sm">
+          <div className="flex items-start justify-between gap-2.5 mb-3">
+            <h2 className="flex-1 text-lg font-extrabold text-gray-900">{meeting.title}</h2>
+            <span className="text-[11px] font-bold px-2.5 py-1 rounded-full" style={{ backgroundColor: status.bg, color: status.color }}>{status.label}</span>
           </div>
-          <div className="flex flex-col gap-1.5">
-            <div className="flex items-center gap-2 text-gray-500 text-xs">
-              <Calendar size={12} /><span>{formatDate(meeting.scheduled_at)}</span>
-              <span className="text-gray-300">·</span>
-              <Clock size={12} /><span>{formatTime(meeting.scheduled_at)}</span>
+          <div className="flex items-center gap-1.5 text-[13px] text-gray-500 mb-1.5">
+            <Calendar size={13} />
+            <span>{formatDate(meeting.scheduled_at)}</span>
+            <span className="text-gray-300">·</span>
+            <span>{formatTime(meeting.scheduled_at)}</span>
+          </div>
+          {meeting.venue && (
+            <div className="flex items-center gap-1.5 text-[13px] text-gray-500 mb-1.5">
+              <MapPin size={13} /><span>{meeting.venue}</span>
             </div>
-            {meeting.venue && (
-              <div className="flex items-center gap-2 text-gray-500 text-xs">
-                <MapPin size={12} /><span>{meeting.venue}</span>
-              </div>
-            )}
-            {meeting.theme && (
-              <p className="text-xs text-gray-500 italic mt-0.5">"{meeting.theme}"</p>
-            )}
-          </div>
+          )}
+          {meeting.theme && (
+            <div className="flex items-center gap-1.5 text-[13px] text-gray-500">
+              <Star size={13} /><span>Theme: {meeting.theme}</span>
+            </div>
+          )}
         </div>
 
         {/* My role */}
         {myAssignment && (
-          <div className="mx-4 bg-green-50 border border-green-200 rounded-2xl p-4 mb-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold text-green-600 uppercase tracking-wider mb-1">Your Role</p>
-                <p className="text-base font-black text-gray-900">
-                  {ROLE_LABELS[myAssignment.role] ?? myAssignment.role}
-                </p>
-                {myAssignment.speech_title && (
-                  <p className="text-xs text-gray-500 mt-1">"{myAssignment.speech_title}"</p>
-                )}
-              </div>
-              <span className="text-xs font-bold text-green-700 bg-green-100 px-3 py-1.5 rounded-full">
-                Assigned
-              </span>
+          <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-2xl p-4 mb-5">
+            <div>
+              <p className="text-[11px] font-semibold text-green-600 tracking-wide mb-0.5">YOUR ROLE</p>
+              <p className="text-base font-bold text-gray-900">{ROLE_LABELS[myAssignment.role] ?? myAssignment.role}</p>
+              {myAssignment.speech_duration && <p className="text-xs text-gray-500 mt-0.5">{myAssignment.speech_duration}</p>}
             </div>
+            <span className="text-xs font-bold text-green-600 bg-green-100 rounded-full px-3 py-1.5">Assigned</span>
           </div>
         )}
 
-        {/* Singleton roles */}
-        <p className="mx-4 mb-2 text-xs font-bold text-gray-400 uppercase tracking-wider">Role Players</p>
-        <div className="mx-4 bg-white rounded-2xl shadow-sm overflow-hidden divide-y divide-gray-50 mb-4">
-          {SINGLETON_ROLES.map((role) => {
-            const entry = roster.find((r) => r.role === role);
+        {/* Role Players */}
+        <h3 className="text-sm font-bold text-gray-700 mb-2.5">Role Players</h3>
+        <div className="bg-white rounded-2xl shadow-sm overflow-hidden mb-5">
+          {SINGLETON_ROLES.map((role, i) => {
+            const a = roster.find((r) => r.role === role);
             return (
-              <RosterRow
-                key={role}
-                role={role}
-                name={entry?.member_name}
-                isMe={entry?.member_email === myEmail}
-              />
+              <div key={role}>
+                {i > 0 && <div className="h-px bg-gray-100 mx-3.5" />}
+                <RosterRow role={role} name={a?.member_name} isMe={a?.member_email === myEmail} />
+              </div>
             );
           })}
         </div>
 
         {/* Speakers */}
-        <div className="mx-4 flex items-center justify-between mb-2">
-          <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Speakers</p>
-          <span className="text-xs font-bold text-gray-400">{speakers.length} / {meeting.max_speakers}</span>
+        <div className="flex items-center justify-between mb-2.5">
+          <h3 className="text-sm font-bold text-gray-700">Speakers</h3>
+          <span className="text-xs font-semibold text-gray-400">{speakers.length} / {meeting.max_speakers}</span>
         </div>
-        <div className="mx-4 bg-white rounded-2xl shadow-sm overflow-hidden divide-y divide-gray-50 mb-4">
+        <div className="bg-white rounded-2xl shadow-sm overflow-hidden mb-5">
           {speakers.length === 0 ? (
-            <div className="py-6 text-center text-sm text-gray-400">No speakers enrolled</div>
+            <div className="py-5 text-center text-[13px] text-gray-400">No speakers enrolled yet</div>
           ) : (
-            speakers.map((sp) => (
-              <RosterRow key={sp.id} role="speaker" name={sp.member_name} sub={sp.speech_title ?? undefined} isMe={sp.member_email === myEmail} />
+            speakers.map((sp, i) => (
+              <div key={sp.id}>
+                {i > 0 && <div className="h-px bg-gray-100 mx-3.5" />}
+                <RosterRow role="speaker" name={sp.member_name} isMe={sp.member_email === myEmail} sub={sp.speech_duration ?? undefined} />
+              </div>
             ))
           )}
         </div>
@@ -199,86 +147,61 @@ export default function MemberMeetingDetailPage() {
         {/* Evaluators */}
         {speakers.length > 0 && (
           <>
-            <p className="mx-4 mb-2 text-xs font-bold text-gray-400 uppercase tracking-wider">Evaluators</p>
-            <div className="mx-4 bg-white rounded-2xl shadow-sm overflow-hidden divide-y divide-gray-50 mb-4">
-              {speakers.map((sp) => {
+            <h3 className="text-sm font-bold text-gray-700 mb-2.5">Evaluators</h3>
+            <div className="bg-white rounded-2xl shadow-sm overflow-hidden mb-5">
+              {speakers.map((sp, i) => {
                 const ev = evaluators.find((e) => e.evaluates_member_id === sp.member_id);
                 return (
-                  <RosterRow
-                    key={`ev-${sp.id}`}
-                    role="evaluator"
-                    name={ev?.member_name}
-                    sub={`For ${sp.member_name ?? '—'}`}
-                    isMe={ev?.member_email === myEmail}
-                  />
+                  <div key={`ev-${sp.id}`}>
+                    {i > 0 && <div className="h-px bg-gray-100 mx-3.5" />}
+                    <div className="flex items-center gap-2.5 px-4 py-3.5">
+                      <MessageSquare size={14} className={ev ? 'text-violet-500' : 'text-gray-300'} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-700">Evaluator</p>
+                        <p className="text-[11px] text-gray-400 mt-0.5">For {sp.member_name ?? '—'}</p>
+                      </div>
+                      {ev ? (
+                        <span className={`text-[13px] font-semibold truncate max-w-[130px] ${ev.member_email === myEmail ? 'text-green-600' : 'text-gray-900'}`}>
+                          {ev.member_email === myEmail ? 'You' : ev.member_name ?? '—'}
+                        </span>
+                      ) : (
+                        <span className="text-xs font-medium text-gray-300">Open</span>
+                      )}
+                    </div>
+                  </div>
                 );
               })}
             </div>
           </>
         )}
-
-        {/* Table Topics Speakers */}
-        {tableTopicsSpeakers.length > 0 && (
-          <>
-            <p className="mx-4 mb-2 text-xs font-bold text-gray-400 uppercase tracking-wider">Table Topics Speakers</p>
-            <div className="mx-4 bg-white rounded-2xl shadow-sm overflow-hidden divide-y divide-gray-50 mb-4">
-              {tableTopicsSpeakers.map((sp) => (
-                <RosterRow key={sp.id} role="table_topics_speaker" name={sp.member_name} isMe={sp.member_email === myEmail} />
-              ))}
-            </div>
-          </>
-        )}
       </div>
 
-      {/* Apply for role / Feedback CTAs */}
+      {/* Apply CTA */}
       {isPublished && (
-        <div className="fixed bottom-[64px] left-0 right-0 z-20 bg-white border-t border-gray-100 px-4 py-3 max-w-lg mx-auto">
-          {!showApply ? (
-            <div className="flex gap-3">
-              <Button variant="outline" className="flex-1" onClick={() => setShowApply(true)}>
-                Apply for Role
-              </Button>
-              {isToday && (
-                <Button variant="primary" className="flex-1" onClick={() => navigate(`/meetings/${id}/feedback`)}>
-                  Give Feedback
-                </Button>
-              )}
-            </div>
-          ) : (
-            <div className="flex flex-col gap-3">
-              <Select
-                label="Role"
-                value={selectedRole}
-                onChange={(e) => setSelectedRole(e.target.value)}
-              >
-                {AVAILABLE_ROLES.map((r) => (
-                  <option key={r} value={r}>{ROLE_LABELS[r] ?? r}</option>
-                ))}
-              </Select>
-              {selectedRole === 'speaker' && (
-                <input
-                  type="text"
-                  placeholder="Speech title (optional)"
-                  value={speechTitle}
-                  onChange={(e) => setSpeechTitle(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand/10"
-                />
-              )}
-              {applyError && <p className="text-xs text-red-500">{applyError}</p>}
-              <div className="flex gap-3">
-                <Button variant="ghost" className="flex-1" onClick={() => setShowApply(false)}>
-                  Cancel
-                </Button>
-                <Button variant="primary" className="flex-1" onClick={handleApply} loading={applying}>
-                  Apply
-                </Button>
-              </div>
-            </div>
-          )}
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-4">
+          <div className="max-w-lg mx-auto">
+            <button onClick={() => navigate(`/meetings/${id}/apply`)} className="w-full bg-brand text-white rounded-xl py-[15px] flex items-center justify-center gap-2 text-base font-bold">
+              Apply for a Role <ArrowRight size={16} />
+            </button>
+          </div>
         </div>
       )}
+    </div>
+  );
+}
 
-      <MemberBottomNav />
+function Header({ onBack, canScan, onScan }: { onBack: () => void; canScan: boolean; onScan: () => void }) {
+  return (
+    <div className="bg-white border-b border-gray-100 px-4 py-3 sticky top-0 z-20">
+      <div className="max-w-lg mx-auto flex items-center justify-between">
+        <button onClick={onBack} className="flex items-center text-brand font-semibold text-base w-[60px]">
+          <ChevronLeft size={20} /> Back
+        </button>
+        <h1 className="text-[17px] font-bold text-gray-900">Meeting Details</h1>
+        <button onClick={onScan} disabled={!canScan} className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ backgroundColor: canScan ? '#fff5f5' : '#f9fafb' }}>
+          <Maximize size={20} className={canScan ? 'text-brand' : 'text-gray-300'} />
+        </button>
+      </div>
     </div>
   );
 }

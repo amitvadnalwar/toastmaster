@@ -6,7 +6,7 @@ import { getAllMeetings } from '@/services/meetingService';
 import { MemberBottomNav } from '@/components/layout/BottomNav';
 import { MeetingListSkeleton } from '@/components/ui/Skeleton';
 import type { Meeting, MeetingStatus } from '@/types';
-import { formatDate, formatTime } from '@/lib/utils';
+import { formatDate, formatTime, isPastMeeting } from '@/lib/utils';
 
 const STATUS_BADGE: Record<MeetingStatus, { label: string; bg: string; color: string }> = {
   draft: { label: 'Scheduled', bg: '#f3f4f6', color: '#6b7280' },
@@ -15,9 +15,10 @@ const STATUS_BADGE: Record<MeetingStatus, { label: string; bg: string; color: st
 };
 
 function appStatus(m: Meeting): { text: string; color: string } {
+  if (m.status === 'completed') return { text: 'Meeting completed', color: '#9ca3af' };
+  if (isPastMeeting(m.scheduled_at)) return { text: 'Meeting date has passed', color: '#9ca3af' };
   if (m.status === 'published') return { text: 'Application window open', color: '#16a34a' };
-  if (m.status === 'draft') return { text: 'Application not opened yet', color: '#9ca3af' };
-  return { text: 'Meeting completed', color: '#9ca3af' };
+  return { text: 'Application not opened yet', color: '#9ca3af' };
 }
 
 export default function MemberMeetingsPage() {
@@ -30,14 +31,12 @@ export default function MemberMeetingsPage() {
     if (!session) return;
     getAllMeetings(session.access_token)
       .then((all) => {
-        const now = new Date();
         const upcoming = all
-          .filter((m) => m.status !== 'completed')
+          .filter((m) => m.status !== 'completed' && !isPastMeeting(m.scheduled_at))
           .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
         const past = all
-          .filter((m) => m.status === 'completed')
+          .filter((m) => m.status === 'completed' || isPastMeeting(m.scheduled_at))
           .sort((a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime());
-        void now;
         setMeetings([...upcoming, ...past]);
       })
       .catch(() => {})
@@ -64,12 +63,13 @@ export default function MemberMeetingsPage() {
           {meetings.map((m) => {
             const badge = STATUS_BADGE[m.status];
             const app = appStatus(m);
-            const isCompleted = m.status === 'completed';
+            const past = m.status === 'completed' || isPastMeeting(m.scheduled_at);
+            const canApply = m.status === 'published' && !isPastMeeting(m.scheduled_at);
             return (
               <button
                 key={m.id}
                 onClick={() => navigate(`/meetings/${m.id}`)}
-                className={`bg-white rounded-2xl p-4 shadow-sm text-left ${isCompleted ? 'opacity-75' : ''}`}
+                className={`bg-white rounded-2xl p-4 shadow-sm text-left ${past ? 'opacity-75' : ''}`}
               >
                 <div className="flex items-start justify-between gap-2.5 mb-2">
                   <p className="flex-1 text-[15px] font-bold text-gray-900 truncate">{m.title}</p>
@@ -86,7 +86,7 @@ export default function MemberMeetingsPage() {
                 )}
                 <div className="flex items-center justify-between mt-2">
                   <span className="text-xs font-semibold" style={{ color: app.color }}>{app.text}</span>
-                  {m.status === 'published' && (
+                  {canApply && (
                     <span
                       onClick={(e) => { e.stopPropagation(); navigate(`/meetings/${m.id}/apply`); }}
                       className="flex items-center gap-1 bg-[#fff5f5] border border-red-300 rounded-md py-1.5 px-2.5 text-brand text-xs font-bold"

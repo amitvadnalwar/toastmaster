@@ -12,6 +12,7 @@ import { getMe } from '@/services/memberService';
 import { MeetingDetailSkeleton } from '@/components/ui/Skeleton';
 import type { MeetingRoleAssignment, MeetingWithRoster, SpeechDuration } from '@/types';
 import { SINGLETON_ROLES, ROLE_LABELS, SPEECH_DURATIONS } from '@/types';
+import { isPastMeeting } from '@/lib/utils';
 
 const ROLE_ICON: Record<string, { icon: React.ElementType; bg: string; color: string }> = {
   tmod: { icon: Mic, bg: '#dcfce7', color: '#16a34a' },
@@ -30,13 +31,14 @@ interface RoleRowProps {
   assignment?: MeetingRoleAssignment;
   isMe: boolean;
   canApply: boolean;
-  isPublished: boolean;
+  isOpen: boolean;
+  isPast: boolean;
   acting: boolean;
   onApply: () => void;
   onWithdraw: () => void;
 }
 
-function RoleRow({ roleKey, label, assignment, isMe, canApply, isPublished, acting, onApply, onWithdraw }: RoleRowProps) {
+function RoleRow({ roleKey, label, assignment, isMe, canApply, isOpen, isPast, acting, onApply, onWithdraw }: RoleRowProps) {
   const cfg = ROLE_ICON[roleKey] ?? { icon: Users, bg: '#f3f4f6', color: '#6b7280' };
   const Icon = cfg.icon;
   return (
@@ -50,7 +52,9 @@ function RoleRow({ roleKey, label, assignment, isMe, canApply, isPublished, acti
           <p className="text-[13px] font-medium text-green-600">You are assigned</p>
         ) : assignment ? (
           <p className="text-[13px] font-medium text-gray-700">{assignment.member_name ?? '—'}</p>
-        ) : isPublished ? (
+        ) : isPast ? (
+          <p className="text-[13px] text-gray-400">Meeting date has passed</p>
+        ) : isOpen ? (
           <p className="text-[13px] text-gray-400">Open for applications</p>
         ) : (
           <p className="text-[13px] text-gray-400">Not open yet</p>
@@ -65,7 +69,7 @@ function RoleRow({ roleKey, label, assignment, isMe, canApply, isPublished, acti
         <button onClick={onApply} disabled={acting} className="bg-[#fef2f2] rounded-full px-2.5 py-1 text-xs font-bold text-brand">
           Apply Now
         </button>
-      ) : !assignment && isPublished ? (
+      ) : !assignment && isOpen ? (
         <span className="text-xs font-semibold text-gray-400 bg-gray-100 rounded-full px-2.5 py-1">Open</span>
       ) : null}
     </div>
@@ -114,13 +118,16 @@ export default function MemberApplyRolePage() {
 
   const { meeting, roster } = data;
   const isPublished = meeting.status === 'published';
+  const isPast = isPastMeeting(meeting.scheduled_at);
+  const isOpen = isPublished && !isPast;
   const myAssignment = roster.find((r) => r.member_id === myMemberId);
   const alreadyEnrolled = !!myAssignment;
   const speakers = roster.filter((r) => r.role === 'speaker');
   const evaluators = roster.filter((r) => r.role === 'evaluator');
-  const canEnroll = isPublished && !alreadyEnrolled;
+  const canEnroll = isOpen && !alreadyEnrolled;
 
   function startEnroll(role: string) {
+    if (isPast) { alert('This meeting date has passed. Applications are closed.'); return; }
     if (alreadyEnrolled) { alert('You can only apply for one role per meeting.'); return; }
     if (role === 'tmod') { setTheme(''); setShowTMOD(true); }
     else if (role === 'speaker') setShowDuration(true);
@@ -151,6 +158,7 @@ export default function MemberApplyRolePage() {
   }
 
   async function handleApplyEvaluator(speakerMemberId: string, speakerName?: string | null) {
+    if (isPast) { alert('This meeting date has passed. Applications are closed.'); return; }
     if (!window.confirm(`Evaluate ${speakerName ?? 'this speaker'}?`)) return;
     if (!session || !id) return;
     setActing(true);
@@ -205,7 +213,8 @@ export default function MemberApplyRolePage() {
                   assignment={assignment}
                   isMe={isMe}
                   canApply={canEnroll && !assignment}
-                  isPublished={isPublished}
+                  isOpen={isOpen}
+                  isPast={isPast}
                   acting={acting}
                   onApply={() => startEnroll(role)}
                   onWithdraw={handleWithdraw}
@@ -224,13 +233,13 @@ export default function MemberApplyRolePage() {
           {speakers.map((sp, i) => (
             <div key={sp.id}>
               {i > 0 && <div className="h-px bg-gray-100 mx-4" />}
-              <RoleRow roleKey="speaker" label="Speaker" assignment={sp} isMe={sp.member_id === myMemberId} canApply={false} isPublished={isPublished} acting={acting} onApply={() => {}} onWithdraw={handleWithdraw} />
+              <RoleRow roleKey="speaker" label="Speaker" assignment={sp} isMe={sp.member_id === myMemberId} canApply={false} isOpen={isOpen} isPast={isPast} acting={acting} onApply={() => {}} onWithdraw={handleWithdraw} />
             </div>
           ))}
           {Array.from({ length: openSpeakerSlots }).map((_, i) => (
             <div key={`open-${i}`}>
               {(speakers.length > 0 || i > 0) && <div className="h-px bg-gray-100 mx-4" />}
-              <RoleRow roleKey="speaker" label="Speaker" isMe={false} canApply={canEnroll} isPublished={isPublished} acting={acting} onApply={() => startEnroll('speaker')} onWithdraw={() => {}} />
+              <RoleRow roleKey="speaker" label="Speaker" isMe={false} canApply={canEnroll} isOpen={isOpen} isPast={isPast} acting={acting} onApply={() => startEnroll('speaker')} onWithdraw={() => {}} />
             </div>
           ))}
         </div>
@@ -252,7 +261,8 @@ export default function MemberApplyRolePage() {
                       assignment={evaluator}
                       isMe={isMe}
                       canApply={canEnroll && !evaluator}
-                      isPublished={isPublished}
+                      isOpen={isOpen}
+                      isPast={isPast}
                       acting={acting}
                       onApply={() => handleApplyEvaluator(sp.member_id, sp.member_name)}
                       onWithdraw={handleWithdraw}
@@ -264,7 +274,12 @@ export default function MemberApplyRolePage() {
           </>
         )}
 
-        {isPublished && (
+        {isPast ? (
+          <div className="flex items-start gap-2.5 bg-gray-100 border border-gray-200 rounded-xl p-3.5">
+            <Info size={15} className="text-gray-400 shrink-0 mt-0.5" />
+            <p className="text-[13px] text-gray-500 font-medium leading-5">This meeting date has passed. Applications are closed.</p>
+          </div>
+        ) : isOpen && (
           <div className="flex items-start gap-2.5 bg-amber-50 border border-amber-200 rounded-xl p-3.5">
             <Info size={15} className="text-amber-500 shrink-0 mt-0.5" />
             <p className="text-[13px] text-amber-800 font-medium leading-5">You can apply for only one role per meeting.</p>

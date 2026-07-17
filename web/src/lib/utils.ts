@@ -46,6 +46,10 @@ export function formatDateTime(iso: string): string {
   );
 }
 
+export function isPastMeeting(scheduledAt: string): boolean {
+  return new Date(scheduledAt).getTime() < Date.now();
+}
+
 export function dateparts(iso: string) {
   const d = new Date(iso);
   return {

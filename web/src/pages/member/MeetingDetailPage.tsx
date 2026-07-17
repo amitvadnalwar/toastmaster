@@ -8,7 +8,7 @@ import { getMeetingRoster } from '@/services/meetingService';
 import { MeetingDetailSkeleton } from '@/components/ui/Skeleton';
 import type { MeetingWithRoster, MeetingRole } from '@/types';
 import { SINGLETON_ROLES, ROLE_LABELS } from '@/types';
-import { formatDate, formatTime } from '@/lib/utils';
+import { formatDate, formatTime, isPastMeeting } from '@/lib/utils';
 
 const STATUS_CFG: Record<string, { label: string; bg: string; color: string }> = {
   draft: { label: 'Draft', bg: '#f3f4f6', color: '#6b7280' },
@@ -67,6 +67,8 @@ export default function MemberMeetingDetailPage() {
   const { meeting, roster } = data;
   const status = STATUS_CFG[meeting.status];
   const isPublished = meeting.status === 'published';
+  const isPast = isPastMeeting(meeting.scheduled_at);
+  const canApply = isPublished && !isPast;
   const speakers = roster.filter((r) => r.role === 'speaker');
   const evaluators = roster.filter((r) => r.role === 'evaluator');
   const myAssignment = roster.find((r) => r.member_email === myEmail);
@@ -177,7 +179,7 @@ export default function MemberMeetingDetailPage() {
       </div>
 
       {/* Apply CTA */}
-      {isPublished && (
+      {canApply && (
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 p-4">
           <div className="max-w-lg mx-auto">
             <button onClick={() => navigate(`/meetings/${id}/apply`)} className="w-full bg-brand text-white rounded-xl py-[15px] flex items-center justify-center gap-2 text-base font-bold">

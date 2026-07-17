@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ChevronLeft, CheckCircle, MicOff, Star } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { getMeetingRoster, getMyFeedback, submitFeedback } from '@/services/meetingService';
-import Spinner from '@/components/ui/Spinner';
+import { Skeleton } from '@/components/ui/Skeleton';
 import type { MeetingRoleAssignment, SpeakerFeedback, SpeakerFeedbackPayload } from '@/types';
 
 interface SpeakerRow {
@@ -102,7 +102,27 @@ export default function MemberFeedbackPage() {
       </div>
 
       {fetching ? (
-        <div className="flex-1 flex items-center justify-center"><Spinner size="lg" /></div>
+        <div className="flex-1 overflow-y-auto p-4 max-w-lg mx-auto w-full">
+          <Skeleton className="w-52 h-8 rounded-full mb-4" />
+          <Skeleton className="w-64 h-3 mb-4" />
+          {Array.from({ length: 2 }).map((_, i) => (
+            <div key={i} className="bg-white rounded-2xl p-[18px] mb-3.5 shadow-sm">
+              <div className="flex items-center gap-3 mb-4">
+                <Skeleton className="w-[42px] h-[42px] rounded-full" />
+                <div className="flex-1">
+                  <Skeleton className="w-32 h-4 mb-2" />
+                  <Skeleton className="w-20 h-3" />
+                </div>
+              </div>
+              <div className="flex gap-2.5 mb-3.5">
+                {Array.from({ length: 5 }).map((_, j) => (
+                  <Skeleton key={j} className="w-[30px] h-[30px] rounded-md" />
+                ))}
+              </div>
+              <Skeleton className="w-full h-16 rounded-[10px]" />
+            </div>
+          ))}
+        </div>
       ) : (
         <>
           <div className="flex-1 overflow-y-auto p-4 pb-28 max-w-lg mx-auto w-full">

@@ -3,7 +3,7 @@ import { useAuthStore } from '@/store/authStore';
 import { supabase } from '@/lib/supabase';
 import { getMe } from '@/services/memberService';
 import { MemberBottomNav } from '@/components/layout/BottomNav';
-import Spinner from '@/components/ui/Spinner';
+import { ProfileSkeleton } from '@/components/ui/Skeleton';
 import type { Member } from '@/types';
 import { CLUB_ROLE_LABELS, APP_ROLE_LABELS } from '@/types';
 import { initials, formatDateShort } from '@/lib/utils';
@@ -34,7 +34,7 @@ export default function MemberProfilePage() {
       </div>
 
       {loading ? (
-        <div className="flex-1 flex items-center justify-center"><Spinner size="lg" /></div>
+        <ProfileSkeleton />
       ) : (
         <div className="flex-1 overflow-y-auto px-5 pt-6 pb-28 max-w-lg mx-auto w-full">
           <div className="flex flex-col items-center mb-7">

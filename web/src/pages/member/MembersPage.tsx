@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/store/authStore';
 import { getClubMembers } from '@/services/memberService';
 import { MemberBottomNav } from '@/components/layout/BottomNav';
-import Spinner from '@/components/ui/Spinner';
+import { MembersListSkeleton } from '@/components/ui/Skeleton';
 import { CLUB_ROLE_LABELS } from '@/types';
 import { initials } from '@/lib/utils';
 
@@ -31,7 +31,7 @@ export default function MemberMembersPage() {
       </div>
 
       {loading ? (
-        <div className="flex-1 flex items-center justify-center py-16"><Spinner size="lg" /></div>
+        <MembersListSkeleton />
       ) : (
         <div className="flex-1 overflow-y-auto pb-28 max-w-lg mx-auto w-full">
           {members.length === 0 ? (

@@ -4,7 +4,7 @@ import { Plus, Calendar, ChevronRight } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { getAllMeetings } from '@/services/meetingService';
 import { AdminBottomNav } from '@/components/layout/BottomNav';
-import Spinner from '@/components/ui/Spinner';
+import { MeetingListSkeleton } from '@/components/ui/Skeleton';
 import type { Meeting } from '@/types';
 import { STATUS_COLOR, STATUS_LABEL } from '@/types';
 import { formatDateTime } from '@/lib/utils';
@@ -42,7 +42,7 @@ export default function AdminMeetingsPage() {
       </div>
 
       {loading ? (
-        <div className="flex-1 flex items-center justify-center py-20"><Spinner size="lg" /></div>
+        <MeetingListSkeleton />
       ) : (
         <div className="flex-1 overflow-y-auto px-5 pt-5 pb-28 max-w-lg mx-auto w-full">
           <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2.5">Upcoming</p>

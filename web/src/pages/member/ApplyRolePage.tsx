@@ -9,7 +9,7 @@ import {
   getMeetingRoster, enrollInRole, enrollAsSpeaker, enrollAsEvaluator, withdrawFromRole,
 } from '@/services/meetingService';
 import { getMe } from '@/services/memberService';
-import Spinner from '@/components/ui/Spinner';
+import { MeetingDetailSkeleton } from '@/components/ui/Skeleton';
 import type { MeetingRoleAssignment, MeetingWithRoster, SpeechDuration } from '@/types';
 import { SINGLETON_ROLES, ROLE_LABELS, SPEECH_DURATIONS } from '@/types';
 
@@ -106,7 +106,7 @@ export default function MemberApplyRolePage() {
     return (
       <div className="flex flex-col min-h-full bg-[#f5f5f5]">
         <Header onBack={() => navigate(`/meetings/${id}`)} />
-        <div className="flex-1 flex items-center justify-center"><Spinner size="lg" /></div>
+        <MeetingDetailSkeleton />
       </div>
     );
   }

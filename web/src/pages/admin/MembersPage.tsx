@@ -4,7 +4,7 @@ import { UserPlus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { getAllMembers } from '@/services/memberService';
 import { AdminBottomNav } from '@/components/layout/BottomNav';
-import Spinner from '@/components/ui/Spinner';
+import { MembersListSkeleton } from '@/components/ui/Skeleton';
 import type { Member } from '@/types';
 import { CLUB_ROLE_LABELS } from '@/types';
 import { initials } from '@/lib/utils';
@@ -44,7 +44,7 @@ export default function AdminMembersPage() {
       </div>
 
       {loading ? (
-        <div className="flex-1 flex items-center justify-center py-16"><Spinner size="lg" /></div>
+        <MembersListSkeleton />
       ) : (
         <div className="flex-1 overflow-y-auto px-5 pt-5 pb-28 max-w-lg mx-auto w-full">
           {members.length === 0 ? (

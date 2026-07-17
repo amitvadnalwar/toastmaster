@@ -29,3 +29,43 @@
 .scrollbar-none::-webkit-scrollbar {
   display: none;
 }
+
+/* ── Shimmer / skeleton loading ─────────────────────────────────────────── */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    #e9eaed 25%,
+    #f4f5f7 37%,
+    #e9eaed 63%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* Lighter shimmer for use on tinted/coloured surfaces */
+.shimmer-light {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.35) 25%,
+    rgba(255, 255, 255, 0.65) 37%,
+    rgba(255, 255, 255, 0.35) 63%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shimmer,
+  .shimmer-light {
+    animation: none;
+  }
+}

@@ -6,7 +6,7 @@ import { getAllMeetings, getMeetingRoster } from '@/services/meetingService';
 import { getClubMembers, getMe } from '@/services/memberService';
 import { getClub } from '@/services/clubService';
 import { MemberBottomNav } from '@/components/layout/BottomNav';
-import Spinner from '@/components/ui/Spinner';
+import { HomeSkeleton } from '@/components/ui/Skeleton';
 import type { Meeting, MeetingRoleAssignment, Club } from '@/types';
 import { CLUB_ROLE_LABELS, STATUS_COLOR } from '@/types';
 import { dateparts, formatDateShort } from '@/lib/utils';
@@ -98,7 +98,7 @@ export default function MemberHomePage() {
       </div>
 
       {loading ? (
-        <div className="py-20 flex justify-center"><Spinner size="lg" /></div>
+        <HomeSkeleton />
       ) : (
         <div className="flex-1 overflow-y-auto pb-28 max-w-lg mx-auto w-full">
           {/* Stats */}

@@ -4,7 +4,7 @@ import { Calendar, Clock, MapPin, ArrowRight } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { getAllMeetings } from '@/services/meetingService';
 import { MemberBottomNav } from '@/components/layout/BottomNav';
-import Spinner from '@/components/ui/Spinner';
+import { MeetingListSkeleton } from '@/components/ui/Skeleton';
 import type { Meeting, MeetingStatus } from '@/types';
 import { formatDate, formatTime } from '@/lib/utils';
 
@@ -53,7 +53,7 @@ export default function MemberMeetingsPage() {
       </div>
 
       {loading ? (
-        <div className="flex-1 flex items-center justify-center py-16"><Spinner size="lg" /></div>
+        <MeetingListSkeleton />
       ) : meetings.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center gap-3 py-20">
           <Calendar size={36} className="text-gray-300" />

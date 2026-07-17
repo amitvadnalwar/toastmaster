@@ -7,6 +7,7 @@ import {
   updateMemberClubRole, updateMemberAppRole,
 } from '@/services/memberService';
 import Spinner from '@/components/ui/Spinner';
+import { ProfileSkeleton } from '@/components/ui/Skeleton';
 import type { Member, ClubRole, AppRole } from '@/types';
 import { CLUB_ROLE_LABELS, APP_ROLE_LABELS, ASSIGNABLE_CLUB_ROLES, ASSIGNABLE_APP_ROLES } from '@/types';
 import { initials, formatDateShort } from '@/lib/utils';
@@ -103,7 +104,7 @@ export default function AdminMemberDetailPage() {
     return (
       <div className="flex flex-col min-h-full bg-gray-50">
         <Header onBack={() => navigate('/admin/members')} />
-        <div className="flex-1 flex items-center justify-center"><Spinner size="lg" /></div>
+        <ProfileSkeleton />
       </div>
     );
   }

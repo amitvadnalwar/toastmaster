@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { getMeetingRoster } from '@/services/meetingService';
-import Spinner from '@/components/ui/Spinner';
+import { MeetingDetailSkeleton } from '@/components/ui/Skeleton';
 import type { MeetingWithRoster, MeetingRole } from '@/types';
 import { SINGLETON_ROLES, ROLE_LABELS } from '@/types';
 import { formatDate, formatTime } from '@/lib/utils';
@@ -58,7 +58,7 @@ export default function MemberMeetingDetailPage() {
     return (
       <div className="flex flex-col min-h-full bg-[#f5f5f5]">
         <Header onBack={() => navigate('/meetings')} canScan={false} onScan={() => {}} />
-        <div className="flex-1 flex items-center justify-center"><Spinner size="lg" /></div>
+        <MeetingDetailSkeleton />
       </div>
     );
   }

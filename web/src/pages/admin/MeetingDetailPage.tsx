@@ -11,6 +11,7 @@ import {
 } from '@/services/meetingService';
 import { getAllMembers } from '@/services/memberService';
 import Spinner from '@/components/ui/Spinner';
+import { MeetingDetailSkeleton } from '@/components/ui/Skeleton';
 import type {
   Meeting, MeetingRole, MeetingRoleAssignment, MeetingWithRoster, VotingStatus,
 } from '@/types';
@@ -230,7 +231,7 @@ export default function AdminMeetingDetailPage() {
     return (
       <div className="flex flex-col min-h-full bg-gray-50">
         <Header title="Meeting" onBack={() => navigate('/admin/meetings')} />
-        <div className="flex-1 flex items-center justify-center"><Spinner size="lg" /></div>
+        <MeetingDetailSkeleton />
       </div>
     );
   }

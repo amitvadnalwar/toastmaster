@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { QRCodeCanvas } from 'qrcode.react';
 import {
-  ChevronLeft, Edit2, Trash2, Check, X, Plus, Search, Share2, Minus,
+  ChevronLeft, Edit2, Trash2, Check, X, Plus, Search, Share2, Minus, Lock,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import {
@@ -16,7 +16,7 @@ import type {
   Meeting, MeetingRole, MeetingRoleAssignment, MeetingWithRoster, VotingStatus,
 } from '@/types';
 import { SINGLETON_ROLES, ROLE_LABELS, SPEECH_DURATIONS, STATUS_COLOR, STATUS_LABEL } from '@/types';
-import { initials, formatDateTime, formatDateShort } from '@/lib/utils';
+import { initials, formatDateTime, formatDateShort, isPastMeeting } from '@/lib/utils';
 
 const VOTING_LABEL: Record<VotingStatus, string> = { not_started: 'Not started', open: 'Open', closed: 'Closed' };
 const VOTING_COLOR: Record<VotingStatus, string> = { not_started: '#9ca3af', open: '#10b981', closed: '#6b7280' };
@@ -98,7 +98,7 @@ export default function AdminMeetingDetailPage() {
   }, [session]);
 
   function startEdit() {
-    if (!data) return;
+    if (!data || isPastMeeting(data.meeting.scheduled_at)) return;
     const m = data.meeting;
     const d = new Date(m.scheduled_at);
     setEditTitle(m.title);
@@ -134,7 +134,7 @@ export default function AdminMeetingDetailPage() {
   }
 
   async function handleDelete() {
-    if (!session || !data) return;
+    if (!session || !data || isPastMeeting(data.meeting.scheduled_at)) return;
     if (!window.confirm('This will permanently delete the meeting and all data.')) return;
     setActing(true);
     try {
@@ -147,7 +147,7 @@ export default function AdminMeetingDetailPage() {
   }
 
   async function handlePublish() {
-    if (!session || !data) return;
+    if (!session || !data || isPastMeeting(data.meeting.scheduled_at)) return;
     if (!window.confirm('Publish this meeting so members can see it?')) return;
     setActing(true);
     try {
@@ -161,7 +161,7 @@ export default function AdminMeetingDetailPage() {
   }
 
   async function handleVotingToggle() {
-    if (!session || !data) return;
+    if (!session || !data || isPastMeeting(data.meeting.scheduled_at)) return;
     const next: VotingStatus = data.meeting.voting_status === 'open' ? 'closed' : 'open';
     setActing(true);
     try {
@@ -175,6 +175,7 @@ export default function AdminMeetingDetailPage() {
   }
 
   function startAssign(role: MeetingRole, speakerMemberId?: string) {
+    if (!data || isPastMeeting(data.meeting.scheduled_at)) return;
     setAssignRole(role);
     setAssignSpeakerId(speakerMemberId ?? null);
     setPendingMember(null);
@@ -214,7 +215,7 @@ export default function AdminMeetingDetailPage() {
   }
 
   async function handleRemove(roleId: string, label: string) {
-    if (!session || !data) return;
+    if (!session || !data || isPastMeeting(data.meeting.scheduled_at)) return;
     if (!window.confirm(`Remove ${label} assignment?`)) return;
     setActing(true);
     try {
@@ -239,7 +240,9 @@ export default function AdminMeetingDetailPage() {
 
   const { meeting, roster } = data;
   const votingIsOpen = meeting.voting_status === 'open';
-  const canEdit = meeting.status === 'draft';
+  const isPast = isPastMeeting(meeting.scheduled_at);
+  const canEdit = meeting.status === 'draft' && !isPast;
+  const canManage = !isPast;
   const speakers = roster.filter((r) => r.role === 'speaker');
   const evaluators = roster.filter((r) => r.role === 'evaluator');
 
@@ -312,13 +315,23 @@ export default function AdminMeetingDetailPage() {
               <Badge color={VOTING_COLOR[meeting.voting_status]} label={`Voting ${VOTING_LABEL[meeting.voting_status]}`} />
             </div>
 
+            {/* Read-only banner */}
+            {isPast && (
+              <div className="flex items-center gap-2.5 bg-gray-100 border border-gray-200 rounded-xl px-3.5 py-3 mb-4">
+                <Lock size={15} className="text-gray-400 shrink-0" />
+                <p className="text-[13px] text-gray-500 font-medium leading-5">
+                  This meeting's date has passed — details are read-only.
+                </p>
+              </div>
+            )}
+
             {/* Action buttons */}
-            {meeting.status === 'draft' && (
+            {canManage && meeting.status === 'draft' && (
               <button onClick={handlePublish} disabled={acting} className="w-full rounded-xl py-3.5 mb-2.5 bg-green-500 text-white font-semibold disabled:opacity-50">
                 {acting ? 'Working…' : 'Publish Meeting'}
               </button>
             )}
-            {meeting.status === 'published' && (
+            {canManage && meeting.status === 'published' && (
               <button
                 onClick={handleVotingToggle}
                 disabled={acting}
@@ -353,10 +366,14 @@ export default function AdminMeetingDetailPage() {
                       {a ? (
                         <div className="flex items-center gap-2">
                           <span className="text-sm text-gray-900 font-semibold truncate max-w-[140px]">{a.member_name ?? memberMap.get(a.member_id) ?? '—'}</span>
-                          <button onClick={() => handleRemove(a.id, ROLE_LABELS[role])} disabled={acting} className="w-7 h-7 rounded-full bg-[#fef2f2] flex items-center justify-center"><X size={14} className="text-red-500" /></button>
+                          {canManage && (
+                            <button onClick={() => handleRemove(a.id, ROLE_LABELS[role])} disabled={acting} className="w-7 h-7 rounded-full bg-[#fef2f2] flex items-center justify-center"><X size={14} className="text-red-500" /></button>
+                          )}
                         </div>
-                      ) : (
+                      ) : canManage ? (
                         <AssignButton onClick={() => startAssign(role)} disabled={acting} />
+                      ) : (
+                        <span className="text-xs font-medium text-gray-300">Open</span>
                       )}
                     </div>
                   </div>
@@ -375,17 +392,22 @@ export default function AdminMeetingDetailPage() {
                       <p className="text-sm text-gray-900 font-semibold">{s.member_name ?? memberMap.get(s.member_id) ?? '—'}</p>
                       {s.speech_duration && <p className="text-[11px] text-gray-400 mt-0.5">{s.speech_duration}</p>}
                     </div>
-                    <button onClick={() => handleRemove(s.id, 'Speaker')} disabled={acting} className="w-7 h-7 rounded-full bg-[#fef2f2] flex items-center justify-center"><X size={14} className="text-red-500" /></button>
+                    {canManage && (
+                      <button onClick={() => handleRemove(s.id, 'Speaker')} disabled={acting} className="w-7 h-7 rounded-full bg-[#fef2f2] flex items-center justify-center"><X size={14} className="text-red-500" /></button>
+                    )}
                   </div>
                 </div>
               ))}
-              {speakers.length < meeting.max_speakers && (
+              {canManage && speakers.length < meeting.max_speakers && (
                 <div>
                   {speakers.length > 0 && <Divider />}
                   <button onClick={() => startAssign('speaker')} disabled={acting} className="w-full flex items-center justify-center gap-1 px-4 py-3 text-brand text-[13px] font-semibold">
                     <Plus size={13} /> Add Speaker
                   </button>
                 </div>
+              )}
+              {!canManage && speakers.length === 0 && (
+                <div className="px-4 py-3 text-center text-[13px] text-gray-400">No speakers were assigned</div>
               )}
             </div>
 
@@ -406,10 +428,12 @@ export default function AdminMeetingDetailPage() {
                             <p className={`text-sm font-semibold ${ev ? 'text-gray-900' : 'text-gray-400'}`}>{ev ? (ev.member_name ?? memberMap.get(ev.member_id) ?? '—') : 'Unassigned'}</p>
                           </div>
                           {ev ? (
-                            <button onClick={() => handleRemove(ev.id, 'Evaluator')} disabled={acting} className="w-7 h-7 rounded-full bg-[#fef2f2] flex items-center justify-center"><X size={14} className="text-red-500" /></button>
-                          ) : (
+                            canManage && (
+                              <button onClick={() => handleRemove(ev.id, 'Evaluator')} disabled={acting} className="w-7 h-7 rounded-full bg-[#fef2f2] flex items-center justify-center"><X size={14} className="text-red-500" /></button>
+                            )
+                          ) : canManage ? (
                             <AssignButton onClick={() => startAssign('evaluator', s.member_id)} disabled={acting} />
-                          )}
+                          ) : null}
                         </div>
                       </div>
                     );
@@ -418,25 +442,29 @@ export default function AdminMeetingDetailPage() {
               </>
             )}
 
-            {/* QR codes */}
-            <SectionLabel>Member QR Code</SectionLabel>
-            <QrCard
-              hint="Members scan this to join the meeting (requires app)"
-              canvasId="member-qr"
-              value={`toastmasters://join?meeting_id=${meeting.id}`}
-              meetingId={meeting.id}
-              label="Member"
-            />
+            {/* QR codes — meeting-day only */}
+            {canManage && (
+              <>
+                <SectionLabel>Member QR Code</SectionLabel>
+                <QrCard
+                  hint="Members scan this to join the meeting (requires app)"
+                  canvasId="member-qr"
+                  value={`toastmasters://join?meeting_id=${meeting.id}`}
+                  meetingId={meeting.id}
+                  label="Member"
+                />
 
-            <div className="mt-6" />
-            <SectionLabel>Guest QR Code</SectionLabel>
-            <QrCard
-              hint="Guests scan this to register (no app needed)"
-              canvasId="guest-qr"
-              value={`${GUEST_URL}?meeting_id=${meeting.id}`}
-              meetingId={meeting.id}
-              label="Guest"
-            />
+                <div className="mt-6" />
+                <SectionLabel>Guest QR Code</SectionLabel>
+                <QrCard
+                  hint="Guests scan this to register (no app needed)"
+                  canvasId="guest-qr"
+                  value={`${GUEST_URL}?meeting_id=${meeting.id}`}
+                  meetingId={meeting.id}
+                  label="Guest"
+                />
+              </>
+            )}
           </>
         )}
       </div>

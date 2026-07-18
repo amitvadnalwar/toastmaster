@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, BackgroundTasks, Depends
 from pydantic import BaseModel
 
 from app.middleware.auth import CurrentUser, require_super_admin
@@ -29,9 +29,10 @@ async def get_member(
 @router.post("/{member_id}/resend-invite", status_code=204)
 async def resend_invite(
     member_id: str,
+    background_tasks: BackgroundTasks,
     _user: CurrentUser = Depends(require_super_admin),
 ) -> None:
-    await svc.resend_invite(member_id)
+    await svc.resend_invite(member_id, background_tasks)
 
 
 @router.get("", response_model=ApiResponse[list[MemberOut]])
@@ -43,9 +44,10 @@ async def list_members(user: CurrentUser = Depends(require_super_admin)) -> ApiR
 @router.post("", response_model=ApiResponse[MemberOut], status_code=201)
 async def create_member(
     body: MemberCreateIn,
+    background_tasks: BackgroundTasks,
     user: CurrentUser = Depends(require_super_admin),
 ) -> ApiResponse[MemberOut]:
-    member = await svc.create_member(user.club_id, body)
+    member = await svc.create_member(user.club_id, body, background_tasks)
     return ApiResponse(data=member)
 
 

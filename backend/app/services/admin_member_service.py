@@ -1,6 +1,6 @@
 import re
 
-from fastapi import HTTPException, status
+from fastapi import BackgroundTasks, HTTPException, status
 
 from app.db import admin_members as db
 from app.models.member import AppRole, ClubRole, MemberCreateIn, MemberOut
@@ -8,7 +8,7 @@ from app.models.member import AppRole, ClubRole, MemberCreateIn, MemberOut
 _BIRTHDAY_RE = re.compile(r"^(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$")
 
 
-async def create_member(club_id: str, body: MemberCreateIn) -> MemberOut:
+async def create_member(club_id: str, body: MemberCreateIn, background_tasks: BackgroundTasks) -> MemberOut:
     if body.birthday and not _BIRTHDAY_RE.match(body.birthday):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -21,6 +21,7 @@ async def create_member(club_id: str, body: MemberCreateIn) -> MemberOut:
             email=body.email,
             phone=body.phone.strip(),
             birthday=body.birthday,
+            background_tasks=background_tasks,
         )
     except Exception as exc:
         msg = str(exc)
@@ -42,7 +43,7 @@ async def get_member_by_id(member_id: str) -> MemberOut:
     return MemberOut(**row)
 
 
-async def resend_invite(member_id: str) -> None:
+async def resend_invite(member_id: str, background_tasks: BackgroundTasks) -> None:
     row = await db.get_member_by_id(member_id)
     if not row:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Member not found")
@@ -51,7 +52,7 @@ async def resend_invite(member_id: str) -> None:
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Member has already activated their account",
         )
-    await db.resend_invite(row["email"])
+    await db.resend_invite(member_id, background_tasks)
 
 
 async def set_member_active(member_id: str, is_active: bool) -> MemberOut:

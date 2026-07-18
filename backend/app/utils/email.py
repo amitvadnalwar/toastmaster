@@ -1,8 +1,13 @@
 import smtplib
+import socket
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 from app.config import settings
+
+# Fail fast rather than hang if the SMTP host is unreachable (e.g. the
+# host's egress silently drops the connection instead of refusing it).
+_CONNECT_TIMEOUT_SECONDS = 10
 
 
 def send_temp_password_email(to_email: str, to_name: str, temp_password: str) -> None:
@@ -40,8 +45,13 @@ def send_temp_password_email(to_email: str, to_name: str, temp_password: str) ->
     msg["To"] = to_email
     msg.attach(MIMEText(html, "html"))
 
-    with smtplib.SMTP(host, settings.smtp_port) as server:
-        server.ehlo()
-        server.starttls()
-        server.login(settings.smtp_user, settings.smtp_password)
-        server.sendmail(settings.smtp_from, to_email, msg.as_string())
+    try:
+        with smtplib.SMTP(host, settings.smtp_port, timeout=_CONNECT_TIMEOUT_SECONDS) as server:
+            server.ehlo()
+            server.starttls()
+            server.login(settings.smtp_user, settings.smtp_password)
+            server.sendmail(settings.smtp_from, to_email, msg.as_string())
+    except (smtplib.SMTPException, socket.error, OSError) as exc:
+        # Never let a flaky/blocked SMTP connection break the caller — this
+        # already runs as a background task, but stay defensive regardless.
+        print(f"[EMAIL FAILED] To: {to_email} | Temp password: {temp_password} | Error: {exc}")

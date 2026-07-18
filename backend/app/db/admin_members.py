@@ -1,3 +1,5 @@
+from fastapi import BackgroundTasks
+
 from app.db.client import supabase
 from app.utils.password import generate_temp_password
 from app.utils.email import send_temp_password_email
@@ -15,6 +17,7 @@ async def insert_member(
     email: str,
     phone: str,
     birthday: str | None,
+    background_tasks: BackgroundTasks,
 ) -> dict:
     temp_password = generate_temp_password()
 
@@ -43,7 +46,9 @@ async def insert_member(
 
     result = supabase.table("members").insert(payload).execute()
 
-    send_temp_password_email(email, name, temp_password)
+    # Member creation must succeed regardless of email deliverability — send
+    # after the response goes out instead of blocking the request on it.
+    background_tasks.add_task(send_temp_password_email, email, name, temp_password)
 
     return result.data[0]
 
@@ -72,7 +77,7 @@ async def get_member_by_id(member_id: str) -> dict | None:
     return member
 
 
-async def resend_invite(member_id: str) -> None:
+async def resend_invite(member_id: str, background_tasks: BackgroundTasks) -> None:
     # Look up email + auth_user_id from DB
     result = (
         supabase.table("members")
@@ -97,7 +102,7 @@ async def resend_invite(member_id: str) -> None:
             {"password": new_temp, "app_metadata": {"must_change_password": True}},
         )
 
-    send_temp_password_email(email, name, new_temp)
+    background_tasks.add_task(send_temp_password_email, email, name, new_temp)
 
 
 async def fetch_all_non_guest_members(club_id: str) -> list[dict]:

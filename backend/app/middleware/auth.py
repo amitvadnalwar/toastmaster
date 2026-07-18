@@ -16,7 +16,7 @@ _jwks_cache: list[dict] | None = None
 async def _get_jwks() -> list[dict]:
     global _jwks_cache
     if _jwks_cache is None:
-        async with httpx.AsyncClient(verify=False) as client:
+        async with httpx.AsyncClient(verify=settings.ssl_verify) as client:
             resp = await client.get(settings.supabase_jwks_url, timeout=10)
             resp.raise_for_status()
             _jwks_cache = resp.json()["keys"]

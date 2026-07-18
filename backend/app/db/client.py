@@ -3,10 +3,10 @@ from supabase import Client, ClientOptions, create_client
 
 from app.config import settings
 
-# verify=False bypasses corporate SSL certificate inspection on the dev network.
-# The service-role key and Supabase URL are already secrets; skipping cert
-# verification here only affects the server→Supabase connection in dev.
-_http = httpx.Client(verify=False)
+# TLS verification is on by default (settings.ssl_verify). It can be disabled
+# only via SSL_VERIFY=false in the local .env, for dev networks that do SSL
+# inspection with an untrusted cert. Production (Render) leaves it True.
+_http = httpx.Client(verify=settings.ssl_verify)
 
 supabase: Client = create_client(
     settings.supabase_url,

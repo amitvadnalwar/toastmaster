@@ -8,6 +8,12 @@ class Settings(BaseSettings):
     guest_jwt_secret: str
     guest_token_expire_hours: int = 4
 
+    # TLS certificate verification for outbound calls (Supabase, JWKS, SendGrid).
+    # MUST stay True in production. Only set SSL_VERIFY=false locally if your dev
+    # network does SSL inspection with a cert Python doesn't trust. Never set it
+    # on Render — those endpoints all present valid, publicly-trusted certs.
+    ssl_verify: bool = True
+
     # SendGrid email — https://app.sendgrid.com/settings/api_keys
     # from_address must exactly match a Single Sender verified in SendGrid
     # (Settings -> Sender Authentication -> Verify a Single Sender).

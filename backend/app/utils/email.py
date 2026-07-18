@@ -45,7 +45,7 @@ def send_temp_password_email(to_email: str, to_name: str, temp_password: str) ->
             headers={"Authorization": f"Bearer {settings.email_api_key}"},
             json=payload,
             timeout=_TIMEOUT_SECONDS,
-            verify=False,
+            verify=settings.ssl_verify,
         )
         response.raise_for_status()
     except httpx.HTTPError as exc:

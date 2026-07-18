@@ -153,11 +153,30 @@ update it in the confirm-password flow.
 
 ## Operational gaps (not in code, but production-critical)
 
-### 🔴 O1 — No error monitoring · risk 60%
-Everything surfaces as `print()` to Render logs. The email-delivery bug this
-project hit was only caught by manual observation. A silent failure today
-notifies no one.
-**Fix:** Add Sentry (free tier) or at minimum a failure webhook.
+### 🟠 O1 — No error monitoring — CODE DONE, needs Sentry account 2026-07-17
+**What was wrong:** Everything surfaced only as `print()` to Render logs. The
+email-delivery bug this project hit was only caught by manual observation. A
+silent failure notified no one.
+**Fix applied:** Added `sentry-sdk[fastapi]` to the backend and `@sentry/react`
+to the web app. Both initialize only if a DSN env var is set (`SENTRY_DSN`
+backend, `VITE_SENTRY_DSN` frontend) — completely safe no-op otherwise, verified
+by building and running the app with no DSN configured (zero console errors,
+identical behavior). Backend auto-captures unhandled exceptions across all
+FastAPI routes; frontend wraps the app in `Sentry.ErrorBoundary` with a real
+fallback screen (was a blank white page on any React crash before). Also added
+an explicit `sentry_sdk.capture_message(...)` at the swallowed
+`[EMAIL FAILED]` point in `utils/email.py` — installing the SDK alone would
+**not** have caught that specific failure, since it's an intentionally-caught
+exception, not an unhandled one. Deliberately excludes the temp password from
+the Sentry report (only sends `to_email` + error) — no need to send a live
+credential to a third party.
+**Still needed to go live (not code, requires your login):**
+1. Sign up at sentry.io, create two projects (Python/FastAPI, React).
+2. Add `SENTRY_DSN` + `SENTRY_ENVIRONMENT=production` to Render env vars.
+3. Add `VITE_SENTRY_DSN` as a GitHub Actions secret (same place as
+   `VITE_SUPABASE_URL` etc.) so the deploy workflow picks it up.
+Until those are added, the app runs exactly as before — this is purely
+additive and inert without a DSN.
 
 ### 🟠 O2 — Shared dev/prod Supabase project · risk 45%
 Testing (account creation/deletion) runs against the same Supabase project as

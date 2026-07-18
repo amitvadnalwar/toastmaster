@@ -1,4 +1,5 @@
 import httpx
+import sentry_sdk
 
 from app.config import settings
 
@@ -52,3 +53,8 @@ def send_temp_password_email(to_email: str, to_name: str, temp_password: str) ->
         # Never let an email provider outage/misconfig break member
         # creation — fall back to logging the temp password like dev mode.
         print(f"[EMAIL FAILED] To: {to_email} | Temp password: {temp_password} | Error: {exc}")
+        # Report to Sentry too (no-ops if SENTRY_DSN isn't set), so a silent
+        # failure gets noticed instead of only sitting in ephemeral Render
+        # logs. Deliberately excludes the temp password — no need to send a
+        # live credential to a third party just to know delivery failed.
+        sentry_sdk.capture_message(f"Invite email failed to send to {to_email}: {exc}", level="error")

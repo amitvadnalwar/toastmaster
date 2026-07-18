@@ -1,7 +1,16 @@
+import sentry_sdk
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.config import settings
 from app.routers import admin_members, club, email, feedbacks, guests, meetings, members, onboarding, posts, roles, votes
+
+if settings.sentry_dsn:
+    sentry_sdk.init(
+        dsn=settings.sentry_dsn,
+        environment=settings.sentry_environment,
+        traces_sample_rate=1.0,
+    )
 
 app = FastAPI(title="Toastmasters API", version="1.0.0", redirect_slashes=False)
 

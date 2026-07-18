@@ -21,6 +21,12 @@ class Settings(BaseSettings):
     email_from_address: str = ""
     email_from_name: str = "Toastmaster PSE"
 
+    # Sentry error monitoring — https://sentry.io. Leave blank to disable
+    # (SDK becomes a safe no-op). Separate project/DSN from the web frontend's
+    # VITE_SENTRY_DSN — they're two different apps in the same Sentry account.
+    sentry_dsn: str = ""
+    sentry_environment: str = "production"
+
     @property
     def supabase_jwks_url(self) -> str:
         return f"{self.supabase_url}/auth/v1/.well-known/jwks.json"

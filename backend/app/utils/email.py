@@ -10,6 +10,34 @@ from app.config import settings
 _CONNECT_TIMEOUT_SECONDS = 10
 
 
+class _IPv4SMTP(smtplib.SMTP):
+    """smtplib.SMTP, but connects over IPv4 only.
+
+    Many container hosts (Render included) advertise a non-functional IPv6
+    stack. smtp.gmail.com resolves to both an IPv4 and IPv6 address, and
+    smtplib's default connection logic can pick the IPv6 one and fail
+    immediately with "[Errno 101] Network is unreachable". self._host stays
+    the original hostname (only the low-level socket connect is overridden),
+    so STARTTLS's certificate/SNI hostname check still works correctly.
+    """
+
+    def _get_socket(self, host, port, timeout):
+        last_error: OSError | None = None
+        for family, socktype, proto, _canonname, sockaddr in socket.getaddrinfo(
+            host, port, socket.AF_INET, socket.SOCK_STREAM
+        ):
+            sock = socket.socket(family, socktype, proto)
+            try:
+                if timeout is not None:
+                    sock.settimeout(timeout)
+                sock.connect(sockaddr)
+                return sock
+            except OSError as exc:
+                sock.close()
+                last_error = exc
+        raise last_error or OSError(f"No IPv4 address found for {host}:{port}")
+
+
 def send_temp_password_email(to_email: str, to_name: str, temp_password: str) -> None:
     # If credentials not configured yet, print to console (dev mode)
     if not settings.smtp_user or not settings.smtp_password:
@@ -46,7 +74,7 @@ def send_temp_password_email(to_email: str, to_name: str, temp_password: str) ->
     msg.attach(MIMEText(html, "html"))
 
     try:
-        with smtplib.SMTP(host, settings.smtp_port, timeout=_CONNECT_TIMEOUT_SECONDS) as server:
+        with _IPv4SMTP(host, settings.smtp_port, timeout=_CONNECT_TIMEOUT_SECONDS) as server:
             server.ehlo()
             server.starttls()
             server.login(settings.smtp_user, settings.smtp_password)

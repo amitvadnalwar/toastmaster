@@ -8,12 +8,12 @@ class Settings(BaseSettings):
     guest_jwt_secret: str
     guest_token_expire_hours: int = 4
 
-    # SMTP email — use Gmail, Outlook, or any provider
-    smtp_host: str = ""
-    smtp_port: int = 587
-    smtp_user: str = ""
-    smtp_password: str = ""
-    smtp_from: str = ""
+    # SendGrid email — https://app.sendgrid.com/settings/api_keys
+    # from_address must exactly match a Single Sender verified in SendGrid
+    # (Settings -> Sender Authentication -> Verify a Single Sender).
+    email_api_key: str = ""
+    email_from_address: str = ""
+    email_from_name: str = "Toastmaster PSE"
 
     @property
     def supabase_jwks_url(self) -> str:

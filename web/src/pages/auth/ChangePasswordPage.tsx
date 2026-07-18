@@ -2,6 +2,7 @@ import { useState, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
+import { confirmPasswordChanged } from '@/services/memberService';
 import Button from '@/components/ui/Button';
 import { Eye, EyeOff, Lock } from 'lucide-react';
 
@@ -22,14 +23,23 @@ export default function ChangePasswordPage() {
     setError('');
     setLoading(true);
     try {
-      const { error: updateErr } = await supabase.auth.updateUser({
-        password,
-        data: { must_change_password: false },
-      });
+      // 1. Update the password via Supabase Auth
+      const { error: updateErr } = await supabase.auth.updateUser({ password });
       if (updateErr) throw updateErr;
-      // Refresh session so mustChangePassword is cleared in the store
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (sessionData.session) setSession(sessionData.session);
+
+      // 2. Tell the backend to clear the must_change_password flag — this
+      //    lives in app_metadata, which only the service role can modify,
+      //    so it cannot be cleared via the client-side updateUser() call above
+      if (session) {
+        await confirmPasswordChanged(session.access_token);
+      }
+
+      // 3. Refresh the session so the new access token no longer carries
+      //    must_change_password (JWT claims are baked in at issuance time)
+      const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+      if (refreshError) throw refreshError;
+      if (refreshed.session) setSession(refreshed.session);
+
       navigate('/', { replace: true });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to update password');

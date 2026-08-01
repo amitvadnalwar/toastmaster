@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, Calendar, X } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { createMember } from '@/services/memberService';
+import { showAlert } from '@/store/alertStore';
 import Button from '@/components/ui/Button';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -51,10 +52,10 @@ export default function AdminNewMemberPage() {
         { name: name.trim(), email: email.trim().toLowerCase(), phone: phone.trim(), birthday },
         session.access_token,
       );
-      alert(`An invitation email has been sent to ${email.trim()} to set up their account.`);
+      await showAlert(`An invitation email has been sent to ${email.trim()} to set up their account.`);
       navigate('/admin/members', { replace: true });
     } catch (e: unknown) {
-      alert(e instanceof Error ? e.message : 'Failed to create member');
+      await showAlert(e instanceof Error ? e.message : 'Failed to create member');
     } finally {
       setSubmitting(false);
     }

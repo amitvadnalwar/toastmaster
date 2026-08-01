@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { PageSpinner } from '@/components/ui/Spinner';
+import AlertDialog from '@/components/ui/AlertDialog';
 
 import LoginPage from '@/pages/auth/LoginPage';
 import ChangePasswordPage from '@/pages/auth/ChangePasswordPage';
@@ -55,33 +56,36 @@ export default function App() {
   }, [setSession, clearAuth]);
 
   return (
-    <Routes>
-      <Route path="/" element={<RootRedirect />} />
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/change-password" element={<ChangePasswordPage />} />
+    <>
+      <AlertDialog />
+      <Routes>
+        <Route path="/" element={<RootRedirect />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/change-password" element={<ChangePasswordPage />} />
 
-      {/* Admin */}
-      <Route path="/admin" element={<ProtectedRoute roles={[...ADMIN]}><AdminHomePage /></ProtectedRoute>} />
-      <Route path="/admin/meetings" element={<ProtectedRoute roles={[...ADMIN]}><AdminMeetingsPage /></ProtectedRoute>} />
-      <Route path="/admin/meetings/new" element={<ProtectedRoute roles={[...ADMIN]}><AdminNewMeetingPage /></ProtectedRoute>} />
-      <Route path="/admin/meetings/:id" element={<ProtectedRoute roles={[...ADMIN]}><AdminMeetingDetailPage /></ProtectedRoute>} />
-      <Route path="/admin/roles" element={<ProtectedRoute roles={['super_admin']}><AdminRolesPage /></ProtectedRoute>} />
-      <Route path="/admin/members" element={<ProtectedRoute roles={['super_admin']}><AdminMembersPage /></ProtectedRoute>} />
-      <Route path="/admin/members/new" element={<ProtectedRoute roles={['super_admin']}><AdminNewMemberPage /></ProtectedRoute>} />
-      <Route path="/admin/members/:id" element={<ProtectedRoute roles={['super_admin']}><AdminMemberDetailPage /></ProtectedRoute>} />
-      <Route path="/admin/profile" element={<ProtectedRoute roles={[...ADMIN]}><AdminProfilePage /></ProtectedRoute>} />
+        {/* Admin */}
+        <Route path="/admin" element={<ProtectedRoute roles={[...ADMIN]}><AdminHomePage /></ProtectedRoute>} />
+        <Route path="/admin/meetings" element={<ProtectedRoute roles={[...ADMIN]}><AdminMeetingsPage /></ProtectedRoute>} />
+        <Route path="/admin/meetings/new" element={<ProtectedRoute roles={[...ADMIN]}><AdminNewMeetingPage /></ProtectedRoute>} />
+        <Route path="/admin/meetings/:id" element={<ProtectedRoute roles={[...ADMIN]}><AdminMeetingDetailPage /></ProtectedRoute>} />
+        <Route path="/admin/roles" element={<ProtectedRoute roles={['super_admin']}><AdminRolesPage /></ProtectedRoute>} />
+        <Route path="/admin/members" element={<ProtectedRoute roles={['super_admin']}><AdminMembersPage /></ProtectedRoute>} />
+        <Route path="/admin/members/new" element={<ProtectedRoute roles={['super_admin']}><AdminNewMemberPage /></ProtectedRoute>} />
+        <Route path="/admin/members/:id" element={<ProtectedRoute roles={['super_admin']}><AdminMemberDetailPage /></ProtectedRoute>} />
+        <Route path="/admin/profile" element={<ProtectedRoute roles={[...ADMIN]}><AdminProfilePage /></ProtectedRoute>} />
 
-      {/* Member */}
-      <Route path="/home" element={<ProtectedRoute roles={['member']}><MemberHomePage /></ProtectedRoute>} />
-      <Route path="/meetings" element={<ProtectedRoute roles={['member']}><MemberMeetingsPage /></ProtectedRoute>} />
-      <Route path="/meetings/:id" element={<ProtectedRoute roles={['member']}><MemberMeetingDetailPage /></ProtectedRoute>} />
-      <Route path="/meetings/:id/apply" element={<ProtectedRoute roles={['member']}><MemberApplyRolePage /></ProtectedRoute>} />
-      <Route path="/meetings/:id/feedback" element={<ProtectedRoute roles={['member']}><MemberFeedbackPage /></ProtectedRoute>} />
-      <Route path="/scan" element={<ProtectedRoute roles={['member']}><MemberScanPage /></ProtectedRoute>} />
-      <Route path="/members" element={<ProtectedRoute roles={['member']}><MemberMembersPage /></ProtectedRoute>} />
-      <Route path="/profile" element={<ProtectedRoute roles={['member']}><MemberProfilePage /></ProtectedRoute>} />
+        {/* Member */}
+        <Route path="/home" element={<ProtectedRoute roles={['member']}><MemberHomePage /></ProtectedRoute>} />
+        <Route path="/meetings" element={<ProtectedRoute roles={['member']}><MemberMeetingsPage /></ProtectedRoute>} />
+        <Route path="/meetings/:id" element={<ProtectedRoute roles={['member']}><MemberMeetingDetailPage /></ProtectedRoute>} />
+        <Route path="/meetings/:id/apply" element={<ProtectedRoute roles={['member']}><MemberApplyRolePage /></ProtectedRoute>} />
+        <Route path="/meetings/:id/feedback" element={<ProtectedRoute roles={['member']}><MemberFeedbackPage /></ProtectedRoute>} />
+        <Route path="/scan" element={<ProtectedRoute roles={['member']}><MemberScanPage /></ProtectedRoute>} />
+        <Route path="/members" element={<ProtectedRoute roles={['member']}><MemberMembersPage /></ProtectedRoute>} />
+        <Route path="/profile" element={<ProtectedRoute roles={['member']}><MemberProfilePage /></ProtectedRoute>} />
 
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </>
   );
 }

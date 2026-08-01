@@ -5,6 +5,7 @@ import { useAuthStore } from '@/store/authStore';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import { Eye, EyeOff } from 'lucide-react';
+import { CLUB_SHORT_NAME } from '@/lib/constants';
 
 export default function LoginPage() {
   const { session, _hydrated } = useAuthStore();
@@ -41,7 +42,7 @@ export default function LoginPage() {
           <div className="w-16 h-16 rounded-2xl bg-brand flex items-center justify-center mb-4 shadow-lg">
             <span className="text-white text-2xl font-black">T</span>
           </div>
-          <h1 className="text-2xl font-black text-gray-900">Toastmaster PSE</h1>
+          <h1 className="text-2xl font-black text-gray-900">{CLUB_SHORT_NAME}</h1>
           <p className="text-sm text-gray-500 mt-1">Pune South East</p>
         </div>
 

@@ -1,3 +1,5 @@
+import uuid
+
 from fastapi import HTTPException, status
 
 from app.db import meetings as db_meetings
@@ -403,7 +405,18 @@ async def delete_role(role_id: str) -> None:
 # ── QR check-in ───────────────────────────────────────────────────────────
 
 async def checkin(qr_token: str, user: CurrentUser) -> CheckinOut:
-    meeting_row = await db_meetings.get_by_qr_token(qr_token)
+    # The printed/scanned QR encodes the meeting's id (same convention the
+    # guest check-in flow already uses) — the frontend extracts it from the
+    # `toastmasters://join?meeting_id=...` deep link before calling this.
+    # Validate the format ourselves too: a camera can scan any QR code in
+    # the world, and an unrelated one would otherwise reach the database as
+    # a malformed uuid and crash with an unhandled 500.
+    try:
+        uuid.UUID(qr_token)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invalid QR code")
+
+    meeting_row = await db_meetings.get_by_id(qr_token)
     if not meeting_row:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invalid QR code")
     if meeting_row["club_id"] != user.club_id:

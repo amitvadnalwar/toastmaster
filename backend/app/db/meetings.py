@@ -208,17 +208,6 @@ async def delete_role(role_id: str) -> None:
 
 # ── QR check-in ───────────────────────────────────────────────────────────
 
-async def get_by_qr_token(qr_token: str) -> dict | None:
-    result = (
-        supabase.table("meetings")
-        .select("*")
-        .eq("qr_token", qr_token)
-        .limit(1)
-        .execute()
-    )
-    return result.data[0] if result.data else None
-
-
 async def get_attendance(meeting_id: str, member_id: str) -> dict | None:
     result = (
         supabase.table("meeting_attendance")

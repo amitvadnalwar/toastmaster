@@ -9,6 +9,18 @@ function isPermissionDenied(message: string): boolean {
   return /NotAllowedError|Permission denied|denied/i.test(message);
 }
 
+// The printed/scanned QR encodes a deep link, e.g.
+// "toastmasters://join?meeting_id=<uuid>" — same convention the guest
+// check-in flow already uses. Falls back to treating the scanned text as a
+// bare id if it isn't a URL at all.
+function extractMeetingId(decodedText: string): string {
+  try {
+    return new URL(decodedText).searchParams.get('meeting_id') ?? decodedText;
+  } catch {
+    return decodedText;
+  }
+}
+
 export default function MemberScanPage() {
   const navigate = useNavigate();
   const { session } = useAuthStore();
@@ -51,7 +63,8 @@ export default function MemberScanPage() {
         await scanner.stop();
       } catch { /* already stopping */ }
       try {
-        const result = await checkinMeeting(decodedText, accessToken);
+        const meetingId = extractMeetingId(decodedText);
+        const result = await checkinMeeting(meetingId, accessToken);
         navigate(`/meetings/${result.meeting.id}/feedback`, { replace: true });
       } catch (e: unknown) {
         setError(e instanceof Error ? e.message : 'Invalid QR code. Please try again.');

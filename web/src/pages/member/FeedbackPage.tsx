@@ -129,7 +129,6 @@ export default function MemberFeedbackPage() {
       }));
       await submitFeedback(id, payload, session.access_token);
       await showAlert('Thank you for your feedback!');
-      navigate(`/meetings/${id}`);
     } catch (e: unknown) {
       await showAlert(e instanceof Error ? e.message : 'Failed to submit feedback. Please try again.');
     } finally {

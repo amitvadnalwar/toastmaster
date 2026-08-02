@@ -136,20 +136,29 @@ export interface CheckinResult {
   already_checked_in: boolean;
 }
 
+// 1 = Need Improvement, 2 = Ok, 3 = Super
+export type SmileyRating = 1 | 2 | 3;
+
 export interface SpeakerFeedback {
   id: string;
   meeting_id: string;
   from_member_id: string;
   speaker_member_id: string;
   speaker_name?: string | null;
-  rating: number;
+  content_rating: number;
+  structure_rating: number;
+  confidence_rating: number;
+  interaction_rating: number;
   comment?: string | null;
   created_at: string;
 }
 
 export interface SpeakerFeedbackPayload {
   speaker_member_id: string;
-  rating: number;
+  content_rating: number;
+  structure_rating: number;
+  confidence_rating: number;
+  interaction_rating: number;
   comment?: string | null;
 }
 

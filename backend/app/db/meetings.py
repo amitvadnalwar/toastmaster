@@ -264,7 +264,10 @@ async def upsert_feedback(
     meeting_id: str,
     from_member_id: str,
     speaker_member_id: str,
-    rating: int,
+    content_rating: int,
+    structure_rating: int,
+    confidence_rating: int,
+    interaction_rating: int,
     comment: str | None,
 ) -> dict:
     result = (
@@ -274,7 +277,10 @@ async def upsert_feedback(
                 "meeting_id": meeting_id,
                 "from_member_id": from_member_id,
                 "speaker_member_id": speaker_member_id,
-                "rating": rating,
+                "content_rating": content_rating,
+                "structure_rating": structure_rating,
+                "confidence_rating": confidence_rating,
+                "interaction_rating": interaction_rating,
                 "comment": comment,
             },
             on_conflict="meeting_id,from_member_id,speaker_member_id",

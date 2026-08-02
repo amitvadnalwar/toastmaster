@@ -450,16 +450,14 @@ async def submit_feedback(
 
     results = []
     for fb in body.feedbacks:
-        if not (1 <= fb.rating <= 5):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Rating must be between 1 and 5",
-            )
         row = await db_meetings.upsert_feedback(
             meeting_id=meeting_id,
             from_member_id=member["id"],
             speaker_member_id=fb.speaker_member_id,
-            rating=fb.rating,
+            content_rating=fb.content_rating,
+            structure_rating=fb.structure_rating,
+            confidence_rating=fb.confidence_rating,
+            interaction_rating=fb.interaction_rating,
             comment=fb.comment,
         )
         results.append(SpeakerFeedbackOut(**row))

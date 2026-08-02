@@ -1,5 +1,5 @@
 from enum import StrEnum
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class MeetingStatus(StrEnum):
@@ -133,10 +133,14 @@ class CheckinOut(BaseModel):
 
 
 # ── Speaker feedback ──────────────────────────────────────────────────────
+# Rating scale: 1 = Need Improvement, 2 = Ok, 3 = Super
 
 class SpeakerFeedbackIn(BaseModel):
     speaker_member_id: str
-    rating: int   # 1–5
+    content_rating: int = Field(ge=1, le=3)
+    structure_rating: int = Field(ge=1, le=3)
+    confidence_rating: int = Field(ge=1, le=3)
+    interaction_rating: int = Field(ge=1, le=3)
     comment: str | None = None
 
 
@@ -150,6 +154,9 @@ class SpeakerFeedbackOut(BaseModel):
     from_member_id: str
     speaker_member_id: str
     speaker_name: str | None = None
-    rating: int
+    content_rating: int
+    structure_rating: int
+    confidence_rating: int
+    interaction_rating: int
     comment: str | None = None
     created_at: str

@@ -414,10 +414,12 @@ async def checkin(qr_token: str, user: CurrentUser) -> CheckinOut:
     try:
         uuid.UUID(qr_token)
     except ValueError:
+        print(f"[checkin] rejected — not a valid uuid: {qr_token!r}")
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invalid QR code")
 
     meeting_row = await db_meetings.get_by_id(qr_token)
     if not meeting_row:
+        print(f"[checkin] rejected — no meeting with id: {qr_token!r}")
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invalid QR code")
     if meeting_row["club_id"] != user.club_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your club")

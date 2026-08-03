@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-  ChevronLeft, Maximize, Calendar, MapPin, Star, MessageSquare, ArrowRight,
+  ChevronLeft, Maximize, Calendar, MapPin, Star, MessageSquare, ArrowRight, ClipboardList,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { getMeetingRoster } from '@/services/meetingService';
@@ -64,7 +64,7 @@ export default function MemberMeetingDetailPage() {
   }
   if (!data) return null;
 
-  const { meeting, roster } = data;
+  const { meeting, roster, already_checked_in } = data;
   const status = STATUS_CFG[meeting.status];
   const isPublished = meeting.status === 'published';
   const isPast = isPastMeeting(meeting.scheduled_at);
@@ -101,6 +101,23 @@ export default function MemberMeetingDetailPage() {
             </div>
           )}
         </div>
+
+        {/* Already checked in — link to the feedback/voting flow */}
+        {already_checked_in && (
+          <button
+            onClick={() => navigate(`/meetings/${id}/feedback`)}
+            className="w-full flex items-center justify-between bg-green-50 border border-green-200 rounded-2xl p-4 mb-5"
+          >
+            <div className="flex items-center gap-3">
+              <ClipboardList size={20} className="text-green-600" />
+              <div className="text-left">
+                <p className="text-[11px] font-semibold text-green-600 tracking-wide mb-0.5">CHECKED IN</p>
+                <p className="text-sm font-bold text-gray-900">Go to Feedback &amp; Voting</p>
+              </div>
+            </div>
+            <ArrowRight size={16} className="text-green-600" />
+          </button>
+        )}
 
         {/* My role */}
         {myAssignment && (

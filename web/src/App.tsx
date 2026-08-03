@@ -25,7 +25,6 @@ import MemberMeetingDetailPage from '@/pages/member/MeetingDetailPage';
 import MemberApplyRolePage from '@/pages/member/ApplyRolePage';
 import MemberScanPage from '@/pages/member/ScanPage';
 import MemberFeedbackPage from '@/pages/member/FeedbackPage';
-import MemberMeetingWrapUpPage from '@/pages/member/MeetingWrapUpPage';
 import MemberProfilePage from '@/pages/member/ProfilePage';
 import MemberMembersPage from '@/pages/member/MembersPage';
 
@@ -81,7 +80,6 @@ export default function App() {
         <Route path="/meetings/:id" element={<ProtectedRoute roles={['member']}><MemberMeetingDetailPage /></ProtectedRoute>} />
         <Route path="/meetings/:id/apply" element={<ProtectedRoute roles={['member']}><MemberApplyRolePage /></ProtectedRoute>} />
         <Route path="/meetings/:id/feedback" element={<ProtectedRoute roles={['member']}><MemberFeedbackPage /></ProtectedRoute>} />
-        <Route path="/meetings/:id/wrapup" element={<ProtectedRoute roles={['member']}><MemberMeetingWrapUpPage /></ProtectedRoute>} />
         <Route path="/scan" element={<ProtectedRoute roles={['member']}><MemberScanPage /></ProtectedRoute>} />
         <Route path="/members" element={<ProtectedRoute roles={['member']}><MemberMembersPage /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute roles={['member']}><MemberProfilePage /></ProtectedRoute>} />

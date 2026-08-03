@@ -129,6 +129,7 @@ export interface MeetingRoleAssignment {
 export interface MeetingWithRoster {
   meeting: Meeting;
   roster: MeetingRoleAssignment[];
+  already_checked_in?: boolean;
 }
 
 export interface CheckinResult {

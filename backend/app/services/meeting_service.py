@@ -73,14 +73,22 @@ async def get_current_meeting(club_id: str) -> dict:
     }
 
 
-async def get_meeting_with_roster(meeting_id: str, club_id: str) -> dict:
+async def get_meeting_with_roster(meeting_id: str, user: CurrentUser) -> dict:
     meeting_row = await _require_meeting(meeting_id)
-    if meeting_row["club_id"] != club_id:
+    if meeting_row["club_id"] != user.club_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your club")
     roster_rows = await db_meetings.get_roster(meeting_id)
+
+    already_checked_in = False
+    member = await db_members.get_by_auth_user_id(user.id)
+    if member:
+        attendance = await db_meetings.get_attendance(meeting_id, member["id"])
+        already_checked_in = attendance is not None
+
     return {
         "meeting": _meeting_out(meeting_row).model_dump(),
         "roster": [_role_out(r).model_dump() for r in roster_rows],
+        "already_checked_in": already_checked_in,
     }
 
 

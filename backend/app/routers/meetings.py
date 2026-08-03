@@ -103,7 +103,7 @@ async def get_meeting_roster(
     meeting_id: str,
     user: CurrentUser = Depends(get_current_user),
 ) -> ApiResponse[dict]:
-    result = await meeting_service.get_meeting_with_roster(meeting_id, user.club_id)
+    result = await meeting_service.get_meeting_with_roster(meeting_id, user)
     return ApiResponse(data=result)
 
 

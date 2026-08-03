@@ -264,22 +264,74 @@ async def get_my_feedback(meeting_id: str, from_member_id: str) -> list[dict]:
     return rows
 
 
-async def get_all_feedback(meeting_id: str) -> list[dict]:
+async def publish_speaker_feedback(meeting_id: str, speaker_member_id: str) -> None:
+    (
+        supabase.table("speaker_feedback")
+        .update({"published": True})
+        .eq("meeting_id", meeting_id)
+        .eq("speaker_member_id", speaker_member_id)
+        .execute()
+    )
+
+
+async def get_speakers_feedback_status(meeting_id: str) -> list[dict]:
     result = (
         supabase.table("speaker_feedback")
-        .select(
-            "*, "
-            "speaker:members!speaker_feedback_speaker_member_id_fkey(name), "
-            "reviewer:members!speaker_feedback_from_member_id_fkey(name)"
-        )
+        .select("speaker_member_id, published")
         .eq("meeting_id", meeting_id)
         .execute()
     )
+    status: dict[str, dict] = {}
+    for row in result.data:
+        s = status.setdefault(row["speaker_member_id"], {"has_feedback": False, "published": False})
+        s["has_feedback"] = True
+        if row["published"]:
+            s["published"] = True
+    return [{"speaker_member_id": k, **v} for k, v in status.items()]
+
+
+async def get_received_feedback(meeting_id: str, speaker_member_id: str) -> list[dict]:
+    # Deliberately excludes from_member_id — feedback is shown to the
+    # speaker anonymously, so the reviewer's identity is never selected.
+    result = (
+        supabase.table("speaker_feedback")
+        .select("id, meeting_id, content_rating, structure_rating, confidence_rating, interaction_rating, comment, created_at")
+        .eq("meeting_id", meeting_id)
+        .eq("speaker_member_id", speaker_member_id)
+        .eq("published", True)
+        .execute()
+    )
+    return result.data
+
+
+async def get_speaking_history(member_id: str) -> list[dict]:
+    assignments = (
+        supabase.table("meeting_roles")
+        .select("meeting_id, meetings(title, scheduled_at)")
+        .eq("member_id", member_id)
+        .eq("role", "speaker")
+        .execute()
+    )
+    feedback = (
+        supabase.table("speaker_feedback")
+        .select("meeting_id")
+        .eq("speaker_member_id", member_id)
+        .eq("published", True)
+        .execute()
+    )
+    counts: dict[str, int] = {}
+    for f in feedback.data:
+        counts[f["meeting_id"]] = counts.get(f["meeting_id"], 0) + 1
+
     rows = []
-    for r in result.data:
-        speaker = r.pop("speaker", None) or {}
-        reviewer = r.pop("reviewer", None) or {}
-        rows.append({**r, "speaker_name": speaker.get("name"), "from_member_name": reviewer.get("name")})
+    for a in assignments.data:
+        meeting = a.get("meetings") or {}
+        rows.append({
+            "meeting_id": a["meeting_id"],
+            "title": meeting.get("title", "—"),
+            "scheduled_at": meeting.get("scheduled_at", ""),
+            "feedback_count": counts.get(a["meeting_id"], 0),
+        })
     return rows
 
 

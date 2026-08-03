@@ -1,35 +1,17 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, Star, Frown, Meh, Smile } from 'lucide-react';
+import { ChevronLeft, Star } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
-import { getMeetingRoster, getAllFeedback } from '@/services/meetingService';
+import { getMeetingRoster } from '@/services/meetingService';
 import { getMemberVotingState } from '@/services/voteService';
 import { Skeleton } from '@/components/ui/Skeleton';
-import type { Meeting, AdminSpeakerFeedback, MyVotingState, VoteCategory } from '@/types';
+import type { Meeting, MyVotingState, VoteCategory } from '@/types';
 
-const RATING_LABELS: Record<number, string> = { 1: 'Need Improvement', 2: 'Ok', 3: 'Super' };
-const RATING_ICONS: Record<number, typeof Frown> = { 1: Frown, 2: Meh, 3: Smile };
-const FEEDBACK_FIELDS: { key: 'content_rating' | 'structure_rating' | 'confidence_rating' | 'interaction_rating'; label: string }[] = [
-  { key: 'content_rating', label: 'Content' },
-  { key: 'structure_rating', label: 'Structure' },
-  { key: 'confidence_rating', label: 'Confidence' },
-  { key: 'interaction_rating', label: 'Interact' },
-];
 const VOTE_CATEGORY_LABELS: Record<VoteCategory, string> = {
   best_speaker: 'Best Speaker',
   best_evaluator: 'Best Evaluator',
   best_mrp: 'Best MRP',
 };
-
-function RatingBadge({ value }: { value: number }) {
-  const Icon = RATING_ICONS[value] ?? Meh;
-  return (
-    <span className="inline-flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-full px-2 py-0.5">
-      <Icon size={12} className="text-gray-500" />
-      <span className="text-[11px] font-semibold text-gray-600">{RATING_LABELS[value] ?? '—'}</span>
-    </span>
-  );
-}
 
 export default function MemberFeedbackDetailPage() {
   const { id, memberId } = useParams<{ id: string; memberId: string }>();
@@ -38,7 +20,6 @@ export default function MemberFeedbackDetailPage() {
 
   const [meeting, setMeeting] = useState<Meeting | null>(null);
   const [memberName, setMemberName] = useState('');
-  const [givenFeedback, setGivenFeedback] = useState<AdminSpeakerFeedback[]>([]);
   const [votingState, setVotingState] = useState<MyVotingState>({ votes: [], rating: null });
   const [memberMap, setMemberMap] = useState<Map<string, string>>(new Map());
   const [fetching, setFetching] = useState(true);
@@ -47,16 +28,14 @@ export default function MemberFeedbackDetailPage() {
     if (!session || !id || !memberId) return;
     setFetching(true);
     try {
-      const [rosterData, feedbackList, voting] = await Promise.all([
+      const [rosterData, voting] = await Promise.all([
         getMeetingRoster(id, session.access_token),
-        getAllFeedback(id, session.access_token),
         getMemberVotingState(id, memberId, session.access_token),
       ]);
       setMeeting(rosterData.meeting);
       const map = new Map(rosterData.roster.map((r) => [r.member_id, r.member_name ?? '—']));
       setMemberMap(map);
       setMemberName(map.get(memberId) ?? '—');
-      setGivenFeedback(feedbackList.filter((f) => f.from_member_id === memberId));
       setVotingState(voting);
     } catch { /* ignore */ } finally {
       setFetching(false);
@@ -90,29 +69,6 @@ export default function MemberFeedbackDetailPage() {
           <>
             <h2 className="text-lg font-bold text-gray-900 mb-1">{memberName}</h2>
             <p className="text-[13px] text-gray-500 mb-5">{meeting?.title}</p>
-
-            {/* Speaker feedback given */}
-            <SectionLabel>Speaker Feedback Given</SectionLabel>
-            {givenFeedback.length === 0 ? (
-              <div className="bg-white rounded-2xl p-4 shadow-sm mb-5 text-center text-[13px] text-gray-400">No speaker feedback submitted</div>
-            ) : (
-              <div className="mb-5">
-                {givenFeedback.map((f) => (
-                  <div key={f.id} className="bg-white rounded-2xl p-4 mb-2.5 shadow-sm">
-                    <p className="text-[15px] font-bold text-gray-900 mb-2">{f.speaker_name ?? memberMap.get(f.speaker_member_id) ?? '—'}</p>
-                    <div className="flex flex-wrap gap-1.5 mb-2">
-                      {FEEDBACK_FIELDS.map(({ key, label }) => (
-                        <div key={key} className="flex items-center gap-1">
-                          <span className="text-[11px] text-gray-400">{label}:</span>
-                          <RatingBadge value={f[key]} />
-                        </div>
-                      ))}
-                    </div>
-                    {f.comment && <p className="text-[13px] text-gray-600 italic">"{f.comment}"</p>}
-                  </div>
-                ))}
-              </div>
-            )}
 
             {/* Votes */}
             <SectionLabel>Votes</SectionLabel>

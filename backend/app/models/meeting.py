@@ -168,16 +168,28 @@ class SpeakerFeedbackOut(BaseModel):
     created_at: str
 
 
-class AdminSpeakerFeedbackOut(BaseModel):
+class ReceivedFeedbackOut(BaseModel):
+    """A speaker's own received feedback — deliberately has no reviewer
+    identity anywhere in it. Only returned once an admin has published it."""
     id: str
     meeting_id: str
-    from_member_id: str
-    from_member_name: str | None = None
-    speaker_member_id: str
-    speaker_name: str | None = None
     content_rating: int
     structure_rating: int
     confidence_rating: int
     interaction_rating: int
     comment: str | None = None
     created_at: str
+
+
+class SpeakerFeedbackStatusOut(BaseModel):
+    """Publish-gate status for a speaker — no feedback content, just booleans."""
+    speaker_member_id: str
+    has_feedback: bool
+    published: bool
+
+
+class SpeakingHistoryItemOut(BaseModel):
+    meeting_id: str
+    title: str
+    scheduled_at: str
+    feedback_count: int

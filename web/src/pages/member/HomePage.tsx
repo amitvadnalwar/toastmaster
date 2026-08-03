@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bell, Calendar, Clock, MapPin, ChevronRight } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
-import { getAllMeetings, getMeetingRoster } from '@/services/meetingService';
+import { getAllMeetings, getMeetingRoster, getSpeakingHistory } from '@/services/meetingService';
 import { getClubMembers, getMe } from '@/services/memberService';
 import { getClub } from '@/services/clubService';
 import { MemberBottomNav } from '@/components/layout/BottomNav';
@@ -37,18 +37,23 @@ export default function MemberHomePage() {
   const load = useCallback(async () => {
     if (!session) return;
     const token = session.access_token;
-    const [clubRes, allRes, membersRes, meRes] = await Promise.allSettled([
+    const [clubRes, allRes, membersRes, meRes, historyRes] = await Promise.allSettled([
       getClub(token),
       getAllMeetings(token),
       getClubMembers(token),
       getMe(token),
+      getSpeakingHistory(token),
     ]);
 
     const club = clubRes.status === 'fulfilled' ? clubRes.value : null;
     const allMeetings = allRes.status === 'fulfilled' ? allRes.value : [];
     const members = membersRes.status === 'fulfilled' ? membersRes.value : [];
     const clubRole = meRes.status === 'fulfilled' ? meRes.value.club_role : 'member';
-    const stats = { speeches: 12, feedbacks: 8 };
+    const history = historyRes.status === 'fulfilled' ? historyRes.value : [];
+    const stats = {
+      speeches: history.length,
+      feedbacks: history.reduce((sum, m) => sum + m.feedback_count, 0),
+    };
 
     const now = new Date();
     const future = allMeetings
@@ -149,10 +154,14 @@ export default function MemberHomePage() {
           )}
 
           {/* My Progress */}
-          <div className="mx-4 mt-5 mb-2.5">
+          <div className="mx-4 mt-5 mb-2.5 flex items-center justify-between">
             <h2 className="text-base font-bold text-gray-900">My Progress</h2>
+            <button onClick={() => navigate('/feedback-history')} className="text-[13px] text-brand font-semibold">View Feedback</button>
           </div>
-          <div className="mx-4 bg-white rounded-2xl shadow-sm flex items-center py-5 px-2">
+          <button
+            onClick={() => navigate('/feedback-history')}
+            className="w-[calc(100%-2rem)] mx-4 bg-white rounded-2xl shadow-sm flex items-center py-5 px-2 active:scale-[0.99] transition-transform"
+          >
             <ProgressStat label="Speeches" num={stats.speeches} />
             <div className="w-px h-13 bg-gray-100" style={{ height: 52 }} />
             <ProgressStat label="Feedbacks" num={stats.feedbacks} />
@@ -161,7 +170,7 @@ export default function MemberHomePage() {
               <ProgressRing percent={progressPct} />
               <span className="absolute text-sm font-extrabold text-gray-900">{progressPct}%</span>
             </div>
-          </div>
+          </button>
 
           {/* Upcoming Schedule */}
           <div className="mx-4 mt-5 mb-2.5 flex items-center justify-between">

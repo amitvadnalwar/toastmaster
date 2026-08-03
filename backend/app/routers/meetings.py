@@ -4,7 +4,6 @@ from app.middleware.auth import CurrentUser, get_current_user, require_admin, re
 from app.models.common import ApiResponse
 from app.models.meeting import (
     AdminAssignRoleIn,
-    AdminSpeakerFeedbackOut,
     AttendanceOut,
     CheckinIn,
     CheckinOut,
@@ -16,7 +15,10 @@ from app.models.meeting import (
     MeetingOut,
     MeetingRoleAssignmentOut,
     MeetingStatusUpdateIn,
+    ReceivedFeedbackOut,
     SpeakerFeedbackOut,
+    SpeakerFeedbackStatusOut,
+    SpeakingHistoryItemOut,
     VotingStatusUpdateIn,
 )
 from app.services import meeting_service
@@ -39,6 +41,16 @@ async def get_current_meeting(
     user: CurrentUser = Depends(get_current_user),
 ) -> ApiResponse[dict]:
     result = await meeting_service.get_current_meeting(user.club_id)
+    return ApiResponse(data=result)
+
+
+# Declared before /{meeting_id} — a literal segment must come first or it
+# would be swallowed by that catch-all path parameter.
+@router.get("/speaking-history", response_model=ApiResponse[list[SpeakingHistoryItemOut]])
+async def get_speaking_history(
+    user: CurrentUser = Depends(require_member),
+) -> ApiResponse[list[SpeakingHistoryItemOut]]:
+    result = await meeting_service.get_speaking_history(user)
     return ApiResponse(data=result)
 
 
@@ -203,10 +215,32 @@ async def submit_feedback(
     return ApiResponse(data=result)
 
 
-@router.get("/{meeting_id}/feedback", response_model=ApiResponse[list[AdminSpeakerFeedbackOut]])
-async def get_all_feedback(
+@router.get("/{meeting_id}/feedback/received", response_model=ApiResponse[list[ReceivedFeedbackOut]])
+async def get_received_feedback(
+    meeting_id: str,
+    user: CurrentUser = Depends(require_member),
+) -> ApiResponse[list[ReceivedFeedbackOut]]:
+    """The caller's own published feedback as a speaker — anonymous, no reviewer identity."""
+    result = await meeting_service.get_received_feedback(meeting_id, user)
+    return ApiResponse(data=result)
+
+
+@router.get("/{meeting_id}/speakers-feedback-status", response_model=ApiResponse[list[SpeakerFeedbackStatusOut]])
+async def get_speakers_feedback_status(
     meeting_id: str,
     user: CurrentUser = Depends(require_admin),
-) -> ApiResponse[list[AdminSpeakerFeedbackOut]]:
-    result = await meeting_service.get_all_feedback(meeting_id, user)
+) -> ApiResponse[list[SpeakerFeedbackStatusOut]]:
+    """Admin-only, and deliberately exposes no feedback content — just
+    whether each speaker has feedback and whether it's been published."""
+    result = await meeting_service.get_speakers_feedback_status(meeting_id, user)
     return ApiResponse(data=result)
+
+
+@router.post("/{meeting_id}/speakers/{speaker_member_id}/publish-feedback", response_model=ApiResponse[None])
+async def publish_speaker_feedback(
+    meeting_id: str,
+    speaker_member_id: str,
+    user: CurrentUser = Depends(require_admin),
+) -> ApiResponse[None]:
+    await meeting_service.publish_speaker_feedback(meeting_id, speaker_member_id, user)
+    return ApiResponse(data=None)

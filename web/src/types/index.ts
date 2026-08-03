@@ -154,14 +154,35 @@ export interface SpeakerFeedback {
   created_at: string;
 }
 
-export interface AdminSpeakerFeedback extends SpeakerFeedback {
-  from_member_name?: string | null;
-}
-
 export interface Attendance {
   member_id: string;
   member_name?: string | null;
   checked_in_at: string;
+}
+
+// A speaker's own received feedback — no reviewer identity, ever.
+export interface ReceivedFeedback {
+  id: string;
+  meeting_id: string;
+  content_rating: number;
+  structure_rating: number;
+  confidence_rating: number;
+  interaction_rating: number;
+  comment?: string | null;
+  created_at: string;
+}
+
+export interface SpeakerFeedbackStatus {
+  speaker_member_id: string;
+  has_feedback: boolean;
+  published: boolean;
+}
+
+export interface SpeakingHistoryItem {
+  meeting_id: string;
+  title: string;
+  scheduled_at: string;
+  feedback_count: number;
 }
 
 export interface SpeakerFeedbackPayload {

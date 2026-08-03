@@ -28,6 +28,8 @@ import MemberScanPage from '@/pages/member/ScanPage';
 import MemberFeedbackPage from '@/pages/member/FeedbackPage';
 import FeedbackDetailsPage from '@/pages/member/FeedbackDetailsPage';
 import MemberFeedbackDetailPage from '@/pages/member/MemberFeedbackDetailPage';
+import FeedbackHistoryPage from '@/pages/member/FeedbackHistoryPage';
+import MeetingFeedbackReceivedPage from '@/pages/member/MeetingFeedbackReceivedPage';
 import MemberProfilePage from '@/pages/member/ProfilePage';
 import MemberMembersPage from '@/pages/member/MembersPage';
 
@@ -82,11 +84,13 @@ export default function App() {
         <Route path="/meetings/:id" element={<ProtectedRoute roles={['member', 'admin']}><MemberMeetingDetailPage /></ProtectedRoute>} />
         <Route path="/meetings/:id/apply" element={<ProtectedRoute roles={['member', 'admin']}><MemberApplyRolePage /></ProtectedRoute>} />
         <Route path="/meetings/:id/feedback" element={<ProtectedRoute roles={['member', 'admin']}><MemberFeedbackPage /></ProtectedRoute>} />
-        <Route path="/meetings/:id/feedback-details" element={<ProtectedRoute roles={['admin']}><FeedbackDetailsPage /></ProtectedRoute>} />
-        <Route path="/meetings/:id/feedback-details/:memberId" element={<ProtectedRoute roles={['admin']}><MemberFeedbackDetailPage /></ProtectedRoute>} />
+        <Route path="/meetings/:id/feedback-details" element={<ProtectedRoute roles={['admin', 'super_admin']}><FeedbackDetailsPage /></ProtectedRoute>} />
+        <Route path="/meetings/:id/feedback-details/:memberId" element={<ProtectedRoute roles={['admin', 'super_admin']}><MemberFeedbackDetailPage /></ProtectedRoute>} />
         <Route path="/scan" element={<ProtectedRoute roles={['member', 'admin']}><MemberScanPage /></ProtectedRoute>} />
         <Route path="/members" element={<ProtectedRoute roles={['member', 'admin']}><MemberMembersPage /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute roles={['member', 'admin']}><MemberProfilePage /></ProtectedRoute>} />
+        <Route path="/feedback-history" element={<ProtectedRoute roles={['member', 'admin']}><FeedbackHistoryPage /></ProtectedRoute>} />
+        <Route path="/feedback-history/:meetingId" element={<ProtectedRoute roles={['member', 'admin']}><MeetingFeedbackReceivedPage /></ProtectedRoute>} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

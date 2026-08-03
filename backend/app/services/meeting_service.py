@@ -7,7 +7,6 @@ from app.db import members as db_members
 from app.middleware.auth import CurrentUser
 from app.models.meeting import (
     AdminAssignRoleIn,
-    AdminSpeakerFeedbackOut,
     AttendanceOut,
     CheckinOut,
     MeetingCreateIn,
@@ -16,10 +15,13 @@ from app.models.meeting import (
     MeetingRole,
     MeetingRoleAssignmentOut,
     MeetingStatus,
+    ReceivedFeedbackOut,
     SINGLETON_ROLES,
     SPEECH_DURATIONS,
     RoleAssignIn,
     SpeakerFeedbackOut,
+    SpeakerFeedbackStatusOut,
+    SpeakingHistoryItemOut,
     VotingStatus,
 )
 
@@ -495,9 +497,28 @@ async def submit_feedback(
     return results
 
 
-async def get_all_feedback(meeting_id: str, user: CurrentUser) -> list[AdminSpeakerFeedbackOut]:
+async def publish_speaker_feedback(meeting_id: str, speaker_member_id: str, user: CurrentUser) -> None:
     meeting_row = await _require_meeting(meeting_id)
     if meeting_row["club_id"] != user.club_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your club")
-    rows = await db_meetings.get_all_feedback(meeting_id)
-    return [AdminSpeakerFeedbackOut(**r) for r in rows]
+    await db_meetings.publish_speaker_feedback(meeting_id, speaker_member_id)
+
+
+async def get_speakers_feedback_status(meeting_id: str, user: CurrentUser) -> list[SpeakerFeedbackStatusOut]:
+    meeting_row = await _require_meeting(meeting_id)
+    if meeting_row["club_id"] != user.club_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your club")
+    rows = await db_meetings.get_speakers_feedback_status(meeting_id)
+    return [SpeakerFeedbackStatusOut(**r) for r in rows]
+
+
+async def get_received_feedback(meeting_id: str, user: CurrentUser) -> list[ReceivedFeedbackOut]:
+    member = await _require_member(user)
+    rows = await db_meetings.get_received_feedback(meeting_id, member["id"])
+    return [ReceivedFeedbackOut(**r) for r in rows]
+
+
+async def get_speaking_history(user: CurrentUser) -> list[SpeakingHistoryItemOut]:
+    member = await _require_member(user)
+    rows = await db_meetings.get_speaking_history(member["id"])
+    return [SpeakingHistoryItemOut(**r) for r in rows]

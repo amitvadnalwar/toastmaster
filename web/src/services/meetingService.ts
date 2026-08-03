@@ -1,6 +1,5 @@
 import { apiRequest } from '@/lib/apiClient';
 import type {
-  AdminSpeakerFeedback,
   Attendance,
   CheckinResult,
   Meeting,
@@ -8,8 +7,11 @@ import type {
   MeetingRoleAssignment,
   MeetingStatus,
   MeetingWithRoster,
+  ReceivedFeedback,
   SpeakerFeedback,
   SpeakerFeedbackPayload,
+  SpeakerFeedbackStatus,
+  SpeakingHistoryItem,
   SpeechDuration,
   VotingStatus,
 } from '@/types';
@@ -175,12 +177,29 @@ export function submitFeedback(
   });
 }
 
-// ── Admin: feedback & attendance visibility ───────────────────────────────
-
-export function getAllFeedback(meetingId: string, token: string): Promise<AdminSpeakerFeedback[]> {
-  return apiRequest<AdminSpeakerFeedback[]>(`/meetings/${meetingId}/feedback`, { token });
-}
+// ── Admin: attendance visibility & feedback publish gate ──────────────────
 
 export function getAllAttendance(meetingId: string, token: string): Promise<Attendance[]> {
   return apiRequest<Attendance[]>(`/meetings/${meetingId}/attendance`, { token });
+}
+
+export function getSpeakersFeedbackStatus(meetingId: string, token: string): Promise<SpeakerFeedbackStatus[]> {
+  return apiRequest<SpeakerFeedbackStatus[]>(`/meetings/${meetingId}/speakers-feedback-status`, { token });
+}
+
+export function publishSpeakerFeedback(meetingId: string, speakerMemberId: string, token: string): Promise<void> {
+  return apiRequest<void>(`/meetings/${meetingId}/speakers/${speakerMemberId}/publish-feedback`, {
+    method: 'POST',
+    token,
+  });
+}
+
+// ── Member: own received feedback (anonymous) ─────────────────────────────
+
+export function getReceivedFeedback(meetingId: string, token: string): Promise<ReceivedFeedback[]> {
+  return apiRequest<ReceivedFeedback[]>(`/meetings/${meetingId}/feedback/received`, { token });
+}
+
+export function getSpeakingHistory(token: string): Promise<SpeakingHistoryItem[]> {
+  return apiRequest<SpeakingHistoryItem[]>('/meetings/speaking-history', { token });
 }

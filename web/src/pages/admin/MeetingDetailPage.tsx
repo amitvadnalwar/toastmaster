@@ -2,18 +2,19 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { QRCodeCanvas } from 'qrcode.react';
 import {
-  ChevronLeft, Edit2, Trash2, Check, X, Plus, Search, Share2, Minus, Lock,
+  ChevronLeft, Edit2, Trash2, Check, X, Plus, Search, Share2, Minus, Lock, CheckCircle2, Frown, Meh, Smile,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import {
   getMeetingRoster, updateMeeting, deleteMeeting,
   updateMeetingStatus, updateVotingStatus, adminAssignRole, withdrawFromRole,
+  getAllAttendance, getAllFeedback,
 } from '@/services/meetingService';
 import { getAllMembers } from '@/services/memberService';
 import Spinner from '@/components/ui/Spinner';
 import { MeetingDetailSkeleton } from '@/components/ui/Skeleton';
 import type {
-  Meeting, MeetingRole, MeetingRoleAssignment, MeetingWithRoster, VotingStatus,
+  Meeting, MeetingRole, MeetingRoleAssignment, MeetingWithRoster, VotingStatus, Attendance, AdminSpeakerFeedback,
 } from '@/types';
 import { SINGLETON_ROLES, ROLE_LABELS, SPEECH_DURATIONS, STATUS_COLOR, STATUS_LABEL } from '@/types';
 import { initials, formatDateTime, formatDateShort, isPastMeeting } from '@/lib/utils';
@@ -56,6 +57,8 @@ export default function AdminMeetingDetailPage() {
   const [acting, setActing] = useState(false);
   const [members, setMembers] = useState<MemberOption[]>([]);
   const [memberMap, setMemberMap] = useState<Map<string, string>>(new Map());
+  const [attendance, setAttendance] = useState<Attendance[]>([]);
+  const [feedback, setFeedback] = useState<AdminSpeakerFeedback[]>([]);
 
   // Edit mode
   const [editing, setEditing] = useState(false);
@@ -81,6 +84,12 @@ export default function AdminMeetingDetailPage() {
     try {
       const result = await getMeetingRoster(id, session.access_token);
       setData(result);
+      const [attendanceList, feedbackList] = await Promise.all([
+        getAllAttendance(id, session.access_token).catch(() => [] as Attendance[]),
+        getAllFeedback(id, session.access_token).catch(() => [] as AdminSpeakerFeedback[]),
+      ]);
+      setAttendance(attendanceList);
+      setFeedback(feedbackList);
     } catch { /* ignore */ } finally {
       setFetching(false);
     }
@@ -155,6 +164,20 @@ export default function AdminMeetingDetailPage() {
       setData({ meeting: updated, roster: data.roster });
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : 'Failed to publish');
+    } finally {
+      setActing(false);
+    }
+  }
+
+  async function handleComplete() {
+    if (!session || !data || isPastMeeting(data.meeting.scheduled_at)) return;
+    if (!window.confirm('Mark this meeting as completed? This closes it out for good.')) return;
+    setActing(true);
+    try {
+      const updated = await updateMeetingStatus(data.meeting.id, 'completed', session.access_token);
+      setData({ meeting: updated, roster: data.roster });
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : 'Failed to complete meeting');
     } finally {
       setActing(false);
     }
@@ -340,6 +363,15 @@ export default function AdminMeetingDetailPage() {
                 {acting ? 'Working…' : votingIsOpen ? 'Close Voting' : 'Open Voting'}
               </button>
             )}
+            {canManage && meeting.status === 'published' && (
+              <button
+                onClick={handleComplete}
+                disabled={acting}
+                className="w-full rounded-xl py-3.5 mb-2.5 bg-gray-900 text-white font-semibold disabled:opacity-50"
+              >
+                {acting ? 'Working…' : 'Complete Meeting'}
+              </button>
+            )}
 
             {/* Details */}
             <SectionLabel>Details</SectionLabel>
@@ -442,6 +474,67 @@ export default function AdminMeetingDetailPage() {
               </>
             )}
 
+            {/* Checked-in members */}
+            {meeting.status !== 'draft' && (
+              <>
+                <SectionLabel>Checked-in Members ({attendance.length})</SectionLabel>
+                <div className="bg-white rounded-2xl shadow-sm overflow-hidden mb-4">
+                  {attendance.length === 0 ? (
+                    <div className="px-4 py-4 text-center text-[13px] text-gray-400">No one has checked in yet</div>
+                  ) : (
+                    attendance.map((a, i) => (
+                      <div key={a.member_id}>
+                        {i > 0 && <Divider />}
+                        <div className="flex items-center gap-2.5 px-4 py-3">
+                          <CheckCircle2 size={16} className="text-green-500 shrink-0" />
+                          <span className="flex-1 text-sm font-semibold text-gray-900">{a.member_name ?? memberMap.get(a.member_id) ?? '—'}</span>
+                          <span className="text-[11px] text-gray-400">{formatDateTime(a.checked_in_at)}</span>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </>
+            )}
+
+            {/* Speaker feedback (from members) */}
+            {speakers.length > 0 && (
+              <>
+                <SectionLabel>Speaker Feedback ({feedback.length})</SectionLabel>
+                <div className="mb-4">
+                  {speakers.map((s) => {
+                    const entries = feedback.filter((f) => f.speaker_member_id === s.member_id);
+                    return (
+                      <div key={s.id} className="bg-white rounded-2xl shadow-sm overflow-hidden mb-2.5">
+                        <div className="px-4 py-3 bg-gray-50 border-b border-gray-100">
+                          <p className="text-sm font-bold text-gray-900">{s.member_name ?? memberMap.get(s.member_id) ?? '—'}</p>
+                        </div>
+                        {entries.length === 0 ? (
+                          <div className="px-4 py-3 text-center text-[13px] text-gray-400">No feedback yet</div>
+                        ) : (
+                          entries.map((f, i) => (
+                            <div key={f.id}>
+                              {i > 0 && <Divider />}
+                              <div className="px-4 py-3">
+                                <p className="text-[11px] text-gray-400 mb-1.5">From {f.from_member_name ?? memberMap.get(f.from_member_id) ?? '—'}</p>
+                                <div className="flex flex-wrap gap-1.5 mb-1.5">
+                                  <FeedbackBadge label="Content" value={f.content_rating} />
+                                  <FeedbackBadge label="Structure" value={f.structure_rating} />
+                                  <FeedbackBadge label="Confidence" value={f.confidence_rating} />
+                                  <FeedbackBadge label="Interact" value={f.interaction_rating} />
+                                </div>
+                                {f.comment && <p className="text-[13px] text-gray-600 italic">"{f.comment}"</p>}
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+
             {/* QR codes — meeting-day only */}
             {canManage && (
               <>
@@ -532,6 +625,20 @@ function Header({ title, onBack }: { title: string; onBack: () => void }) {
         <div className="w-[70px]" />
       </div>
     </div>
+  );
+}
+
+const FEEDBACK_LABELS: Record<number, string> = { 1: 'Need Improvement', 2: 'Ok', 3: 'Super' };
+const FEEDBACK_ICONS: Record<number, typeof Frown> = { 1: Frown, 2: Meh, 3: Smile };
+
+function FeedbackBadge({ label, value }: { label: string; value: number }) {
+  const Icon = FEEDBACK_ICONS[value] ?? Meh;
+  return (
+    <span className="inline-flex items-center gap-1 bg-gray-50 border border-gray-200 rounded-full px-2 py-0.5">
+      <span className="text-[10px] text-gray-400">{label}:</span>
+      <Icon size={11} className="text-gray-500" />
+      <span className="text-[10px] font-semibold text-gray-600">{FEEDBACK_LABELS[value] ?? '—'}</span>
+    </span>
   );
 }
 

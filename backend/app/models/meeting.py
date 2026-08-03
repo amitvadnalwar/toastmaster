@@ -132,6 +132,12 @@ class CheckinOut(BaseModel):
     already_checked_in: bool
 
 
+class AttendanceOut(BaseModel):
+    member_id: str
+    member_name: str | None = None
+    checked_in_at: str
+
+
 # ── Speaker feedback ──────────────────────────────────────────────────────
 # Rating scale: 1 = Need Improvement, 2 = Ok, 3 = Super
 
@@ -152,6 +158,21 @@ class SpeakerFeedbackOut(BaseModel):
     id: str
     meeting_id: str
     from_member_id: str
+    speaker_member_id: str
+    speaker_name: str | None = None
+    content_rating: int
+    structure_rating: int
+    confidence_rating: int
+    interaction_rating: int
+    comment: str | None = None
+    created_at: str
+
+
+class AdminSpeakerFeedbackOut(BaseModel):
+    id: str
+    meeting_id: str
+    from_member_id: str
+    from_member_name: str | None = None
     speaker_member_id: str
     speaker_name: str | None = None
     content_rating: int

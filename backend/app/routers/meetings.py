@@ -4,6 +4,8 @@ from app.middleware.auth import CurrentUser, get_current_user, require_admin, re
 from app.models.common import ApiResponse
 from app.models.meeting import (
     AdminAssignRoleIn,
+    AdminSpeakerFeedbackOut,
+    AttendanceOut,
     CheckinIn,
     CheckinOut,
     EnrollEvaluatorIn,
@@ -171,6 +173,15 @@ async def checkin(
     return ApiResponse(data=result)
 
 
+@router.get("/{meeting_id}/attendance", response_model=ApiResponse[list[AttendanceOut]])
+async def get_attendance(
+    meeting_id: str,
+    user: CurrentUser = Depends(require_admin),
+) -> ApiResponse[list[AttendanceOut]]:
+    result = await meeting_service.get_all_attendance(meeting_id, user)
+    return ApiResponse(data=result)
+
+
 # ── Speaker feedback ──────────────────────────────────────────────────────
 
 @router.get("/{meeting_id}/feedback/me", response_model=ApiResponse[list[SpeakerFeedbackOut]])
@@ -189,4 +200,13 @@ async def submit_feedback(
     user: CurrentUser = Depends(require_member),
 ) -> ApiResponse[list[SpeakerFeedbackOut]]:
     result = await meeting_service.submit_feedback(meeting_id, body, user)
+    return ApiResponse(data=result)
+
+
+@router.get("/{meeting_id}/feedback", response_model=ApiResponse[list[AdminSpeakerFeedbackOut]])
+async def get_all_feedback(
+    meeting_id: str,
+    user: CurrentUser = Depends(require_admin),
+) -> ApiResponse[list[AdminSpeakerFeedbackOut]]:
+    result = await meeting_service.get_all_feedback(meeting_id, user)
     return ApiResponse(data=result)

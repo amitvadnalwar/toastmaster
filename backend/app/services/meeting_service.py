@@ -7,6 +7,8 @@ from app.db import members as db_members
 from app.middleware.auth import CurrentUser
 from app.models.meeting import (
     AdminAssignRoleIn,
+    AdminSpeakerFeedbackOut,
+    AttendanceOut,
     CheckinOut,
     MeetingCreateIn,
     MeetingFeedbackIn,
@@ -446,6 +448,14 @@ async def checkin(qr_token: str, user: CurrentUser) -> CheckinOut:
     )
 
 
+async def get_all_attendance(meeting_id: str, user: CurrentUser) -> list[AttendanceOut]:
+    meeting_row = await _require_meeting(meeting_id)
+    if meeting_row["club_id"] != user.club_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your club")
+    rows = await db_meetings.get_all_attendance(meeting_id)
+    return [AttendanceOut(**r) for r in rows]
+
+
 # ── Speaker feedback ──────────────────────────────────────────────────────
 
 async def get_my_feedback(meeting_id: str, user: CurrentUser) -> list[SpeakerFeedbackOut]:
@@ -483,3 +493,11 @@ async def submit_feedback(
         )
         results.append(SpeakerFeedbackOut(**row))
     return results
+
+
+async def get_all_feedback(meeting_id: str, user: CurrentUser) -> list[AdminSpeakerFeedbackOut]:
+    meeting_row = await _require_meeting(meeting_id)
+    if meeting_row["club_id"] != user.club_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your club")
+    rows = await db_meetings.get_all_feedback(meeting_id)
+    return [AdminSpeakerFeedbackOut(**r) for r in rows]

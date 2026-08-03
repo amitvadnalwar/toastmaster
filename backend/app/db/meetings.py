@@ -220,6 +220,21 @@ async def get_attendance(meeting_id: str, member_id: str) -> dict | None:
     return result.data[0] if result.data else None
 
 
+async def get_all_attendance(meeting_id: str) -> list[dict]:
+    result = (
+        supabase.table("meeting_attendance")
+        .select("*, members(name)")
+        .eq("meeting_id", meeting_id)
+        .order("checked_in_at")
+        .execute()
+    )
+    rows = []
+    for r in result.data:
+        member = r.pop("members", None) or {}
+        rows.append({**r, "member_name": member.get("name")})
+    return rows
+
+
 async def checkin_member(meeting_id: str, member_id: str) -> dict:
     result = (
         supabase.table("meeting_attendance")
@@ -246,6 +261,25 @@ async def get_my_feedback(meeting_id: str, from_member_id: str) -> list[dict]:
     for r in result.data:
         member = r.pop("members", None) or {}
         rows.append({**r, "speaker_name": member.get("name")})
+    return rows
+
+
+async def get_all_feedback(meeting_id: str) -> list[dict]:
+    result = (
+        supabase.table("speaker_feedback")
+        .select(
+            "*, "
+            "speaker:members!speaker_feedback_speaker_member_id_fkey(name), "
+            "reviewer:members!speaker_feedback_from_member_id_fkey(name)"
+        )
+        .eq("meeting_id", meeting_id)
+        .execute()
+    )
+    rows = []
+    for r in result.data:
+        speaker = r.pop("speaker", None) or {}
+        reviewer = r.pop("reviewer", None) or {}
+        rows.append({**r, "speaker_name": speaker.get("name"), "from_member_name": reviewer.get("name")})
     return rows
 
 

@@ -154,6 +154,16 @@ export interface SpeakerFeedback {
   created_at: string;
 }
 
+export interface AdminSpeakerFeedback extends SpeakerFeedback {
+  from_member_name?: string | null;
+}
+
+export interface Attendance {
+  member_id: string;
+  member_name?: string | null;
+  checked_in_at: string;
+}
+
 export interface SpeakerFeedbackPayload {
   speaker_member_id: string;
   content_rating: number;

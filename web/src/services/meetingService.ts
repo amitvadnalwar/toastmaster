@@ -1,5 +1,7 @@
 import { apiRequest } from '@/lib/apiClient';
 import type {
+  AdminSpeakerFeedback,
+  Attendance,
   CheckinResult,
   Meeting,
   MeetingRole,
@@ -171,4 +173,14 @@ export function submitFeedback(
     body: { feedbacks },
     token,
   });
+}
+
+// ── Admin: feedback & attendance visibility ───────────────────────────────
+
+export function getAllFeedback(meetingId: string, token: string): Promise<AdminSpeakerFeedback[]> {
+  return apiRequest<AdminSpeakerFeedback[]>(`/meetings/${meetingId}/feedback`, { token });
+}
+
+export function getAllAttendance(meetingId: string, token: string): Promise<Attendance[]> {
+  return apiRequest<Attendance[]>(`/meetings/${meetingId}/attendance`, { token });
 }

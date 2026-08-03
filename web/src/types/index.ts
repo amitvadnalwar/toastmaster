@@ -162,6 +162,37 @@ export interface SpeakerFeedbackPayload {
   comment?: string | null;
 }
 
+// ── Voting ──────────────────────────────────────────────────────────────────
+
+export type VoteCategory = 'best_speaker' | 'best_evaluator' | 'best_mrp';
+
+export interface VotePayload {
+  meeting_id: string;
+  category: VoteCategory;
+  nominee_id: string;
+}
+
+export interface RatingPayload {
+  meeting_id: string;
+  rating: number;
+  comment?: string | null;
+}
+
+export interface MyVote {
+  category: VoteCategory;
+  nominee_id: string;
+}
+
+export interface MyRating {
+  rating: number;
+  comment?: string | null;
+}
+
+export interface MyVotingState {
+  votes: MyVote[];
+  rating: MyRating | null;
+}
+
 // ── Members ─────────────────────────────────────────────────────────────────
 
 export interface Member {

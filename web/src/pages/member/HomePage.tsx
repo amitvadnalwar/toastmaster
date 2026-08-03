@@ -24,7 +24,8 @@ interface HomeData {
 
 export default function MemberHomePage() {
   const navigate = useNavigate();
-  const { session } = useAuthStore();
+  const { session, appRole } = useAuthStore();
+  const isAdmin = appRole === 'admin';
 
   const [data, setData] = useState<HomeData>({
     club: null, nextMeeting: null, upcoming: [],
@@ -109,16 +110,28 @@ export default function MemberHomePage() {
             <StatBox value={`${engagementPct}%`} label="Engagement" sub="Rate" />
           </div>
 
-          {/* Motive banner */}
-          <div className="mx-4 mt-4 bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between">
-            <div className="flex-1 mr-3">
-              <p className="text-[15px] font-bold text-gray-900">Keep Growing!</p>
-              <p className="text-xs text-gray-500 mt-0.5">You're on track with your speaking goals.</p>
+          {/* Motive / manage banner */}
+          {isAdmin ? (
+            <div className="mx-4 mt-4 bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between">
+              <div className="flex-1 mr-3">
+                <p className="text-[15px] font-bold text-gray-900">Manage your club</p>
+                <p className="text-xs text-gray-500 mt-0.5">Create meetings, assign roles, track progress.</p>
+              </div>
+              <button onClick={() => navigate('/meetings/new')} className="bg-brand text-white text-[13px] font-bold rounded-[10px] px-3.5 py-2 active:scale-95 transition-transform">
+                + New
+              </button>
             </div>
-            <button onClick={() => navigate('/meetings')} className="rounded-[10px] px-3.5 py-2 border-[1.5px] border-brand text-brand text-[13px] font-bold">
-              View All
-            </button>
-          </div>
+          ) : (
+            <div className="mx-4 mt-4 bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between">
+              <div className="flex-1 mr-3">
+                <p className="text-[15px] font-bold text-gray-900">Keep Growing!</p>
+                <p className="text-xs text-gray-500 mt-0.5">You're on track with your speaking goals.</p>
+              </div>
+              <button onClick={() => navigate('/meetings')} className="rounded-[10px] px-3.5 py-2 border-[1.5px] border-brand text-brand text-[13px] font-bold">
+                View All
+              </button>
+            </div>
+          )}
 
           {/* Next Meeting */}
           {nextMeeting ? (

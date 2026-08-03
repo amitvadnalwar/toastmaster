@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, Clock, MapPin, ArrowRight } from 'lucide-react';
+import { Calendar, Clock, MapPin, ArrowRight, Plus } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { getAllMeetings } from '@/services/meetingService';
 import { MemberBottomNav } from '@/components/layout/BottomNav';
@@ -23,7 +23,8 @@ function appStatus(m: Meeting): { text: string; color: string } {
 
 export default function MemberMeetingsPage() {
   const navigate = useNavigate();
-  const { session } = useAuthStore();
+  const { session, appRole } = useAuthStore();
+  const isAdmin = appRole === 'admin';
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -46,8 +47,16 @@ export default function MemberMeetingsPage() {
   return (
     <div className="flex flex-col min-h-full bg-[#f4f4f8]">
       <div className="bg-white border-b border-gray-100 px-5 py-4 sticky top-0 z-20">
-        <div className="max-w-lg mx-auto">
+        <div className="max-w-lg mx-auto flex items-center justify-between">
           <h1 className="text-xl font-bold text-gray-900">Meetings</h1>
+          {isAdmin && (
+            <button
+              onClick={() => navigate('/meetings/new')}
+              className="flex items-center gap-1 bg-brand text-white text-sm font-semibold rounded-[10px] px-3.5 py-2 active:scale-95 transition-transform"
+            >
+              <Plus size={16} /> New
+            </button>
+          )}
         </div>
       </div>
 

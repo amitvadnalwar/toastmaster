@@ -81,6 +81,20 @@ async def get_my_voting_state(meeting_id: str, user: CurrentUser) -> MyVotingSta
     )
 
 
+async def get_member_voting_state(meeting_id: str, member_id: str, user: CurrentUser) -> MyVotingStateOut:
+    meeting_row = await _require_meeting(meeting_id)
+    if meeting_row["club_id"] != user.club_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your club")
+
+    votes = await db_votes.get_my_votes(meeting_id, member_id)
+    rating_row = await db_votes.get_my_rating(meeting_id, member_id)
+
+    return MyVotingStateOut(
+        votes=[MyVoteOut(category=v["category"], nominee_id=v["nominee_id"]) for v in votes],
+        rating=MyRatingOut(**rating_row) if rating_row else None,
+    )
+
+
 async def get_vote_summary(meeting_id: str) -> list[VoteSummaryItem]:
     # Returns counts per category per nominee. No voter attribution.
     # TODO: GROUP BY category, nominee_id; join members for nominee_name

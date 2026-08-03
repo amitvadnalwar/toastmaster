@@ -12,3 +12,7 @@ export function submitRating(payload: RatingPayload, token: string): Promise<voi
 export function getMyVotingState(meetingId: string, token: string): Promise<MyVotingState> {
   return apiRequest<MyVotingState>(`/votes/me/${meetingId}`, { token });
 }
+
+export function getMemberVotingState(meetingId: string, memberId: string, token: string): Promise<MyVotingState> {
+  return apiRequest<MyVotingState>(`/votes/${meetingId}/${memberId}`, { token });
+}

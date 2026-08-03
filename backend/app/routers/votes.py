@@ -43,3 +43,17 @@ async def get_vote_summary(
     # Admin-only: returns nominee counts per category, no voter attribution.
     # TODO: implement in vote_service
     raise NotImplementedError
+
+
+# NOTE: this generic two-segment route must stay declared last — anything
+# registered after it with a literal first segment (e.g. /votes/summary/...)
+# would otherwise never be reached, since routes are matched in declaration
+# order and {meeting_id}/{member_id} structurally matches any two segments.
+@router.get("/{meeting_id}/{member_id}", response_model=ApiResponse[MyVotingStateOut])
+async def get_member_voting_state(
+    meeting_id: str,
+    member_id: str,
+    user: CurrentUser = Depends(require_admin),
+) -> ApiResponse[MyVotingStateOut]:
+    data = await vote_service.get_member_voting_state(meeting_id, member_id, user)
+    return ApiResponse(data=data)

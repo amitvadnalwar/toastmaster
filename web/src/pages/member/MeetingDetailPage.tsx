@@ -259,7 +259,7 @@ export default function MemberMeetingDetailPage() {
             )}
 
             {/* Already checked in — link to feedback/voting flow */}
-            {!isAdmin && data.already_checked_in && (
+            {data.already_checked_in && (
               <button
                 onClick={() => navigate(`/meetings/${id}/feedback`)}
                 className="w-full flex items-center justify-between bg-green-50 border border-green-200 rounded-2xl p-4 mb-5"

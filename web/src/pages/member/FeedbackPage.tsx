@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, CheckCircle, MicOff, Frown, Meh, Smile, Star, Clock, Pencil, Check } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CheckCircle, MicOff, Frown, Meh, Smile, Star, Clock, Pencil, Check } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { showAlert } from '@/store/alertStore';
 import { getMeetingRoster, getMyFeedback, submitFeedback } from '@/services/meetingService';
@@ -126,6 +126,33 @@ function StepTabs({ step, feedbackDone, onSelect }: { step: Step; feedbackDone: 
           </div>
         );
       })}
+    </div>
+  );
+}
+
+const STEP_ORDER: Step[] = ['feedback', 'voting', 'overall'];
+
+function StepNav({ step, canGoNext, onPrev, onNext }: { step: Step; canGoNext: boolean; onPrev: () => void; onNext: () => void }) {
+  const idx = STEP_ORDER.indexOf(step);
+  const showPrev = idx > 0;
+  const showNext = idx < STEP_ORDER.length - 1;
+  if (!showPrev && !showNext) return null;
+  return (
+    <div className="flex items-center justify-between mt-5 mb-2">
+      {showPrev ? (
+        <button onClick={onPrev} className="flex items-center gap-1 text-gray-500 text-[13px] font-semibold px-3 py-2">
+          <ChevronLeft size={15} /> Previous
+        </button>
+      ) : <div />}
+      {showNext && (
+        <button
+          onClick={onNext}
+          disabled={!canGoNext}
+          className="flex items-center gap-1 text-brand text-[13px] font-semibold px-3 py-2 disabled:text-gray-300"
+        >
+          Next <ChevronRight size={15} />
+        </button>
+      )}
     </div>
   );
 }
@@ -493,6 +520,13 @@ export default function MemberFeedbackPage() {
               </button>
             </>
           )}
+
+          <StepNav
+            step={step}
+            canGoNext={step === 'feedback' ? feedbackDone : true}
+            onPrev={() => setStep(STEP_ORDER[STEP_ORDER.indexOf(step) - 1])}
+            onNext={() => setStep(STEP_ORDER[STEP_ORDER.indexOf(step) + 1])}
+          />
         </div>
       )}
     </div>

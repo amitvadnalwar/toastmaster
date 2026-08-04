@@ -3,6 +3,7 @@ import type {
   Attendance,
   CheckinResult,
   Meeting,
+  MeetingRating,
   MeetingRole,
   MeetingRoleAssignment,
   MeetingStatus,
@@ -192,6 +193,10 @@ export function publishSpeakerFeedback(meetingId: string, speakerMemberId: strin
     method: 'POST',
     token,
   });
+}
+
+export function getAllRatings(meetingId: string, token: string): Promise<MeetingRating[]> {
+  return apiRequest<MeetingRating[]>(`/meetings/${meetingId}/ratings`, { token });
 }
 
 // ── Member: own received feedback (anonymous) ─────────────────────────────

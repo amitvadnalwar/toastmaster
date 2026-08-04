@@ -21,7 +21,8 @@ from app.models.meeting import (
     SpeakingHistoryItemOut,
     VotingStatusUpdateIn,
 )
-from app.services import meeting_service
+from app.models.vote import MeetingRatingOut
+from app.services import meeting_service, vote_service
 
 router = APIRouter()
 
@@ -244,3 +245,13 @@ async def publish_speaker_feedback(
 ) -> ApiResponse[None]:
     await meeting_service.publish_speaker_feedback(meeting_id, speaker_member_id, user)
     return ApiResponse(data=None)
+
+
+@router.get("/{meeting_id}/ratings", response_model=ApiResponse[list[MeetingRatingOut]])
+async def get_all_ratings(
+    meeting_id: str,
+    user: CurrentUser = Depends(require_admin),
+) -> ApiResponse[list[MeetingRatingOut]]:
+    """All members' overall meeting feedback (rating + comment), with names — not anonymous."""
+    result = await vote_service.get_all_ratings(meeting_id, user)
+    return ApiResponse(data=result)

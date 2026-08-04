@@ -58,6 +58,21 @@ async def get_my_rating(meeting_id: str, voter_id: str) -> dict | None:
     return result.data[0] if result.data else None
 
 
+async def get_all_ratings(meeting_id: str) -> list[dict]:
+    result = (
+        supabase.table("meeting_ratings")
+        .select("*, members!meeting_ratings_voter_id_fkey(name)")
+        .eq("meeting_id", meeting_id)
+        .execute()
+    )
+    rows = []
+    for r in result.data:
+        member = r.pop("members", None) or {}
+        voter_id = r.pop("voter_id")
+        rows.append({**r, "member_id": voter_id, "member_name": member.get("name")})
+    return rows
+
+
 async def get_summary(meeting_id: str) -> list[dict]:
     # Returns aggregated counts per category per nominee_id, joined with member name.
     # TODO: implement

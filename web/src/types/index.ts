@@ -185,6 +185,15 @@ export interface SpeakingHistoryItem {
   feedback_count: number;
 }
 
+// Admin-only: overall meeting feedback with the member's name (not anonymous).
+export interface MeetingRating {
+  member_id: string;
+  member_name?: string | null;
+  rating: number;
+  comment?: string | null;
+  created_at: string;
+}
+
 export interface SpeakerFeedbackPayload {
   speaker_member_id: string;
   content_rating: number;

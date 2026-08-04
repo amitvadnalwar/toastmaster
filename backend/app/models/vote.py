@@ -45,3 +45,13 @@ class MyRatingOut(BaseModel):
 class MyVotingStateOut(BaseModel):
     votes: list[MyVoteOut]
     rating: MyRatingOut | None = None
+
+
+# ── Admin: all members' overall meeting feedback ───────────────────────────
+
+class MeetingRatingOut(BaseModel):
+    member_id: str
+    member_name: str | None = None
+    rating: int
+    comment: str | None = None
+    created_at: str

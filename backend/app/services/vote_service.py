@@ -7,6 +7,7 @@ from app.db import votes as db_votes
 from app.middleware.auth import CurrentUser
 from app.models.meeting import VotingStatus
 from app.models.vote import (
+    MeetingRatingOut,
     MyRatingOut,
     MyVoteOut,
     MyVotingStateOut,
@@ -93,6 +94,14 @@ async def get_member_voting_state(meeting_id: str, member_id: str, user: Current
         votes=[MyVoteOut(category=v["category"], nominee_id=v["nominee_id"]) for v in votes],
         rating=MyRatingOut(**rating_row) if rating_row else None,
     )
+
+
+async def get_all_ratings(meeting_id: str, user: CurrentUser) -> list[MeetingRatingOut]:
+    meeting_row = await _require_meeting(meeting_id)
+    if meeting_row["club_id"] != user.club_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your club")
+    rows = await db_votes.get_all_ratings(meeting_id)
+    return [MeetingRatingOut(**r) for r in rows]
 
 
 async def get_vote_summary(meeting_id: str) -> list[VoteSummaryItem]:

@@ -1,12 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, CheckCircle2, Users, Send } from 'lucide-react';
+import { ChevronLeft, CheckCircle2, Send, Star, MessageSquare } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { showAlert } from '@/store/alertStore';
-import { getMeetingRoster, getAllAttendance, getSpeakersFeedbackStatus, publishSpeakerFeedback } from '@/services/meetingService';
+import { getMeetingRoster, getSpeakersFeedbackStatus, publishSpeakerFeedback, getAllRatings } from '@/services/meetingService';
 import { Skeleton } from '@/components/ui/Skeleton';
-import type { Meeting, MeetingRoleAssignment, Attendance, SpeakerFeedbackStatus } from '@/types';
-import { formatDateTime } from '@/lib/utils';
+import type { Meeting, MeetingRoleAssignment, SpeakerFeedbackStatus, MeetingRating } from '@/types';
 
 export default function FeedbackDetailsPage() {
   const { id } = useParams<{ id: string }>();
@@ -15,8 +14,8 @@ export default function FeedbackDetailsPage() {
 
   const [meeting, setMeeting] = useState<Meeting | null>(null);
   const [speakers, setSpeakers] = useState<MeetingRoleAssignment[]>([]);
-  const [attendance, setAttendance] = useState<Attendance[]>([]);
   const [feedbackStatus, setFeedbackStatus] = useState<SpeakerFeedbackStatus[]>([]);
+  const [ratings, setRatings] = useState<MeetingRating[]>([]);
   const [fetching, setFetching] = useState(true);
   const [publishing, setPublishing] = useState<string | null>(null);
 
@@ -24,15 +23,15 @@ export default function FeedbackDetailsPage() {
     if (!session || !id) return;
     setFetching(true);
     try {
-      const [rosterData, attendanceList, statusList] = await Promise.all([
+      const [rosterData, statusList, ratingsList] = await Promise.all([
         getMeetingRoster(id, session.access_token),
-        getAllAttendance(id, session.access_token),
         getSpeakersFeedbackStatus(id, session.access_token),
+        getAllRatings(id, session.access_token),
       ]);
       setMeeting(rosterData.meeting);
       setSpeakers(rosterData.roster.filter((r) => r.role === 'speaker'));
-      setAttendance(attendanceList);
       setFeedbackStatus(statusList);
+      setRatings(ratingsList);
     } catch { /* ignore */ } finally {
       setFetching(false);
     }
@@ -113,29 +112,25 @@ export default function FeedbackDetailsPage() {
               </div>
             )}
 
-            {/* Checked-in members — votes & overall rating */}
-            <SectionLabel>Checked-in Members</SectionLabel>
-            <p className="text-[13px] text-gray-500 mb-3">Select a member to see their votes and overall meeting rating.</p>
-            {attendance.length === 0 ? (
+            {/* Overall meeting feedback — with member name */}
+            <SectionLabel>Overall Meeting Feedback ({ratings.length})</SectionLabel>
+            {ratings.length === 0 ? (
               <div className="flex flex-col items-center gap-3 pt-8">
-                <Users size={36} className="text-gray-300" />
-                <p className="text-sm text-gray-400">No one has checked in yet.</p>
+                <MessageSquare size={36} className="text-gray-300" />
+                <p className="text-sm text-gray-400">No overall feedback submitted yet.</p>
               </div>
             ) : (
-              <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-                {attendance.map((a, i) => (
-                  <button
-                    key={a.member_id}
-                    onClick={() => navigate(`/meetings/${id}/feedback-details/${a.member_id}`)}
-                    className={`w-full flex items-center gap-3 px-4 py-3.5 text-left ${i > 0 ? 'border-t border-gray-100' : ''}`}
-                  >
-                    <CheckCircle2 size={16} className="text-green-500 shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-900 truncate">{a.member_name ?? '—'}</p>
-                      <p className="text-[11px] text-gray-400 mt-0.5">Checked in {formatDateTime(a.checked_in_at)}</p>
+              <div>
+                {ratings.map((r) => (
+                  <div key={r.member_id} className="bg-white rounded-2xl p-4 mb-3 shadow-sm">
+                    <p className="text-[15px] font-bold text-gray-900 mb-2">{r.member_name ?? '—'}</p>
+                    <div className="flex items-center gap-1 mb-2">
+                      {[1, 2, 3, 4, 5].map((n) => (
+                        <Star key={n} size={18} className={n <= r.rating ? 'fill-amber-400 text-amber-400' : 'text-gray-200'} />
+                      ))}
                     </div>
-                    <ChevronRight size={18} className="text-gray-400 shrink-0" />
-                  </button>
+                    {r.comment && <p className="text-[13px] text-gray-600 italic">"{r.comment}"</p>}
+                  </div>
                 ))}
               </div>
             )}

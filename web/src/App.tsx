@@ -22,6 +22,8 @@ import AdminProfilePage from '@/pages/admin/ProfilePage';
 import MemberHomePage from '@/pages/member/HomePage';
 import MemberMeetingsPage from '@/pages/member/MeetingsPage';
 import MemberMeetingDetailPage from '@/pages/member/MeetingDetailPage';
+import MeetingRosterPage from '@/pages/member/MeetingRosterPage';
+import MeetingQrCodesPage from '@/pages/member/MeetingQrCodesPage';
 import MemberNewMeetingPage from '@/pages/member/NewMeetingPage';
 import MemberApplyRolePage from '@/pages/member/ApplyRolePage';
 import MemberScanPage from '@/pages/member/ScanPage';
@@ -82,6 +84,8 @@ export default function App() {
         <Route path="/meetings" element={<ProtectedRoute roles={['member', 'admin']}><MemberMeetingsPage /></ProtectedRoute>} />
         <Route path="/meetings/new" element={<ProtectedRoute roles={['admin']}><MemberNewMeetingPage /></ProtectedRoute>} />
         <Route path="/meetings/:id" element={<ProtectedRoute roles={['member', 'admin']}><MemberMeetingDetailPage /></ProtectedRoute>} />
+        <Route path="/meetings/:id/roster" element={<ProtectedRoute roles={['member', 'admin', 'super_admin']}><MeetingRosterPage /></ProtectedRoute>} />
+        <Route path="/meetings/:id/qr-codes" element={<ProtectedRoute roles={['admin', 'super_admin']}><MeetingQrCodesPage /></ProtectedRoute>} />
         <Route path="/meetings/:id/apply" element={<ProtectedRoute roles={['member', 'admin']}><MemberApplyRolePage /></ProtectedRoute>} />
         <Route path="/meetings/:id/feedback" element={<ProtectedRoute roles={['member', 'admin']}><MemberFeedbackPage /></ProtectedRoute>} />
         <Route path="/meetings/:id/feedback-details" element={<ProtectedRoute roles={['admin', 'super_admin']}><FeedbackDetailsPage /></ProtectedRoute>} />

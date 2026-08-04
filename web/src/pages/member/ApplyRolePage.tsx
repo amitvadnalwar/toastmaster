@@ -109,7 +109,7 @@ export default function MemberApplyRolePage() {
   if (fetching) {
     return (
       <div className="flex flex-col min-h-full bg-[#f5f5f5]">
-        <Header onBack={() => navigate(`/meetings/${id}`)} />
+        <Header onBack={() => navigate(-1)} />
         <MeetingDetailSkeleton />
       </div>
     );
@@ -186,7 +186,7 @@ export default function MemberApplyRolePage() {
 
   return (
     <div className="flex flex-col min-h-full bg-[#f5f5f5]">
-      <Header onBack={() => navigate(`/meetings/${id}`)} />
+      <Header onBack={() => navigate(-1)} />
 
       <div className="flex-1 overflow-y-auto px-4 pt-4 pb-12 max-w-lg mx-auto w-full">
         {/* Context */}

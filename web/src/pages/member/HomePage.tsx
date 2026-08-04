@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { Bell, Calendar, Clock, MapPin, ChevronRight } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
@@ -22,63 +22,65 @@ interface HomeData {
   clubRole: string;
 }
 
+async function loadHomeData(token: string): Promise<HomeData> {
+  const [clubRes, allRes, membersRes, meRes, historyRes] = await Promise.allSettled([
+    getClub(token),
+    getAllMeetings(token),
+    getClubMembers(token),
+    getMe(token),
+    getSpeakingHistory(token),
+  ]);
+
+  const club = clubRes.status === 'fulfilled' ? clubRes.value : null;
+  const allMeetings = allRes.status === 'fulfilled' ? allRes.value : [];
+  const members = membersRes.status === 'fulfilled' ? membersRes.value : [];
+  const clubRole = meRes.status === 'fulfilled' ? meRes.value.club_role : 'member';
+  const history = historyRes.status === 'fulfilled' ? historyRes.value : [];
+  const stats = {
+    speeches: history.length,
+    feedbacks: history.reduce((sum, m) => sum + m.feedback_count, 0),
+  };
+
+  const now = new Date();
+  const future = allMeetings
+    .filter((m) => m.status === 'published' && new Date(m.scheduled_at) >= now)
+    .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
+  const nextMeeting = future[0] ?? null;
+
+  let roster: MeetingRoleAssignment[] = [];
+  if (nextMeeting) {
+    try {
+      const result = await getMeetingRoster(nextMeeting.id, token);
+      roster = result.roster;
+    } catch { /* empty */ }
+  }
+
+  const activeMembers = members.filter((m) => m.is_active).length;
+  const memberMap = new Map(members.map((m) => [m.id, m.name]));
+
+  return { club, nextMeeting, upcoming: future.slice(0, 5), stats, activeMembers, rolesFilled: roster.length, memberMap, clubRole };
+}
+
 export default function MemberHomePage() {
   const navigate = useNavigate();
   const { session, appRole } = useAuthStore();
   const isAdmin = appRole === 'admin';
 
-  const [data, setData] = useState<HomeData>({
-    club: null, nextMeeting: null, upcoming: [],
-    stats: { speeches: 12, feedbacks: 8 }, activeMembers: 0, rolesFilled: 0,
-    memberMap: new Map(), clubRole: 'member',
+  const { data, isLoading } = useQuery({
+    queryKey: ['home', session?.user?.id],
+    queryFn: () => loadHomeData(session!.access_token),
+    enabled: !!session,
   });
-  const [loading, setLoading] = useState(true);
 
-  const load = useCallback(async () => {
-    if (!session) return;
-    const token = session.access_token;
-    const [clubRes, allRes, membersRes, meRes, historyRes] = await Promise.allSettled([
-      getClub(token),
-      getAllMeetings(token),
-      getClubMembers(token),
-      getMe(token),
-      getSpeakingHistory(token),
-    ]);
-
-    const club = clubRes.status === 'fulfilled' ? clubRes.value : null;
-    const allMeetings = allRes.status === 'fulfilled' ? allRes.value : [];
-    const members = membersRes.status === 'fulfilled' ? membersRes.value : [];
-    const clubRole = meRes.status === 'fulfilled' ? meRes.value.club_role : 'member';
-    const history = historyRes.status === 'fulfilled' ? historyRes.value : [];
-    const stats = {
-      speeches: history.length,
-      feedbacks: history.reduce((sum, m) => sum + m.feedback_count, 0),
-    };
-
-    const now = new Date();
-    const future = allMeetings
-      .filter((m) => m.status === 'published' && new Date(m.scheduled_at) >= now)
-      .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
-    const nextMeeting = future[0] ?? null;
-
-    let roster: MeetingRoleAssignment[] = [];
-    if (nextMeeting) {
-      try {
-        const result = await getMeetingRoster(nextMeeting.id, token);
-        roster = result.roster;
-      } catch { /* empty */ }
-    }
-
-    const activeMembers = members.filter((m) => m.is_active).length;
-    const memberMap = new Map(members.map((m) => [m.id, m.name]));
-
-    setData({ club, nextMeeting, upcoming: future.slice(0, 5), stats, activeMembers, rolesFilled: roster.length, memberMap, clubRole });
-    setLoading(false);
-  }, [session]);
-
-  useEffect(() => { load(); }, [load]);
-
-  const { club, nextMeeting, upcoming, stats, activeMembers, rolesFilled, memberMap, clubRole } = data;
+  const loading = isLoading || !data;
+  const club = data?.club ?? null;
+  const nextMeeting = data?.nextMeeting ?? null;
+  const upcoming = data?.upcoming ?? [];
+  const stats = data?.stats ?? { speeches: 0, feedbacks: 0 };
+  const activeMembers = data?.activeMembers ?? 0;
+  const rolesFilled = data?.rolesFilled ?? 0;
+  const memberMap = data?.memberMap ?? new Map<string, string>();
+  const clubRole = data?.clubRole ?? 'member';
   const engagementPct = activeMembers === 0 ? 0 : Math.round((rolesFilled / Math.max(activeMembers, 1)) * 100);
   const totalActivity = stats.speeches + stats.feedbacks;
   const progressPct = totalActivity === 0 ? 0 : Math.round((stats.speeches / totalActivity) * 100);

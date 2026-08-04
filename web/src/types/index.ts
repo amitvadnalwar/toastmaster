@@ -124,6 +124,7 @@ export interface MeetingRoleAssignment {
   speech_duration?: string | null;
   member_name?: string | null;
   member_email?: string | null;
+  disqualified?: boolean;
 }
 
 export interface MeetingWithRoster {

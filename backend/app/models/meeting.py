@@ -86,6 +86,11 @@ class MeetingRoleAssignmentOut(BaseModel):
     speech_duration: str | None = None
     member_name: str | None = None
     member_email: str | None = None
+    disqualified: bool = False
+
+
+class RoleDisqualifyIn(BaseModel):
+    disqualified: bool
 
 
 # ── Self-enrollment inputs (member enrolling themselves) ──────────────────

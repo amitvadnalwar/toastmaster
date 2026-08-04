@@ -393,6 +393,28 @@ async def withdraw_from_role(
     await db_meetings.delete_role(role_id)
 
 
+async def set_role_disqualified(
+    meeting_id: str, role_id: str, disqualified: bool, user: CurrentUser
+) -> MeetingRoleAssignmentOut:
+    meeting_row = await _require_meeting(meeting_id)
+    if meeting_row["club_id"] != user.club_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your club")
+
+    roster = await db_meetings.get_roster(meeting_id)
+    assignment = next((r for r in roster if r["id"] == role_id), None)
+    if not assignment:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Role assignment not found"
+        )
+
+    row = await db_meetings.set_role_disqualified(role_id, disqualified)
+    return _role_out({
+        **row,
+        "member_name": assignment["member_name"],
+        "member_email": assignment["member_email"],
+    })
+
+
 # ── Legacy role assign (kept for backward compat) ─────────────────────────
 
 async def assign_role(body: RoleAssignIn) -> MeetingRoleAssignmentOut:
@@ -481,8 +503,18 @@ async def submit_feedback(
             detail="You must check in to the meeting before submitting feedback",
         )
 
+    roster = await db_meetings.get_roster(meeting_id)
     results = []
     for fb in body.feedbacks:
+        target = next(
+            (r for r in roster if r["member_id"] == fb.speaker_member_id and r["role"] == "speaker"),
+            None,
+        )
+        if not target or target.get("disqualified"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Speaker is not eligible for feedback",
+            )
         row = await db_meetings.upsert_feedback(
             meeting_id=meeting_id,
             from_member_id=member["id"],

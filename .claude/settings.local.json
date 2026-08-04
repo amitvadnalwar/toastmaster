@@ -4,7 +4,19 @@
       "Bash(dir \"c:\\\\Projects\\\\toastmasters-app\")",
       "PowerShell($env:NODE_TLS_REJECT_UNAUTHORIZED=\"0\"; $env:REACT_NATIVE_PACKAGER_HOSTNAME=\"192.168.1.8\"; cd c:\\\\Projects\\\\toastmasters-app\\\\mobile; npx expo start)",
       "PowerShell($pid8081 = \\(netstat -ano | findstr \":8081 \" | Select-Object -First 1\\) -split '\\\\s+' | Select-Object -Last 1; if \\($pid8081\\) { taskkill /PID $pid8081 /F; Write-Host \"Killed PID $pid8081\" } else { Write-Host \"Nothing on 8081\" })",
-      "PowerShell($env:NODE_TLS_REJECT_UNAUTHORIZED=\"0\"; $env:REACT_NATIVE_PACKAGER_HOSTNAME=\"192.168.1.8\"; cd c:\\\\Projects\\\\toastmasters-app\\\\mobile; npx expo start --port 8081)"
+      "PowerShell($env:NODE_TLS_REJECT_UNAUTHORIZED=\"0\"; $env:REACT_NATIVE_PACKAGER_HOSTNAME=\"192.168.1.8\"; cd c:\\\\Projects\\\\toastmasters-app\\\\mobile; npx expo start --port 8081)",
+      "Bash(npm run *)",
+      "Bash(grep -A3 \"clear\\(\" node_modules/html5-qrcode/esm/html5-qrcode.d.ts)",
+      "Bash(grep -rn \"abstract clear\\\\|clear\\(\\):\" node_modules/html5-qrcode/esm/*.d.ts)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(node -e ' *)",
+      "Bash(git add *)",
+      "Bash(git -c http.sslVerify=false commit -q -m 'Fix black-screen-stuck bug when camera permission is denied on Scan *)",
+      "Bash(git -c http.sslVerify=false push origin main)",
+      "Bash(JS=$\\(curl -sk \"https://amitvadnalwar.github.io/toastmaster/app/\" | grep -oE 'assets/index-[a-zA-Z0-9]+\\\\.js' | head -1\\) *)",
+      "Bash(curl -sk \"https://amitvadnalwar.github.io/toastmaster/app/\")",
+      "Bash(curl -sk https://amitvadnalwar.github.io/toastmaster/app/assets/index-DVR7dx_6.js -o /tmp/live-bundle.js)",
+      "Bash(python -c ' *)"
     ]
   }
 }

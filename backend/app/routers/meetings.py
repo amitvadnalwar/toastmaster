@@ -16,6 +16,7 @@ from app.models.meeting import (
     MeetingRoleAssignmentOut,
     MeetingStatusUpdateIn,
     ReceivedFeedbackOut,
+    RoleDisqualifyIn,
     SpeakerFeedbackOut,
     SpeakerFeedbackStatusOut,
     SpeakingHistoryItemOut,
@@ -141,6 +142,17 @@ async def withdraw_role(
     user: CurrentUser = Depends(get_current_user),
 ) -> None:
     await meeting_service.withdraw_from_role(meeting_id, role_id, user)
+
+
+@router.put("/{meeting_id}/roles/{role_id}/disqualify", response_model=ApiResponse[MeetingRoleAssignmentOut])
+async def disqualify_role(
+    meeting_id: str,
+    role_id: str,
+    body: RoleDisqualifyIn,
+    user: CurrentUser = Depends(require_admin),
+) -> ApiResponse[MeetingRoleAssignmentOut]:
+    result = await meeting_service.set_role_disqualified(meeting_id, role_id, body.disqualified, user)
+    return ApiResponse(data=result)
 
 
 # ── Member self-enrollment ────────────────────────────────────────────────

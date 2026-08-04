@@ -60,6 +60,7 @@ async def get_speakers_for_meeting(meeting_id: str) -> list[dict]:
         .select("member_id, member:members!member_id(name)")
         .eq("meeting_id", meeting_id)
         .eq("role", "speaker")
+        .eq("disqualified", False)
         .execute()
     )
     return [
@@ -85,6 +86,7 @@ async def get_nominees_for_meeting(meeting_id: str) -> list[dict]:
                 "supporting_role",
             ],
         )
+        .eq("disqualified", False)
         .execute()
     )
     return result.data

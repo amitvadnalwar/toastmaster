@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-  ChevronLeft, Edit2, Trash2, Check, Search, Minus, Plus, Lock, ClipboardList, ArrowRight, QrCode, Users,
+  ChevronLeft, Edit2, Trash2, Check, Search, Minus, Plus, Lock, ClipboardList, ArrowRight, QrCode, Users, UserX,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { getMeetingRoster, updateMeeting, deleteMeeting, updateMeetingStatus, updateVotingStatus } from '@/services/meetingService';
@@ -174,6 +174,7 @@ export default function AdminMeetingDetailPage() {
   const votingIsOpen = meeting.voting_status === 'open';
   const isPast = isPastMeeting(meeting.scheduled_at);
   const canEdit = meeting.status === 'draft' && !isPast;
+  const canEditRoles = !isPast;
   const canManage = !isPast;
   const speakers = roster.filter((r) => r.role === 'speaker');
   const acting = actingAction !== null;
@@ -196,10 +197,10 @@ export default function AdminMeetingDetailPage() {
               <button onClick={handleSave} disabled={acting || !editTitle.trim()} className="p-2">
                 {actingAction === 'save' ? <Spinner size="sm" /> : <Check size={20} className="text-green-500" />}
               </button>
-            ) : canEdit ? (
+            ) : canEditRoles ? (
               <>
                 <button onClick={startEdit} className="p-2"><Edit2 size={18} className="text-gray-700" /></button>
-                <button onClick={handleDelete} disabled={acting} className="p-2"><Trash2 size={18} className="text-red-500" /></button>
+                {canEdit && <button onClick={handleDelete} disabled={acting} className="p-2"><Trash2 size={18} className="text-red-500" /></button>}
               </>
             ) : null}
           </div>
@@ -209,15 +210,25 @@ export default function AdminMeetingDetailPage() {
       <div className="flex-1 overflow-y-auto px-5 pt-5 pb-12 max-w-lg mx-auto w-full">
         {editing ? (
           <>
-            <FieldLabel>Meeting title</FieldLabel>
-            <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className={inputCls} />
-            <FieldLabel>Date &amp; Time</FieldLabel>
-            <div className="grid grid-cols-2 gap-3 mb-5">
-              <input type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)} className={inputClsNoMb} />
-              <input type="time" value={editTime} onChange={(e) => setEditTime(e.target.value)} className={inputClsNoMb} />
-            </div>
-            <FieldLabel>Venue</FieldLabel>
-            <input value={editVenue} onChange={(e) => setEditVenue(e.target.value)} placeholder="Venue location" className={inputCls} />
+            {canEdit && (
+              <>
+                <FieldLabel>Meeting title</FieldLabel>
+                <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className={inputCls} />
+                <FieldLabel>Date &amp; Time</FieldLabel>
+                <div className="grid grid-cols-2 gap-3 mb-5">
+                  <input type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)} className={inputClsNoMb} />
+                  <input type="time" value={editTime} onChange={(e) => setEditTime(e.target.value)} className={inputClsNoMb} />
+                </div>
+                <FieldLabel>Venue</FieldLabel>
+                <input value={editVenue} onChange={(e) => setEditVenue(e.target.value)} placeholder="Venue location" className={inputCls} />
+                <FieldLabel>Max Speakers</FieldLabel>
+                <div className="inline-flex items-center border border-gray-300 rounded-[10px] overflow-hidden bg-white mb-5">
+                  <button onClick={() => setEditMaxSpeakers((v) => Math.max(1, v - 1))} className="px-5 py-3.5"><Minus size={18} className="text-gray-700" /></button>
+                  <span className="text-lg font-bold text-gray-900 min-w-[40px] text-center">{editMaxSpeakers}</span>
+                  <button onClick={() => setEditMaxSpeakers((v) => Math.min(8, v + 1))} className="px-5 py-3.5"><Plus size={18} className="text-gray-700" /></button>
+                </div>
+              </>
+            )}
             <FieldLabel>President</FieldLabel>
             <button onClick={() => { setMemberSearch(''); setPickerMode('president'); }} className={pickerRowCls}>
               <span className={`flex-1 text-left ${editPresident ? 'text-gray-900' : 'text-gray-400'}`}>{editPresident ? editPresident.name : 'Select president…'}</span>
@@ -228,12 +239,6 @@ export default function AdminMeetingDetailPage() {
               <span className={`flex-1 text-left ${editSaa ? 'text-gray-900' : 'text-gray-400'}`}>{editSaa ? editSaa.name : 'Select SAA…'}</span>
               <ChevronLeft size={16} className="text-gray-400 rotate-180" />
             </button>
-            <FieldLabel>Max Speakers</FieldLabel>
-            <div className="inline-flex items-center border border-gray-300 rounded-[10px] overflow-hidden bg-white">
-              <button onClick={() => setEditMaxSpeakers((v) => Math.max(1, v - 1))} className="px-5 py-3.5"><Minus size={18} className="text-gray-700" /></button>
-              <span className="text-lg font-bold text-gray-900 min-w-[40px] text-center">{editMaxSpeakers}</span>
-              <button onClick={() => setEditMaxSpeakers((v) => Math.min(8, v + 1))} className="px-5 py-3.5"><Plus size={18} className="text-gray-700" /></button>
-            </div>
           </>
         ) : (
           <>
@@ -311,6 +316,13 @@ export default function AdminMeetingDetailPage() {
                 icon={<QrCode size={20} className="text-brand" />}
                 label="QR Codes"
                 onClick={() => navigate(`/meetings/${id}/qr-codes`)}
+              />
+            )}
+            {data.already_checked_in && (
+              <NavButton
+                icon={<UserX size={20} className="text-brand" />}
+                label="Disqualify"
+                onClick={() => navigate(`/meetings/${id}/disqualify`)}
               />
             )}
           </>

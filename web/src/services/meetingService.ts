@@ -111,6 +111,19 @@ export function withdrawFromRole(
   });
 }
 
+export function setRoleDisqualified(
+  meetingId: string,
+  roleId: string,
+  disqualified: boolean,
+  token: string,
+): Promise<MeetingRoleAssignment> {
+  return apiRequest<MeetingRoleAssignment>(`/meetings/${meetingId}/roles/${roleId}/disqualify`, {
+    method: 'PUT',
+    body: { disqualified },
+    token,
+  });
+}
+
 // ── Member self-enrollment ────────────────────────────────────────────────
 
 export function enrollInRole(

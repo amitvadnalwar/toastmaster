@@ -194,7 +194,7 @@ export default function MemberFeedbackPage() {
       const myEmail = session.user?.email;
       const feedbackMap = new Map<string, SpeakerFeedback>(feedback.map((fb) => [fb.speaker_member_id, fb]));
       const rows: SpeakerRow[] = rosterData.roster
-        .filter((r) => r.role === 'speaker' && r.member_email !== myEmail)
+        .filter((r) => r.role === 'speaker' && r.member_email !== myEmail && !r.disqualified)
         .map((a) => {
           const prev = feedbackMap.get(a.member_id);
           return {
@@ -230,7 +230,7 @@ export default function MemberFeedbackPage() {
   );
   const nomineesByCategory = useMemo(() => {
     const map: Partial<Record<VoteCategory, MeetingRoleAssignment[]>> = {};
-    for (const cat of VOTE_CATEGORIES) map[cat.key] = roster.filter((r) => r.role === cat.role);
+    for (const cat of VOTE_CATEGORIES) map[cat.key] = roster.filter((r) => r.role === cat.role && !r.disqualified);
     return map;
   }, [roster]);
   const votingOpen = meeting?.voting_status === 'open';

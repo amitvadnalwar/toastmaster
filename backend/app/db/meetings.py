@@ -206,6 +206,16 @@ async def delete_role(role_id: str) -> None:
     supabase.table("meeting_roles").delete().eq("id", role_id).execute()
 
 
+async def set_role_disqualified(role_id: str, disqualified: bool) -> dict:
+    result = (
+        supabase.table("meeting_roles")
+        .update({"disqualified": disqualified})
+        .eq("id", role_id)
+        .execute()
+    )
+    return result.data[0]
+
+
 # ── QR check-in ───────────────────────────────────────────────────────────
 
 async def get_attendance(meeting_id: str, member_id: str) -> dict | None:

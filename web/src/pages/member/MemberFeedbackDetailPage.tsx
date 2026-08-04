@@ -11,6 +11,7 @@ const VOTE_CATEGORY_LABELS: Record<VoteCategory, string> = {
   best_speaker: 'Best Speaker',
   best_evaluator: 'Best Evaluator',
   best_mrp: 'Best MRP',
+  best_arp: 'Best ARP',
 };
 
 export default function MemberFeedbackDetailPage() {

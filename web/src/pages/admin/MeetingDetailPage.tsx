@@ -304,6 +304,13 @@ export default function AdminMeetingDetailPage() {
               sub={`${speakers.length}/${meeting.max_speakers} speakers`}
               onClick={() => navigate(`/meetings/${id}/roster`)}
             />
+            {data.already_checked_in && (
+              <NavButton
+                icon={<UserX size={20} className="text-brand" />}
+                label="Disqualify"
+                onClick={() => navigate(`/meetings/${id}/disqualify`)}
+              />
+            )}
             {meeting.status !== 'draft' && (
               <NavButton
                 icon={<ClipboardList size={20} className="text-brand" />}
@@ -316,13 +323,6 @@ export default function AdminMeetingDetailPage() {
                 icon={<QrCode size={20} className="text-brand" />}
                 label="QR Codes"
                 onClick={() => navigate(`/meetings/${id}/qr-codes`)}
-              />
-            )}
-            {data.already_checked_in && (
-              <NavButton
-                icon={<UserX size={20} className="text-brand" />}
-                label="Disqualify"
-                onClick={() => navigate(`/meetings/${id}/disqualify`)}
               />
             )}
           </>

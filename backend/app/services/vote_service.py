@@ -18,7 +18,12 @@ from app.models.vote import (
 
 UNIQUE_VIOLATION = "23505"
 
-_CATEGORY_ROLES = {"best_speaker": "speaker", "best_evaluator": "evaluator", "best_mrp": "tmod"}
+_CATEGORY_ROLES = {
+    "best_speaker": ["speaker"],
+    "best_evaluator": ["evaluator"],
+    "best_mrp": ["tmod", "general_evaluator", "table_topics_master"],
+    "best_arp": ["timer", "ah_counter", "grammarian"],
+}
 
 
 async def _require_meeting(meeting_id: str) -> dict:
@@ -42,10 +47,10 @@ async def submit_vote(body: VoteIn, user: CurrentUser) -> None:
     if meeting_row["voting_status"] != VotingStatus.open:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Voting is not open")
 
-    expected_role = _CATEGORY_ROLES.get(body.category.value)
+    expected_roles = _CATEGORY_ROLES.get(body.category.value, [])
     roster = await db_meetings.get_roster(body.meeting_id)
     nominee = next(
-        (r for r in roster if r["member_id"] == body.nominee_id and r["role"] == expected_role),
+        (r for r in roster if r["member_id"] == body.nominee_id and r["role"] in expected_roles),
         None,
     )
     if not nominee or nominee.get("disqualified"):

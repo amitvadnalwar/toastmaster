@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, CheckCircle, MicOff, Frown, Meh, Smile, Star, Clock, Pencil, Check } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { showAlert } from '@/store/alertStore';
-import { getMeetingRoster, getMyFeedback, submitFeedback } from '@/services/meetingService';
+import { getMeetingById, getMeetingRoster, getMyFeedback, submitFeedback } from '@/services/meetingService';
 import { submitVote, submitRating, getMyVotingState } from '@/services/voteService';
 import { Skeleton } from '@/components/ui/Skeleton';
 import type {
@@ -49,10 +49,11 @@ const FEEDBACK_FIELDS: { key: 'content_rating' | 'structure_rating' | 'confidenc
   { key: 'interaction_rating', label: 'Interact' },
 ];
 
-const VOTE_CATEGORIES: { key: VoteCategory; label: string; role: MeetingRoleAssignment['role'] }[] = [
-  { key: 'best_speaker', label: 'Best Speaker', role: 'speaker' },
-  { key: 'best_evaluator', label: 'Best Evaluator', role: 'evaluator' },
-  { key: 'best_mrp', label: 'Best MRP', role: 'tmod' },
+const VOTE_CATEGORIES: { key: VoteCategory; label: string; roles: MeetingRoleAssignment['role'][] }[] = [
+  { key: 'best_speaker', label: 'Best Speaker', roles: ['speaker'] },
+  { key: 'best_evaluator', label: 'Best Evaluator', roles: ['evaluator'] },
+  { key: 'best_mrp', label: 'Best MRP', roles: ['tmod', 'general_evaluator', 'table_topics_master'] },
+  { key: 'best_arp', label: 'Best ARP', roles: ['timer', 'ah_counter', 'grammarian'] },
 ];
 
 function SmileyRow({ label, value, onChange }: { label: string; value: number; onChange: (n: 1 | 2 | 3) => void }) {
@@ -222,6 +223,16 @@ export default function MemberFeedbackPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  // Poll the meeting's voting_status so this page reflects admin opening/closing
+  // voting live, without the member needing to reload or navigate away and back.
+  useEffect(() => {
+    if (!session || !id) return;
+    const interval = setInterval(() => {
+      getMeetingById(id, session.access_token).then(setMeeting).catch(() => {});
+    }, 8000);
+    return () => clearInterval(interval);
+  }, [session, id]);
+
   const feedbackDone = speakers.length === 0 || myFeedback.length > 0;
 
   const votedMap = useMemo(
@@ -230,7 +241,7 @@ export default function MemberFeedbackPage() {
   );
   const nomineesByCategory = useMemo(() => {
     const map: Partial<Record<VoteCategory, MeetingRoleAssignment[]>> = {};
-    for (const cat of VOTE_CATEGORIES) map[cat.key] = roster.filter((r) => r.role === cat.role && !r.disqualified);
+    for (const cat of VOTE_CATEGORIES) map[cat.key] = roster.filter((r) => cat.roles.includes(r.role) && !r.disqualified);
     return map;
   }, [roster]);
   const votingOpen = meeting?.voting_status === 'open';
@@ -464,11 +475,6 @@ export default function MemberFeedbackPage() {
                     </div>
                   );
                 })}
-
-                <div className="bg-white rounded-2xl p-4 mb-4 shadow-sm">
-                  <p className="text-[14px] font-bold text-gray-900 mb-1">Best ARP</p>
-                  <p className="text-[13px] text-gray-400">Categories coming soon.</p>
-                </div>
 
                 {!allCategoriesVoted && (
                   <button

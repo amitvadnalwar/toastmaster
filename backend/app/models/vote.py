@@ -8,7 +8,8 @@ class VoteCategory(StrEnum):
     best_table_topics_master = "best_table_topics_master"
     best_evaluator = "best_evaluator"
     best_table_topic = "best_table_topic"
-    best_mrp = "best_mrp"  # Main Role Player — the meeting's TMOD
+    best_mrp = "best_mrp"  # Main Role Player — TMOD, General Evaluator, Table Topics Master
+    best_arp = "best_arp"  # Auxiliary Role Player — Timer, Ah Counter, Grammarian
 
 
 class VoteIn(BaseModel):

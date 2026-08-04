@@ -206,7 +206,7 @@ export interface SpeakerFeedbackPayload {
 
 // ── Voting ──────────────────────────────────────────────────────────────────
 
-export type VoteCategory = 'best_speaker' | 'best_evaluator' | 'best_mrp';
+export type VoteCategory = 'best_speaker' | 'best_evaluator' | 'best_mrp' | 'best_arp';
 
 export interface VotePayload {
   meeting_id: string;

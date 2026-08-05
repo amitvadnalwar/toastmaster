@@ -6,6 +6,7 @@ import { getVoteSummary } from '@/services/voteService';
 import { getMeetingRoster } from '@/services/meetingService';
 import { MeetingDetailSkeleton } from '@/components/ui/Skeleton';
 import type { MeetingRoleAssignment, VoteCategory, VoteSummaryItem } from '@/types';
+import { ROLE_LABELS } from '@/types';
 
 const CATEGORIES: { key: VoteCategory; label: string; roles: MeetingRoleAssignment['role'][] }[] = [
   { key: 'best_speaker', label: 'Speaker', roles: ['speaker'] },
@@ -17,6 +18,7 @@ const CATEGORIES: { key: VoteCategory; label: string; roles: MeetingRoleAssignme
 interface Participant {
   memberId: string;
   name: string;
+  role: MeetingRoleAssignment['role'];
   count: number;
 }
 
@@ -72,6 +74,7 @@ export default function VotingResultsPage() {
               participantMap.set(r.member_id, {
                 memberId: r.member_id,
                 name: r.member_name ?? '—',
+                role: r.role,
                 count: countByMember.get(r.member_id) ?? 0,
               });
             }
@@ -94,8 +97,13 @@ export default function VotingResultsPage() {
                     const pct = total === 0 ? 0 : Math.round((p.count / total) * 100);
                     return (
                       <div key={p.memberId}>
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-[13px] font-semibold text-gray-800 truncate">{p.name}</span>
+                        <div className="flex items-end justify-between mb-1">
+                          <div className="min-w-0">
+                            <span className="text-[13px] font-semibold text-gray-800 truncate block">{p.name}</span>
+                            {cat.roles.length > 1 && (
+                              <span className="text-[11px] text-gray-400">{ROLE_LABELS[p.role]}</span>
+                            )}
+                          </div>
                           <span className="text-[12px] text-gray-500 shrink-0 ml-2">{pct}% · {p.count}</span>
                         </div>
                         <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-  ChevronLeft, Edit2, Trash2, Check, Search, Minus, Plus, Lock, ClipboardList, ArrowRight, QrCode, Users, UserX,
+  ChevronLeft, Edit2, Trash2, Check, Search, Minus, Plus, Lock, ClipboardList, ArrowRight, QrCode, Users, UserX, BarChart3,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { getMeetingRoster, updateMeeting, deleteMeeting, updateMeetingStatus, updateVotingStatus } from '@/services/meetingService';
@@ -316,6 +316,13 @@ export default function AdminMeetingDetailPage() {
                 icon={<ClipboardList size={20} className="text-brand" />}
                 label="Feedback Details"
                 onClick={() => navigate(`/meetings/${id}/feedback-details`)}
+              />
+            )}
+            {meeting.status !== 'draft' && (
+              <NavButton
+                icon={<BarChart3 size={20} className="text-brand" />}
+                label="Voting Results"
+                onClick={() => navigate(`/meetings/${id}/voting-results`)}
               />
             )}
             {canManage && (

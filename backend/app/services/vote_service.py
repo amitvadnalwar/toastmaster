@@ -120,7 +120,9 @@ async def get_all_ratings(meeting_id: str, user: CurrentUser) -> list[MeetingRat
     return [MeetingRatingOut(**r) for r in rows]
 
 
-async def get_vote_summary(meeting_id: str) -> list[VoteSummaryItem]:
-    # Returns counts per category per nominee. No voter attribution.
-    # TODO: GROUP BY category, nominee_id; join members for nominee_name
-    raise NotImplementedError
+async def get_vote_summary(meeting_id: str, user: CurrentUser) -> list[VoteSummaryItem]:
+    meeting_row = await _require_meeting(meeting_id)
+    if meeting_row["club_id"] != user.club_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your club")
+    rows = await db_votes.get_summary(meeting_id)
+    return [VoteSummaryItem(**r) for r in rows]

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { getClubMembers } from '@/services/memberService';
 import { MemberBottomNav } from '@/components/layout/BottomNav';
@@ -9,7 +10,9 @@ import { initials } from '@/lib/utils';
 type ClubMember = { id: string; name: string; club_role: string; app_role: string | null; is_active: boolean };
 
 export default function MemberMembersPage() {
-  const { session } = useAuthStore();
+  const navigate = useNavigate();
+  const { session, appRole } = useAuthStore();
+  const isAdmin = appRole === 'admin';
   const [members, setMembers] = useState<ClubMember[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -24,9 +27,16 @@ export default function MemberMembersPage() {
   return (
     <div className="flex flex-col min-h-full bg-gray-50">
       <div className="bg-white border-b border-gray-100 px-5 py-4 sticky top-0 z-20">
-        <div className="max-w-lg mx-auto">
-          <h1 className="text-xl font-bold text-gray-900">Members</h1>
-          <p className="text-[13px] text-gray-500 mt-0.5">{members.length} members</p>
+        <div className="max-w-lg mx-auto flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">Members</h1>
+            <p className="text-[13px] text-gray-500 mt-0.5">{members.length} members</p>
+          </div>
+          {isAdmin && (
+            <button onClick={() => navigate('/admin/members/new')} className="bg-brand text-white text-[13px] font-bold rounded-[10px] px-3.5 py-2 active:scale-95 transition-transform">
+              + Add
+            </button>
+          )}
         </div>
       </div>
 

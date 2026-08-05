@@ -74,6 +74,22 @@ async def get_all_ratings(meeting_id: str) -> list[dict]:
 
 
 async def get_summary(meeting_id: str) -> list[dict]:
-    # Returns aggregated counts per category per nominee_id, joined with member name.
-    # TODO: implement
-    raise NotImplementedError
+    result = (
+        supabase.table("votes")
+        .select("category, nominee_id, members!votes_nominee_id_fkey(name)")
+        .eq("meeting_id", meeting_id)
+        .execute()
+    )
+    counts: dict[tuple[str, str], dict] = {}
+    for row in result.data:
+        key = (row["category"], row["nominee_id"])
+        if key not in counts:
+            member = row.get("members") or {}
+            counts[key] = {
+                "category": row["category"],
+                "nominee_id": row["nominee_id"],
+                "nominee_name": member.get("name") or "—",
+                "count": 0,
+            }
+        counts[key]["count"] += 1
+    return list(counts.values())

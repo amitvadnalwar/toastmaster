@@ -1,7 +1,7 @@
 from fastapi import APIRouter, BackgroundTasks, Depends
 from pydantic import BaseModel
 
-from app.middleware.auth import CurrentUser, require_super_admin
+from app.middleware.auth import CurrentUser, require_admin, require_super_admin
 from app.models.common import ApiResponse
 from app.models.member import AppRole, ClubRole, MemberCreateIn, MemberOut
 from app.services import admin_member_service as svc
@@ -45,7 +45,7 @@ async def list_members(user: CurrentUser = Depends(require_super_admin)) -> ApiR
 async def create_member(
     body: MemberCreateIn,
     background_tasks: BackgroundTasks,
-    user: CurrentUser = Depends(require_super_admin),
+    user: CurrentUser = Depends(require_admin),
 ) -> ApiResponse[MemberOut]:
     member = await svc.create_member(user.club_id, body, background_tasks)
     return ApiResponse(data=member)

@@ -43,7 +43,6 @@ export default function LoginPage() {
             <span className="text-white text-2xl font-black">T</span>
           </div>
           <h1 className="text-2xl font-black text-gray-900">{CLUB_SHORT_NAME}</h1>
-          <p className="text-sm text-gray-500 mt-1">Pune South East</p>
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">

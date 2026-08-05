@@ -235,6 +235,13 @@ export interface MyVotingState {
   rating: MyRating | null;
 }
 
+export interface VoteSummaryItem {
+  category: VoteCategory;
+  nominee_id: string;
+  nominee_name: string;
+  count: number;
+}
+
 // ── Members ─────────────────────────────────────────────────────────────────
 
 export interface Member {

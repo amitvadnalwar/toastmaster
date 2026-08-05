@@ -41,8 +41,8 @@ async def get_vote_summary(
     user: CurrentUser = Depends(require_admin),
 ) -> ApiResponse[list[VoteSummaryItem]]:
     # Admin-only: returns nominee counts per category, no voter attribution.
-    # TODO: implement in vote_service
-    raise NotImplementedError
+    result = await vote_service.get_vote_summary(meeting_id, user)
+    return ApiResponse(data=result)
 
 
 # NOTE: this generic two-segment route must stay declared last — anything

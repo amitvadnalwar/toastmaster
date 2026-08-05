@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, Calendar, X } from 'lucide-react';
+import { ChevronLeft, X } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { createMember } from '@/services/memberService';
 import { showAlert } from '@/store/alertStore';
@@ -8,6 +8,21 @@ import Button from '@/components/ui/Button';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_RE = /^\+?[\d\s\-().]{7,15}$/;
+
+const MONTHS = [
+  { value: '01', label: 'January', days: 31 },
+  { value: '02', label: 'February', days: 29 },
+  { value: '03', label: 'March', days: 31 },
+  { value: '04', label: 'April', days: 30 },
+  { value: '05', label: 'May', days: 31 },
+  { value: '06', label: 'June', days: 30 },
+  { value: '07', label: 'July', days: 31 },
+  { value: '08', label: 'August', days: 31 },
+  { value: '09', label: 'September', days: 30 },
+  { value: '10', label: 'October', days: 31 },
+  { value: '11', label: 'November', days: 30 },
+  { value: '12', label: 'December', days: 31 },
+];
 
 function validate(name: string, email: string, phone: string) {
   if (!name.trim()) return { field: 'name', msg: 'Full name is required' };
@@ -20,14 +35,23 @@ function validate(name: string, email: string, phone: string) {
 
 export default function AdminNewMemberPage() {
   const navigate = useNavigate();
-  const { session } = useAuthStore();
+  const { session, appRole } = useAuthStore();
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [dob, setDob] = useState(''); // yyyy-mm-dd from date input
+  const [birthMonth, setBirthMonth] = useState(''); // '01'..'12'
+  const [birthDay, setBirthDay] = useState(''); // '01'..'31'
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+
+  const maxDay = MONTHS.find((m) => m.value === birthMonth)?.days ?? 31;
+
+  function selectMonth(value: string) {
+    setBirthMonth(value);
+    const max = MONTHS.find((m) => m.value === value)?.days ?? 31;
+    if (birthDay && Number(birthDay) > max) setBirthDay('');
+  }
 
   function touch(field: string) {
     setErrors((prev) => ({ ...prev, [field]: '' }));
@@ -42,18 +66,13 @@ export default function AdminNewMemberPage() {
     if (!session) return;
     setSubmitting(true);
     try {
-      // Backend stores MM-DD only
-      let birthday: string | undefined;
-      if (dob) {
-        const [, mm, dd] = dob.split('-');
-        birthday = `${mm}-${dd}`;
-      }
+      const birthday = birthMonth && birthDay ? `${birthMonth}-${birthDay}` : undefined;
       await createMember(
         { name: name.trim(), email: email.trim().toLowerCase(), phone: phone.trim(), birthday },
         session.access_token,
       );
       await showAlert(`An invitation email has been sent to ${email.trim()} to set up their account.`);
-      navigate('/admin/members', { replace: true });
+      navigate(appRole === 'super_admin' ? '/admin/members' : '/members', { replace: true });
     } catch (e: unknown) {
       await showAlert(e instanceof Error ? e.message : 'Failed to create member');
     } finally {
@@ -88,15 +107,32 @@ export default function AdminNewMemberPage() {
 
         <Label>Date of Birth <span className="text-gray-400 font-normal">(optional)</span></Label>
         <div className="flex items-center gap-2.5 mb-1.5">
-          <div className="flex-1 flex items-center gap-2 bg-white border border-gray-300 rounded-[10px] px-3.5 py-3.5">
-            <Calendar size={15} className="text-gray-500" />
-            <input type="date" value={dob} onChange={(e) => setDob(e.target.value)} max={new Date().toISOString().slice(0, 10)} className="flex-1 bg-transparent outline-none text-[15px] text-gray-900" />
-          </div>
-          {dob && (
-            <button onClick={() => setDob('')} className="p-2.5"><X size={16} className="text-gray-400" /></button>
+          <select
+            value={birthMonth}
+            onChange={(e) => selectMonth(e.target.value)}
+            className="flex-1 bg-white border border-gray-300 rounded-[10px] px-3.5 py-3.5 text-[15px] text-gray-900 outline-none focus:border-brand"
+          >
+            <option value="">Month</option>
+            {MONTHS.map((m) => (
+              <option key={m.value} value={m.value}>{m.label}</option>
+            ))}
+          </select>
+          <select
+            value={birthDay}
+            onChange={(e) => setBirthDay(e.target.value)}
+            disabled={!birthMonth}
+            className="w-24 bg-white border border-gray-300 rounded-[10px] px-3.5 py-3.5 text-[15px] text-gray-900 outline-none focus:border-brand disabled:opacity-50"
+          >
+            <option value="">Day</option>
+            {Array.from({ length: maxDay }, (_, i) => String(i + 1).padStart(2, '0')).map((d) => (
+              <option key={d} value={d}>{d}</option>
+            ))}
+          </select>
+          {(birthMonth || birthDay) && (
+            <button onClick={() => { setBirthMonth(''); setBirthDay(''); }} className="p-2.5"><X size={16} className="text-gray-400" /></button>
           )}
         </div>
-        <p className="text-xs text-gray-400 mb-7">Only month and day are stored for birthday reminders.</p>
+        <p className="text-xs text-gray-400 mb-7">Only month and day are needed — used for birthday reminders, no year required.</p>
 
         <Button fullWidth size="lg" loading={submitting} onClick={handleSubmit}>
           Add Member &amp; Send Invite

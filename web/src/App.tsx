@@ -25,6 +25,7 @@ import MemberMeetingDetailPage from '@/pages/member/MeetingDetailPage';
 import MeetingRosterPage from '@/pages/member/MeetingRosterPage';
 import MeetingQrCodesPage from '@/pages/member/MeetingQrCodesPage';
 import DisqualifyPage from '@/pages/member/DisqualifyPage';
+import VotingResultsPage from '@/pages/member/VotingResultsPage';
 import MemberNewMeetingPage from '@/pages/member/NewMeetingPage';
 import MemberApplyRolePage from '@/pages/member/ApplyRolePage';
 import MemberScanPage from '@/pages/member/ScanPage';
@@ -76,7 +77,7 @@ export default function App() {
         <Route path="/admin/meetings/:id" element={<ProtectedRoute roles={['super_admin']}><AdminMeetingDetailPage /></ProtectedRoute>} />
         <Route path="/admin/roles" element={<ProtectedRoute roles={['super_admin']}><AdminRolesPage /></ProtectedRoute>} />
         <Route path="/admin/members" element={<ProtectedRoute roles={['super_admin']}><AdminMembersPage /></ProtectedRoute>} />
-        <Route path="/admin/members/new" element={<ProtectedRoute roles={['super_admin']}><AdminNewMemberPage /></ProtectedRoute>} />
+        <Route path="/admin/members/new" element={<ProtectedRoute roles={['admin', 'super_admin']}><AdminNewMemberPage /></ProtectedRoute>} />
         <Route path="/admin/members/:id" element={<ProtectedRoute roles={['super_admin']}><AdminMemberDetailPage /></ProtectedRoute>} />
         <Route path="/admin/profile" element={<ProtectedRoute roles={['super_admin']}><AdminProfilePage /></ProtectedRoute>} />
 
@@ -88,6 +89,7 @@ export default function App() {
         <Route path="/meetings/:id/roster" element={<ProtectedRoute roles={['member', 'admin', 'super_admin']}><MeetingRosterPage /></ProtectedRoute>} />
         <Route path="/meetings/:id/qr-codes" element={<ProtectedRoute roles={['admin', 'super_admin']}><MeetingQrCodesPage /></ProtectedRoute>} />
         <Route path="/meetings/:id/disqualify" element={<ProtectedRoute roles={['admin', 'super_admin']}><DisqualifyPage /></ProtectedRoute>} />
+        <Route path="/meetings/:id/voting-results" element={<ProtectedRoute roles={['admin', 'super_admin']}><VotingResultsPage /></ProtectedRoute>} />
         <Route path="/meetings/:id/apply" element={<ProtectedRoute roles={['member', 'admin']}><MemberApplyRolePage /></ProtectedRoute>} />
         <Route path="/meetings/:id/feedback" element={<ProtectedRoute roles={['member', 'admin']}><MemberFeedbackPage /></ProtectedRoute>} />
         <Route path="/meetings/:id/feedback-details" element={<ProtectedRoute roles={['admin', 'super_admin']}><FeedbackDetailsPage /></ProtectedRoute>} />

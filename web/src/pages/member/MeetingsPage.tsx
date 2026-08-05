@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { Calendar, Clock, MapPin, ArrowRight, Plus } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
@@ -25,24 +25,21 @@ export default function MemberMeetingsPage() {
   const navigate = useNavigate();
   const { session, appRole } = useAuthStore();
   const isAdmin = appRole === 'admin';
-  const [meetings, setMeetings] = useState<Meeting[]>([]);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (!session) return;
-    getAllMeetings(session.access_token)
-      .then((all) => {
-        const upcoming = all
-          .filter((m) => m.status !== 'completed' && !isPastMeeting(m.scheduled_at))
-          .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
-        const past = all
-          .filter((m) => m.status === 'completed' || isPastMeeting(m.scheduled_at))
-          .sort((a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime());
-        setMeetings([...upcoming, ...past]);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [session]);
+  const { data: meetings = [], isLoading: loading } = useQuery({
+    queryKey: ['meetings', session?.user?.id],
+    queryFn: async () => {
+      const all = await getAllMeetings(session!.access_token);
+      const upcoming = all
+        .filter((m) => m.status !== 'completed' && !isPastMeeting(m.scheduled_at))
+        .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
+      const past = all
+        .filter((m) => m.status === 'completed' || isPastMeeting(m.scheduled_at))
+        .sort((a, b) => new Date(b.scheduled_at).getTime() - new Date(a.scheduled_at).getTime());
+      return [...upcoming, ...past];
+    },
+    enabled: !!session,
+  });
 
   return (
     <div className="flex flex-col min-h-full bg-[#f4f4f8]">

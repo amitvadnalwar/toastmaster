@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ChevronLeft, Edit2, Trash2, Check, Search, Minus, Plus, Lock, ClipboardList, ArrowRight, QrCode, Users, UserX, BarChart3,
@@ -8,7 +9,7 @@ import { getMeetingRoster, updateMeeting, deleteMeeting, updateMeetingStatus, up
 import { getAllMembers } from '@/services/memberService';
 import Spinner from '@/components/ui/Spinner';
 import { MeetingDetailSkeleton } from '@/components/ui/Skeleton';
-import type { MeetingWithRoster, VotingStatus } from '@/types';
+import type { VotingStatus } from '@/types';
 import { STATUS_COLOR, STATUS_LABEL } from '@/types';
 import { initials, formatDateTime, formatDateShort, isPastMeeting } from '@/lib/utils';
 
@@ -23,8 +24,13 @@ export default function AdminMeetingDetailPage() {
   const navigate = useNavigate();
   const { session } = useAuthStore();
 
-  const [data, setData] = useState<MeetingWithRoster | null>(null);
-  const [fetching, setFetching] = useState(true);
+  const queryClient = useQueryClient();
+  const queryKey = ['meeting-roster', id];
+  const { data, isLoading: fetching } = useQuery({
+    queryKey,
+    queryFn: () => getMeetingRoster(id!, session!.access_token),
+    enabled: !!session && !!id,
+  });
   const [actingAction, setActingAction] = useState<ActingAction>(null);
   const [members, setMembers] = useState<MemberOption[]>([]);
   const [memberMap, setMemberMap] = useState<Map<string, string>>(new Map());
@@ -40,19 +46,6 @@ export default function AdminMeetingDetailPage() {
   const [editMaxSpeakers, setEditMaxSpeakers] = useState(3);
   const [pickerMode, setPickerMode] = useState<'president' | 'saa' | null>(null);
   const [memberSearch, setMemberSearch] = useState('');
-
-  const load = useCallback(async () => {
-    if (!session || !id) return;
-    setFetching(true);
-    try {
-      const result = await getMeetingRoster(id, session.access_token);
-      setData(result);
-    } catch { /* ignore */ } finally {
-      setFetching(false);
-    }
-  }, [session, id]);
-
-  useEffect(() => { load(); }, [load]);
 
   useEffect(() => {
     if (!session) return;
@@ -96,7 +89,7 @@ export default function AdminMeetingDetailPage() {
         saa_id: editSaa?.id ?? null,
         max_speakers: editMaxSpeakers,
       }, session.access_token);
-      setData({ meeting: updated, roster: data.roster });
+      queryClient.setQueryData(queryKey, { ...data, meeting: updated });
       setEditing(false);
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : 'Failed to save');
@@ -124,7 +117,7 @@ export default function AdminMeetingDetailPage() {
     setActingAction('publish');
     try {
       const updated = await updateMeetingStatus(data.meeting.id, 'published', session.access_token);
-      setData({ meeting: updated, roster: data.roster });
+      queryClient.setQueryData(queryKey, { ...data, meeting: updated });
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : 'Failed to publish');
     } finally {
@@ -138,7 +131,7 @@ export default function AdminMeetingDetailPage() {
     setActingAction('complete');
     try {
       const updated = await updateMeetingStatus(data.meeting.id, 'completed', session.access_token);
-      setData({ meeting: updated, roster: data.roster });
+      queryClient.setQueryData(queryKey, { ...data, meeting: updated });
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : 'Failed to complete meeting');
     } finally {
@@ -152,7 +145,7 @@ export default function AdminMeetingDetailPage() {
     setActingAction('voting');
     try {
       const updated = await updateVotingStatus(data.meeting.id, next, session.access_token);
-      setData({ meeting: updated, roster: data.roster });
+      queryClient.setQueryData(queryKey, { ...data, meeting: updated });
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : 'Failed to update voting');
     } finally {

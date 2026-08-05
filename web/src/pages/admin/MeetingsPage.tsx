@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Calendar, ChevronRight } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
@@ -13,16 +13,12 @@ export default function AdminMeetingsPage() {
   const navigate = useNavigate();
   const { session, appRole } = useAuthStore();
   const isSuperAdmin = appRole === 'super_admin';
-  const [meetings, setMeetings] = useState<Meeting[]>([]);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (!session) return;
-    getAllMeetings(session.access_token)
-      .then(setMeetings)
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [session]);
+  const { data: meetings = [], isLoading: loading } = useQuery({
+    queryKey: ['admin-meetings', session?.user?.id],
+    queryFn: () => getAllMeetings(session!.access_token),
+    enabled: !!session,
+  });
 
   const upcoming = meetings.filter((m) => m.status !== 'completed');
   const past = meetings.filter((m) => m.status === 'completed');

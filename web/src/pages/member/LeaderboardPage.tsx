@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
   ChevronLeft, ChevronRight, Trophy, Coins, Info, Mic, MessageSquare, Crown, Star, Users, CheckCircle,
@@ -6,7 +7,6 @@ import {
 import { useAuthStore } from '@/store/authStore';
 import { getLeaderboard } from '@/services/leaderboardService';
 import { MembersListSkeleton } from '@/components/ui/Skeleton';
-import type { LeaderboardEntry } from '@/types';
 import { initials, avatarColor } from '@/lib/utils';
 
 function currentMonthKey(): string {
@@ -41,22 +41,13 @@ export default function LeaderboardPage() {
   const currentMonth = currentMonthKey();
 
   const [month, setMonth] = useState(currentMonth);
-  const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
-  const [fetching, setFetching] = useState(true);
   const [showInfo, setShowInfo] = useState(false);
 
-  const load = useCallback(async () => {
-    if (!session) return;
-    setFetching(true);
-    try {
-      const result = await getLeaderboard(month, session.access_token);
-      setEntries(result);
-    } catch { /* ignore */ } finally {
-      setFetching(false);
-    }
-  }, [session, month]);
-
-  useEffect(() => { load(); }, [load]);
+  const { data: entries = [], isLoading: fetching } = useQuery({
+    queryKey: ['leaderboard', month, session?.user?.id],
+    queryFn: () => getLeaderboard(month, session!.access_token),
+    enabled: !!session,
+  });
 
   const isCurrentMonth = month === currentMonth;
 

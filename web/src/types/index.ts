@@ -242,6 +242,29 @@ export interface VoteSummaryItem {
   count: number;
 }
 
+// ── Leaderboard ─────────────────────────────────────────────────────────────
+
+export interface LeaderboardEntry {
+  member_id: string;
+  member_name: string;
+  points: number;
+  rank: number;
+}
+
+export interface PointsBreakdownItem {
+  label: string;
+  count: number;
+  points_each: number;
+  total: number;
+}
+
+export interface MemberPointsOut {
+  member_id: string;
+  member_name: string;
+  total_points: number;
+  breakdown: PointsBreakdownItem[];
+}
+
 // ── Members ─────────────────────────────────────────────────────────────────
 
 export interface Member {

@@ -26,6 +26,8 @@ import MeetingRosterPage from '@/pages/member/MeetingRosterPage';
 import MeetingQrCodesPage from '@/pages/member/MeetingQrCodesPage';
 import DisqualifyPage from '@/pages/member/DisqualifyPage';
 import VotingResultsPage from '@/pages/member/VotingResultsPage';
+import LeaderboardPage from '@/pages/member/LeaderboardPage';
+import LeaderboardDetailPage from '@/pages/member/LeaderboardDetailPage';
 import MemberNewMeetingPage from '@/pages/member/NewMeetingPage';
 import MemberApplyRolePage from '@/pages/member/ApplyRolePage';
 import MemberScanPage from '@/pages/member/ScanPage';
@@ -99,6 +101,8 @@ export default function App() {
         <Route path="/profile" element={<ProtectedRoute roles={['member', 'admin']}><MemberProfilePage /></ProtectedRoute>} />
         <Route path="/feedback-history" element={<ProtectedRoute roles={['member', 'admin']}><FeedbackHistoryPage /></ProtectedRoute>} />
         <Route path="/feedback-history/:meetingId" element={<ProtectedRoute roles={['member', 'admin']}><MeetingFeedbackReceivedPage /></ProtectedRoute>} />
+        <Route path="/leaderboard" element={<ProtectedRoute roles={['member', 'admin']}><LeaderboardPage /></ProtectedRoute>} />
+        <Route path="/leaderboard/:memberId" element={<ProtectedRoute roles={['member', 'admin']}><LeaderboardDetailPage /></ProtectedRoute>} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

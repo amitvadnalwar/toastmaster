@@ -1,6 +1,17 @@
 from app.db.client import supabase
 
 
+async def get_by_id(member_id: str) -> dict | None:
+    result = (
+        supabase.table("members")
+        .select("*")
+        .eq("id", member_id)
+        .limit(1)
+        .execute()
+    )
+    return result.data[0] if result.data else None
+
+
 async def get_by_auth_user_id(auth_user_id: str) -> dict | None:
     result = (
         supabase.table("members")

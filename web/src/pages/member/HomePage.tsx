@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { Bell, Calendar, Clock, MapPin, ChevronRight } from 'lucide-react';
+import { Bell, Calendar, Clock, MapPin, ChevronRight, Trophy } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { getAllMeetings, getMeetingRoster, getSpeakingHistory } from '@/services/meetingService';
 import { getClubMembers, getMe } from '@/services/memberService';
@@ -172,6 +172,23 @@ export default function MemberHomePage() {
               <ProgressRing percent={progressPct} />
               <span className="absolute text-sm font-extrabold text-gray-900">{progressPct}%</span>
             </div>
+          </button>
+
+          {/* Leaderboard */}
+          <button
+            onClick={() => navigate('/leaderboard')}
+            className="mx-4 mt-4 w-[calc(100%-2rem)] bg-white rounded-2xl p-4 shadow-sm flex items-center justify-between active:scale-[0.99] transition-transform"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-[#fef2f2] flex items-center justify-center">
+                <Trophy size={20} className="text-brand" />
+              </div>
+              <div className="text-left">
+                <p className="text-[15px] font-bold text-gray-900">Leaderboard</p>
+                <p className="text-xs text-gray-500 mt-0.5">See who's leading this month</p>
+              </div>
+            </div>
+            <ChevronRight size={18} className="text-gray-400" />
           </button>
 
           {/* Upcoming Schedule */}

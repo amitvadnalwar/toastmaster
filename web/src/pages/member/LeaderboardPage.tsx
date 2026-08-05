@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Trophy } from 'lucide-react';
+import {
+  ChevronLeft, ChevronRight, Trophy, Coins, Info, Mic, MessageSquare, Crown, Star, Users, CheckCircle,
+} from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { getLeaderboard } from '@/services/leaderboardService';
 import { MembersListSkeleton } from '@/components/ui/Skeleton';
 import type { LeaderboardEntry } from '@/types';
-import { initials } from '@/lib/utils';
+import { initials, avatarColor } from '@/lib/utils';
 
 function currentMonthKey(): string {
   const now = new Date();
@@ -23,11 +25,15 @@ function shiftMonth(key: string, delta: number): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
-const RANK_STYLES: Record<number, { bg: string; text: string }> = {
-  1: { bg: '#fef3c7', text: '#b45309' },
-  2: { bg: '#f3f4f6', text: '#4b5563' },
-  3: { bg: '#fde8d7', text: '#9a5b2c' },
-};
+const POINT_RULES: { icon: typeof Mic; label: string; sub?: string; points: number }[] = [
+  { icon: Crown, label: 'TMOD', sub: 'Toastmaster of the Day', points: 20 },
+  { icon: Star, label: 'General Evaluator', points: 20 },
+  { icon: Mic, label: 'Speeches', sub: 'Giving a speech', points: 15 },
+  { icon: MessageSquare, label: 'Evaluators', sub: 'Evaluating a speech', points: 15 },
+  { icon: Users, label: 'Other Meeting Roles', sub: 'Table Topics Master, Timer, Ah Counter, Grammarian', points: 10 },
+  { icon: CheckCircle, label: 'Attendance', sub: 'Checking in to the meeting', points: 10 },
+  { icon: Trophy, label: 'Winners', sub: 'Most votes in a category', points: 10 },
+];
 
 export default function LeaderboardPage() {
   const navigate = useNavigate();
@@ -37,6 +43,7 @@ export default function LeaderboardPage() {
   const [month, setMonth] = useState(currentMonth);
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [fetching, setFetching] = useState(true);
+  const [showInfo, setShowInfo] = useState(false);
 
   const load = useCallback(async () => {
     if (!session) return;
@@ -61,7 +68,11 @@ export default function LeaderboardPage() {
             <ChevronLeft size={20} /> Back
           </button>
           <h1 className="text-lg font-bold text-gray-900 truncate">Leaderboard</h1>
-          <div className="w-[70px]" />
+          <div className="w-[70px] flex justify-end">
+            <button onClick={() => setShowInfo(true)} className="p-2 text-gray-400 active:text-brand">
+              <Info size={20} />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -89,31 +100,73 @@ export default function LeaderboardPage() {
           </div>
         ) : (
           <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-            {entries.map((e, i) => {
-              const style = RANK_STYLES[e.rank];
-              return (
-                <button
-                  key={e.member_id}
-                  onClick={() => navigate(`/leaderboard/${e.member_id}?month=${month}`)}
-                  className={`w-full flex items-center gap-3 px-4 py-3.5 text-left ${i > 0 ? 'border-t border-gray-100' : ''}`}
+            {entries.map((e, i) => (
+              <button
+                key={e.member_id}
+                onClick={() => navigate(`/leaderboard/${e.member_id}?month=${month}`)}
+                className={`w-full flex items-center gap-3 px-4 py-3.5 text-left ${i > 0 ? 'border-t border-gray-100' : ''}`}
+              >
+                <span className="w-5 text-[13px] font-semibold text-gray-400 shrink-0 text-right">{e.rank}</span>
+                <div
+                  className="w-11 h-11 rounded-full flex items-center justify-center shrink-0"
+                  style={{ backgroundColor: avatarColor(e.member_name) }}
                 >
-                  <div
-                    className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-[13px] font-bold"
-                    style={{ backgroundColor: style?.bg ?? '#f3f4f6', color: style?.text ?? '#6b7280' }}
-                  >
-                    {e.rank}
-                  </div>
-                  <div className="w-10 h-10 rounded-full bg-brand flex items-center justify-center shrink-0">
-                    <span className="text-white text-[13px] font-bold">{initials(e.member_name)}</span>
-                  </div>
-                  <span className="flex-1 text-[15px] font-semibold text-gray-900 truncate">{e.member_name}</span>
-                  <span className="text-[15px] font-extrabold text-brand shrink-0">{e.points} pts</span>
-                </button>
-              );
-            })}
+                  <span className="text-white text-[13px] font-bold">{initials(e.member_name)}</span>
+                </div>
+                <span className="flex-1 text-[15px] font-semibold text-gray-900 truncate">{e.member_name}</span>
+                <div className="flex items-center gap-1 shrink-0">
+                  <span className="text-[15px] font-bold text-gray-900">{e.points}</span>
+                  <Coins size={16} className="text-amber-500" />
+                </div>
+              </button>
+            ))}
           </div>
         )}
       </div>
+
+      {showInfo && (
+        <div className="fixed inset-0 z-50 flex items-end bg-black/40" onClick={() => setShowInfo(false)}>
+          <div className="w-full bg-white rounded-t-3xl max-h-[85%] flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+              <div className="w-[60px]" />
+              <h3 className="text-base font-semibold text-gray-900">How Points Work</h3>
+              <button onClick={() => setShowInfo(false)} className="text-brand text-base font-semibold w-[60px] text-right">Done</button>
+            </div>
+            <div className="overflow-y-auto px-5 py-4 pb-8">
+              <p className="text-[13px] text-gray-500 mb-4">
+                Every month, you earn points for taking part in meetings. Here's how it adds up:
+              </p>
+              <div className="bg-gray-50 rounded-2xl overflow-hidden mb-4">
+                {POINT_RULES.map((rule, i) => {
+                  const Icon = rule.icon;
+                  return (
+                    <div key={rule.label}>
+                      {i > 0 && <div className="h-px bg-gray-200 mx-4" />}
+                      <div className="flex items-center gap-3 px-4 py-3">
+                        <div className="w-9 h-9 rounded-full bg-white shadow-sm flex items-center justify-center shrink-0">
+                          <Icon size={16} className="text-brand" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[14px] font-semibold text-gray-900">{rule.label}</p>
+                          {rule.sub && <p className="text-[11px] text-gray-400 mt-0.5">{rule.sub}</p>}
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <span className="text-[14px] font-bold text-gray-900">{rule.points}</span>
+                          <Coins size={14} className="text-amber-500" />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="text-[12px] text-gray-400 leading-5">
+                Points are added up across everything you did that month, and only count once a meeting has actually happened.
+                The leaderboard resets at the start of each new month.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

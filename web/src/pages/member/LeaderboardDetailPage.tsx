@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, Coins } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { getMemberPoints } from '@/services/leaderboardService';
 import { MeetingDetailSkeleton } from '@/components/ui/Skeleton';
 import type { MemberPointsOut } from '@/types';
-import { initials } from '@/lib/utils';
+import { initials, avatarColor } from '@/lib/utils';
 
 function currentMonthKey(): string {
   const now = new Date();
@@ -51,11 +51,17 @@ export default function LeaderboardDetailPage() {
 
       <div className="flex-1 overflow-y-auto px-5 pt-6 pb-12 max-w-lg mx-auto w-full">
         <div className="flex flex-col items-center mb-6">
-          <div className="w-16 h-16 rounded-full bg-brand flex items-center justify-center mb-3">
+          <div
+            className="w-16 h-16 rounded-full flex items-center justify-center mb-3"
+            style={{ backgroundColor: avatarColor(data.member_name) }}
+          >
             <span className="text-white text-xl font-bold">{initials(data.member_name)}</span>
           </div>
           <p className="text-lg font-bold text-gray-900">{data.member_name}</p>
-          <p className="text-3xl font-extrabold text-brand mt-1">{data.total_points} pts</p>
+          <div className="flex items-center gap-1.5 mt-1">
+            <span className="text-3xl font-extrabold text-gray-900">{data.total_points}</span>
+            <Coins size={22} className="text-amber-500" />
+          </div>
         </div>
 
         {data.breakdown.length === 0 ? (

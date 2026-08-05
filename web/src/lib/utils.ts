@@ -12,6 +12,13 @@ export function initials(name: string | null | undefined): string {
     .toUpperCase();
 }
 
+const AVATAR_COLORS = ['#93c5fd', '#c4b5fd', '#86efac', '#fca5a5', '#fcd34d', '#67e8f9', '#f9a8d4'];
+export function avatarColor(name: string): string {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+  return AVATAR_COLORS[hash % AVATAR_COLORS.length];
+}
+
 export function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('en-IN', {
     weekday: 'short',

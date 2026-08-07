@@ -22,8 +22,9 @@ from app.models.meeting import (
     SpeakingHistoryItemOut,
     VotingStatusUpdateIn,
 )
+from app.models.guest import GuestOut
 from app.models.vote import MeetingRatingOut
-from app.services import meeting_service, vote_service
+from app.services import guest_service, meeting_service, vote_service
 
 router = APIRouter()
 
@@ -257,6 +258,16 @@ async def publish_speaker_feedback(
 ) -> ApiResponse[None]:
     await meeting_service.publish_speaker_feedback(meeting_id, speaker_member_id, user)
     return ApiResponse(data=None)
+
+
+@router.get("/{meeting_id}/guests", response_model=ApiResponse[list[GuestOut]])
+async def get_meeting_guests(
+    meeting_id: str,
+    user: CurrentUser = Depends(require_admin),
+) -> ApiResponse[list[GuestOut]]:
+    """Admin-only: guests who registered for this meeting via the QR check-in page."""
+    result = await guest_service.get_meeting_guests_for_admin(meeting_id, user)
+    return ApiResponse(data=result)
 
 
 @router.get("/{meeting_id}/ratings", response_model=ApiResponse[list[MeetingRatingOut]])

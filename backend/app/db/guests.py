@@ -52,6 +52,17 @@ async def insert_guest(
     return result.data[0]
 
 
+async def get_guests_for_meeting(meeting_id: str) -> list[dict]:
+    result = (
+        supabase.table("guests")
+        .select("id, name, phone, source, created_at")
+        .eq("meeting_id", meeting_id)
+        .order("created_at", desc=False)
+        .execute()
+    )
+    return result.data
+
+
 async def get_speakers_for_meeting(meeting_id: str) -> list[dict]:
     # Alias + explicit FK hint needed: meeting_roles has two FKs to members
     # (member_id and evaluates_member_id), making the plain join ambiguous.

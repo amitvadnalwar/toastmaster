@@ -1,7 +1,9 @@
 from fastapi import HTTPException, status
 
+from app.middleware.auth import CurrentUser
 from app.models.guest import (
     GuestMeetingFeedbackIn,
+    GuestOut,
     GuestRegisterIn,
     GuestRegisterOut,
     GuestSpeakerFeedbackIn,
@@ -52,6 +54,19 @@ async def register_guest(body: GuestRegisterIn) -> GuestRegisterOut:
         source=body.source,
     )
     return GuestRegisterOut(id=row["id"], name=row["name"])
+
+
+async def get_meeting_guests_for_admin(meeting_id: str, user: CurrentUser) -> list[GuestOut]:
+    from app.db import guests as db
+
+    club_id = await db.get_meeting_club_id(meeting_id)
+    if not club_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meeting not found")
+    if club_id != user.club_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your club")
+
+    rows = await db.get_guests_for_meeting(meeting_id)
+    return [GuestOut(**r) for r in rows]
 
 
 async def get_meeting_speakers(meeting_id: str) -> list[SpeakerOut]:

@@ -2,6 +2,7 @@ import { apiRequest } from '@/lib/apiClient';
 import type {
   Attendance,
   CheckinResult,
+  Guest,
   Meeting,
   MeetingRating,
   MeetingRole,
@@ -196,6 +197,10 @@ export function submitFeedback(
 
 export function getAllAttendance(meetingId: string, token: string): Promise<Attendance[]> {
   return apiRequest<Attendance[]>(`/meetings/${meetingId}/attendance`, { token });
+}
+
+export function getMeetingGuests(meetingId: string, token: string): Promise<Guest[]> {
+  return apiRequest<Guest[]>(`/meetings/${meetingId}/guests`, { token });
 }
 
 export function getSpeakersFeedbackStatus(meetingId: string, token: string): Promise<SpeakerFeedbackStatus[]> {

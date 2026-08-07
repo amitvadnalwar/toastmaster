@@ -24,6 +24,16 @@ class GuestRegisterOut(BaseModel):
     name: str
 
 
+# ── Admin: view guests registered for a meeting ────────────────────────────
+
+class GuestOut(BaseModel):
+    id: str
+    name: str
+    phone: str | None = None
+    source: str
+    created_at: str
+
+
 # ── Meeting speakers & nominees ───────────────────────────────────────────────
 
 class SpeakerOut(BaseModel):

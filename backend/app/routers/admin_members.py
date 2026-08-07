@@ -3,7 +3,7 @@ from pydantic import BaseModel
 
 from app.middleware.auth import CurrentUser, require_admin, require_super_admin
 from app.models.common import ApiResponse
-from app.models.member import AppRole, ClubRole, MemberCreateIn, MemberOut
+from app.models.member import AppRole, ClubRole, MemberCreateIn, MemberOut, MemberUpdateIn
 from app.services import admin_member_service as svc
 
 router = APIRouter()
@@ -48,6 +48,16 @@ async def create_member(
     user: CurrentUser = Depends(require_admin),
 ) -> ApiResponse[MemberOut]:
     member = await svc.create_member(user.club_id, body, background_tasks)
+    return ApiResponse(data=member)
+
+
+@router.put("/{member_id}", response_model=ApiResponse[MemberOut])
+async def update_member_details(
+    member_id: str,
+    body: MemberUpdateIn,
+    _user: CurrentUser = Depends(require_super_admin),
+) -> ApiResponse[MemberOut]:
+    member = await svc.update_member_details(member_id, body)
     return ApiResponse(data=member)
 
 

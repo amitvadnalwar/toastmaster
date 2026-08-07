@@ -3,7 +3,7 @@ import re
 from fastapi import BackgroundTasks, HTTPException, status
 
 from app.db import admin_members as db
-from app.models.member import AppRole, ClubRole, MemberCreateIn, MemberOut
+from app.models.member import AppRole, ClubRole, MemberCreateIn, MemberOut, MemberUpdateIn
 
 _BIRTHDAY_RE = re.compile(r"^(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$")
 
@@ -22,12 +22,38 @@ async def create_member(club_id: str, body: MemberCreateIn, background_tasks: Ba
             phone=body.phone.strip(),
             birthday=body.birthday,
             background_tasks=background_tasks,
+            initials=body.initials.value,
         )
     except Exception as exc:
         msg = str(exc)
         if "already registered" in msg or "already been registered" in msg or "duplicate" in msg.lower():
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already in use") from exc
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=msg) from exc
+    return MemberOut(**row)
+
+
+async def update_member_details(member_id: str, body: MemberUpdateIn) -> MemberOut:
+    if body.birthday and not _BIRTHDAY_RE.match(body.birthday):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="birthday must be MM-DD format",
+        )
+    try:
+        row = await db.update_member_details(
+            member_id=member_id,
+            name=body.name.strip(),
+            email=body.email.strip().lower(),
+            phone=body.phone.strip(),
+            birthday=body.birthday,
+            initials=body.initials.value,
+        )
+    except Exception as exc:
+        msg = str(exc)
+        if "already registered" in msg or "already been registered" in msg or "duplicate" in msg.lower():
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already in use") from exc
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=msg) from exc
+    if not row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Member not found")
     return MemberOut(**row)
 
 

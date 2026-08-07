@@ -18,6 +18,7 @@ async def insert_member(
     phone: str,
     birthday: str | None,
     background_tasks: BackgroundTasks,
+    initials: str = "TM",
 ) -> dict:
     temp_password = generate_temp_password()
 
@@ -36,6 +37,7 @@ async def insert_member(
         "name": name,
         "email": email,
         "phone": phone,
+        "initials": initials,
         "is_guest": False,
         "app_role": "member",
         "club_role": "member",
@@ -153,6 +155,51 @@ async def set_active(member_id: str, is_active: bool) -> dict | None:
             {"ban_duration": ban_duration},
         )
 
+    return result.data[0] if result.data else None
+
+
+async def update_member_details(
+    member_id: str,
+    name: str,
+    email: str,
+    phone: str,
+    birthday: str | None,
+    initials: str,
+) -> dict | None:
+    member_res = (
+        supabase.table("members")
+        .select("auth_user_id, email")
+        .eq("id", member_id)
+        .limit(1)
+        .execute()
+    )
+    if not member_res.data:
+        return None
+    current = member_res.data[0]
+
+    # Keep the Supabase Auth login email in sync with the member record.
+    auth_user_id = current.get("auth_user_id")
+    if auth_user_id and email != current.get("email"):
+        supabase.auth.admin.update_user_by_id(
+            auth_user_id, {"email": email, "email_confirm": True}
+        )
+
+    payload: dict = {
+        "name": name,
+        "email": email,
+        "phone": phone,
+        "initials": initials,
+        "birthday": birthday,
+    }
+    if birthday:
+        payload["birthday_collected"] = True
+
+    result = (
+        supabase.table("members")
+        .update(payload)
+        .eq("id", member_id)
+        .execute()
+    )
     return result.data[0] if result.data else None
 
 

@@ -1,11 +1,20 @@
 import { apiRequest } from '@/lib/apiClient';
-import type { Member, ClubRole, AppRole } from '@/types';
+import type { Member, ClubRole, AppRole, MemberInitials } from '@/types';
 
 export interface MemberCreatePayload {
   name: string;
   email: string;
   phone: string;
   birthday?: string; // MM-DD
+  initials: MemberInitials;
+}
+
+export interface MemberUpdatePayload {
+  name: string;
+  email: string;
+  phone: string;
+  birthday?: string | null; // MM-DD
+  initials: MemberInitials;
 }
 
 // ── Admin member management ────────────────────────────────────────────────
@@ -20,6 +29,10 @@ export function getMemberById(memberId: string, token: string): Promise<Member> 
 
 export function createMember(payload: MemberCreatePayload, token: string): Promise<Member> {
   return apiRequest<Member>('/admin/members', { method: 'POST', body: payload, token });
+}
+
+export function updateMemberDetails(memberId: string, payload: MemberUpdatePayload, token: string): Promise<Member> {
+  return apiRequest<Member>(`/admin/members/${memberId}`, { method: 'PUT', body: payload, token });
 }
 
 export function resendInvite(memberId: string, token: string): Promise<void> {

@@ -28,6 +28,11 @@ class RegistrationSource(StrEnum):
     other = "Other"
 
 
+class MemberInitials(StrEnum):
+    tm = "TM"
+    dtm = "DTM"
+
+
 class MemberOut(BaseModel):
     id: str
     auth_user_id: str | None
@@ -35,6 +40,7 @@ class MemberOut(BaseModel):
     email: str
     phone: str | None
     name: str
+    initials: MemberInitials = MemberInitials.tm
     birthday: str | None
     birthday_collected: bool
     source: str | None
@@ -51,6 +57,15 @@ class MemberCreateIn(BaseModel):
     email: str
     phone: str
     birthday: str | None = None  # MM-DD format, optional
+    initials: MemberInitials = MemberInitials.tm
+
+
+class MemberUpdateIn(BaseModel):
+    name: str
+    email: str
+    phone: str
+    birthday: str | None = None  # MM-DD format, optional
+    initials: MemberInitials
 
 
 class BirthdayUpdateIn(BaseModel):

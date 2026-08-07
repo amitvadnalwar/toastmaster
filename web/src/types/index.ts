@@ -162,6 +162,15 @@ export interface Attendance {
   checked_in_at: string;
 }
 
+// Admin-only: a guest who registered for a meeting via the QR check-in page.
+export interface Guest {
+  id: string;
+  name: string;
+  phone: string | null;
+  source: string;
+  created_at: string;
+}
+
 // A speaker's own received feedback — no reviewer identity, ever.
 export interface ReceivedFeedback {
   id: string;
@@ -268,6 +277,9 @@ export interface MemberPointsOut {
 
 // ── Members ─────────────────────────────────────────────────────────────────
 
+export type MemberInitials = 'TM' | 'DTM';
+export const MEMBER_INITIALS: MemberInitials[] = ['TM', 'DTM'];
+
 export interface Member {
   id: string;
   auth_user_id: string | null;
@@ -275,6 +287,7 @@ export interface Member {
   email: string;
   phone: string | null;
   name: string;
+  initials: MemberInitials;
   birthday: string | null; // MM-DD format
   birthday_collected: boolean;
   source: string | null;

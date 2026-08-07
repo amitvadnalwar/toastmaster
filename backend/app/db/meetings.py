@@ -183,6 +183,7 @@ async def insert_role(
     role: str,
     evaluates_member_id: str | None = None,
     speech_duration: str | None = None,
+    role_title: str | None = None,
 ) -> dict:
     result = (
         supabase.table("meeting_roles")
@@ -192,6 +193,7 @@ async def insert_role(
             "role": role,
             "evaluates_member_id": evaluates_member_id,
             "speech_duration": speech_duration,
+            "role_title": role_title,
         })
         .execute()
     )

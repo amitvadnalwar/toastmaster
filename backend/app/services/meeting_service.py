@@ -220,12 +220,23 @@ async def admin_assign_role(
     if body.role == MeetingRole.tmod and body.theme:
         await db_meetings.update_theme(meeting_id, body.theme.strip())
 
+    # Supporting role: admin-defined roles (e.g. "Guest Lecture") require a title
+    role_title = None
+    if body.role == MeetingRole.supporting_role:
+        if not body.role_title or not body.role_title.strip():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="role_title is required for supporting_role",
+            )
+        role_title = body.role_title.strip()
+
     row = await db_meetings.insert_role(
         meeting_id=meeting_id,
         member_id=body.member_id,
         role=body.role,
         evaluates_member_id=body.evaluates_member_id,
         speech_duration=body.speech_duration,
+        role_title=role_title,
     )
     # Re-fetch with member name/email
     roster_fresh = await db_meetings.get_roster(meeting_id)

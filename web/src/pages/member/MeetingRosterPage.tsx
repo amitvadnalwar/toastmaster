@@ -3,13 +3,16 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ChevronLeft, X, Plus, Search, MessageSquare, ArrowRight } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { getMeetingRoster, adminAssignRole, withdrawFromRole } from '@/services/meetingService';
-import { getAllMembers } from '@/services/memberService';
+import { getClubMembers } from '@/services/memberService';
 import { MeetingDetailSkeleton } from '@/components/ui/Skeleton';
 import type { MeetingRole, MeetingWithRoster } from '@/types';
 import { SINGLETON_ROLES, ROLE_LABELS, SPEECH_DURATIONS } from '@/types';
 import { initials, isPastMeeting } from '@/lib/utils';
 
 interface MemberOption { id: string; name: string }
+
+// TODO: re-enable once the role_title backend/DB support is deployed
+const SHOW_ADDITIONAL_ROLE_PLAYERS = false;
 
 export default function MeetingRosterPage() {
   const { id } = useParams<{ id: string }>();
@@ -30,6 +33,9 @@ export default function MeetingRosterPage() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [showDuration, setShowDuration] = useState(false);
   const [memberSearch, setMemberSearch] = useState('');
+  const [showRoleTitleModal, setShowRoleTitleModal] = useState(false);
+  const [roleTitleInput, setRoleTitleInput] = useState('');
+  const [pendingRoleTitle, setPendingRoleTitle] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!session || !id) return;
@@ -46,7 +52,7 @@ export default function MeetingRosterPage() {
 
   useEffect(() => {
     if (!session || !isAdmin) return;
-    getAllMembers(session.access_token).then((list) => {
+    getClubMembers(session.access_token).then((list) => {
       const opts = list.map((m) => ({ id: m.id, name: m.name }));
       setMembers(opts);
       setMemberMap(new Map(opts.map((m) => [m.id, m.name])));
@@ -60,6 +66,20 @@ export default function MeetingRosterPage() {
     setPendingMember(null);
     setMemberSearch('');
     setPickerOpen(true);
+  }
+
+  function startAddSupportingRole() {
+    if (!data || isPastMeeting(data.meeting.scheduled_at)) return;
+    setRoleTitleInput('');
+    setShowRoleTitleModal(true);
+  }
+
+  function submitRoleTitle() {
+    const title = roleTitleInput.trim();
+    if (!title) return;
+    setPendingRoleTitle(title);
+    setShowRoleTitleModal(false);
+    startAssign('supporting_role');
   }
 
   function onMemberSelected(m: MemberOption) {
@@ -79,6 +99,7 @@ export default function MeetingRosterPage() {
         role: assignRole,
         speech_duration: duration,
         evaluates_member_id: assignSpeakerId,
+        role_title: assignRole === 'supporting_role' ? pendingRoleTitle : null,
       }, session.access_token);
       await load();
     } catch (e: unknown) {
@@ -87,6 +108,7 @@ export default function MeetingRosterPage() {
       setActing(false);
       setAssignRole(null);
       setPendingMember(null);
+      setPendingRoleTitle(null);
     }
   }
 
@@ -120,6 +142,8 @@ export default function MeetingRosterPage() {
   const canApply = !isAdmin && meeting.status === 'published' && !isPast;
   const speakers = roster.filter((r) => r.role === 'speaker');
   const evaluators = roster.filter((r) => r.role === 'evaluator');
+  const tableTopicsSpeakers = roster.filter((r) => r.role === 'table_topics_speaker');
+  const supportingRoles = roster.filter((r) => r.role === 'supporting_role');
   const filteredMembers = members.filter((m) => m.name.toLowerCase().includes(memberSearch.toLowerCase()));
 
   return (
@@ -161,6 +185,47 @@ export default function MeetingRosterPage() {
           })}
         </div>
 
+        {/* Additional Role Players */}
+        {SHOW_ADDITIONAL_ROLE_PLAYERS && (isAdmin || supportingRoles.length > 0) && (
+          <>
+            <SectionLabel>Additional Role Players</SectionLabel>
+            <div className="bg-white rounded-2xl shadow-sm overflow-hidden mb-5">
+              {supportingRoles.length === 0 && !isAdmin && (
+                <div className="py-5 text-center text-[13px] text-gray-400">No additional role players yet</div>
+              )}
+              {supportingRoles.map((s, i) => (
+                <div key={s.id}>
+                  {i > 0 && <Divider />}
+                  {isAdmin ? (
+                    <div className="flex items-center gap-2 px-4 py-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13px] text-gray-500 font-medium">{s.role_title ?? 'Role Player'}</p>
+                        <p className="text-sm text-gray-900 font-semibold">{s.member_name ?? memberMap.get(s.member_id) ?? '—'}</p>
+                      </div>
+                      {canManage && (
+                        <button onClick={() => handleRemove(s.id, s.role_title ?? 'Role Player')} disabled={acting} className="w-7 h-7 rounded-full bg-[#fef2f2] flex items-center justify-center"><X size={14} className="text-red-500" /></button>
+                      )}
+                    </div>
+                  ) : (
+                    <RosterRow role={s.role_title ?? 'Role Player'} name={s.member_name} isMe={s.member_email === myEmail} />
+                  )}
+                </div>
+              ))}
+              {isAdmin && canManage && (
+                <div>
+                  {supportingRoles.length > 0 && <Divider />}
+                  <button onClick={startAddSupportingRole} disabled={acting} className="w-full flex items-center justify-center gap-1 px-4 py-3 text-brand text-[13px] font-semibold">
+                    <Plus size={13} /> Add Role Player
+                  </button>
+                </div>
+              )}
+              {isAdmin && !canManage && supportingRoles.length === 0 && (
+                <div className="px-4 py-3 text-center text-[13px] text-gray-400">No additional role players were assigned</div>
+              )}
+            </div>
+          </>
+        )}
+
         {/* Speakers */}
         <SectionLabel>Speakers ({speakers.length}/{meeting.max_speakers})</SectionLabel>
         <div className="bg-white rounded-2xl shadow-sm overflow-hidden mb-5">
@@ -197,6 +262,44 @@ export default function MeetingRosterPage() {
             <div className="px-4 py-3 text-center text-[13px] text-gray-400">No speakers were assigned</div>
           )}
         </div>
+
+        {/* Table Topics Speakers */}
+        {(isAdmin || tableTopicsSpeakers.length > 0) && (
+          <>
+            <SectionLabel>Table Topics Speakers</SectionLabel>
+            <div className="bg-white rounded-2xl shadow-sm overflow-hidden mb-5">
+              {tableTopicsSpeakers.length === 0 && !isAdmin && (
+                <div className="py-5 text-center text-[13px] text-gray-400">No table topics speakers yet</div>
+              )}
+              {tableTopicsSpeakers.map((s, i) => (
+                <div key={s.id}>
+                  {i > 0 && <Divider />}
+                  {isAdmin ? (
+                    <div className="flex items-center gap-2 px-4 py-3">
+                      <p className="flex-1 text-sm text-gray-900 font-semibold">{s.member_name ?? memberMap.get(s.member_id) ?? '—'}</p>
+                      {canManage && (
+                        <button onClick={() => handleRemove(s.id, 'Table Topics Speaker')} disabled={acting} className="w-7 h-7 rounded-full bg-[#fef2f2] flex items-center justify-center"><X size={14} className="text-red-500" /></button>
+                      )}
+                    </div>
+                  ) : (
+                    <RosterRow role="table_topics_speaker" name={s.member_name} isMe={s.member_email === myEmail} />
+                  )}
+                </div>
+              ))}
+              {isAdmin && canManage && (
+                <div>
+                  {tableTopicsSpeakers.length > 0 && <Divider />}
+                  <button onClick={() => startAssign('table_topics_speaker')} disabled={acting} className="w-full flex items-center justify-center gap-1 px-4 py-3 text-brand text-[13px] font-semibold">
+                    <Plus size={13} /> Add Table Topics Speaker
+                  </button>
+                </div>
+              )}
+              {isAdmin && !canManage && tableTopicsSpeakers.length === 0 && (
+                <div className="px-4 py-3 text-center text-[13px] text-gray-400">No table topics speakers were assigned</div>
+              )}
+            </div>
+          </>
+        )}
 
         {/* Evaluators */}
         {speakers.length > 0 && (
@@ -262,6 +365,32 @@ export default function MeetingRosterPage() {
         </div>
       )}
 
+      {/* Role title input bottom sheet (admin only, supporting roles) */}
+      {SHOW_ADDITIONAL_ROLE_PLAYERS && showRoleTitleModal && (
+        <div className="fixed inset-0 z-50 flex items-end bg-black/40" onClick={() => setShowRoleTitleModal(false)}>
+          <div className="w-full bg-white rounded-t-3xl pb-8" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+              <button onClick={() => setShowRoleTitleModal(false)} className="text-gray-500 text-base w-[60px] text-left">Cancel</button>
+              <h3 className="text-base font-semibold text-gray-900">Role Name</h3>
+              <div className="w-[60px] flex justify-end">
+                <button onClick={submitRoleTitle} disabled={!roleTitleInput.trim()} className="text-brand font-semibold text-base disabled:opacity-30">Next</button>
+              </div>
+            </div>
+            <div className="px-5 pt-4">
+              <p className="text-[13px] text-gray-500 font-medium mb-2">e.g. Guest Lecture, Photographer, Video Recorder</p>
+              <input
+                autoFocus
+                value={roleTitleInput}
+                onChange={(e) => setRoleTitleInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') submitRoleTitle(); }}
+                placeholder="Role name…"
+                className="w-full bg-white border border-gray-300 rounded-[10px] px-4 py-3.5 text-base text-gray-900 outline-none focus:border-brand"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Member picker bottom sheet (admin only) */}
       {pickerOpen && (
         <div className="fixed inset-0 z-50 flex items-end bg-black/40" onClick={() => setPickerOpen(false)}>
@@ -269,7 +398,9 @@ export default function MeetingRosterPage() {
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
               <button onClick={() => setPickerOpen(false)} className="text-gray-500 text-base w-[60px] text-left">Cancel</button>
               <h3 className="text-base font-semibold text-gray-900">
-                {assignRole ? `Assign ${ROLE_LABELS[assignRole]}` : 'Select Member'}
+                {assignRole === 'supporting_role' && pendingRoleTitle
+                  ? `Assign ${pendingRoleTitle}`
+                  : assignRole ? `Assign ${ROLE_LABELS[assignRole]}` : 'Select Member'}
               </h3>
               <div className="w-[60px]" />
             </div>

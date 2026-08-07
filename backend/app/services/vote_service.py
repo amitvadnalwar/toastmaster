@@ -23,6 +23,7 @@ _CATEGORY_ROLES = {
     "best_evaluator": ["evaluator"],
     "best_mrp": ["tmod", "general_evaluator", "table_topics_master"],
     "best_arp": ["timer", "ah_counter", "grammarian"],
+    "best_table_topic": ["table_topics_speaker"],
 }
 
 

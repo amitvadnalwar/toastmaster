@@ -10,6 +10,7 @@ import { ROLE_LABELS } from '@/types';
 
 const CATEGORIES: { key: VoteCategory; label: string; roles: MeetingRoleAssignment['role'][] }[] = [
   { key: 'best_speaker', label: 'Speaker', roles: ['speaker'] },
+  { key: 'best_table_topic', label: 'Table Topics Speaker', roles: ['table_topics_speaker'] },
   { key: 'best_evaluator', label: 'Evaluator', roles: ['evaluator'] },
   { key: 'best_mrp', label: 'Main Role Player (MRP)', roles: ['tmod', 'general_evaluator', 'table_topics_master'] },
   { key: 'best_arp', label: 'Auxiliary Role Player (ARP)', roles: ['timer', 'ah_counter', 'grammarian'] },

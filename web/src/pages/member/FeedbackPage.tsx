@@ -51,6 +51,7 @@ const FEEDBACK_FIELDS: { key: 'content_rating' | 'structure_rating' | 'confidenc
 
 const VOTE_CATEGORIES: { key: VoteCategory; label: string; roles: MeetingRoleAssignment['role'][] }[] = [
   { key: 'best_speaker', label: 'Best Speaker', roles: ['speaker'] },
+  { key: 'best_table_topic', label: 'Best Table Topics Speaker', roles: ['table_topics_speaker'] },
   { key: 'best_evaluator', label: 'Best Evaluator', roles: ['evaluator'] },
   { key: 'best_mrp', label: 'Best MRP', roles: ['tmod', 'general_evaluator', 'table_topics_master'] },
   { key: 'best_arp', label: 'Best ARP', roles: ['timer', 'ah_counter', 'grammarian'] },

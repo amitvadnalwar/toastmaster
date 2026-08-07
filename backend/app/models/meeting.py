@@ -84,6 +84,7 @@ class MeetingRoleAssignmentOut(BaseModel):
     role: MeetingRole
     evaluates_member_id: str | None
     speech_duration: str | None = None
+    role_title: str | None = None
     member_name: str | None = None
     member_email: str | None = None
     disqualified: bool = False
@@ -117,6 +118,7 @@ class AdminAssignRoleIn(BaseModel):
     speech_duration: str | None = None       # required when role == speaker
     evaluates_member_id: str | None = None   # required when role == evaluator
     theme: str | None = None                 # optional: sets meeting theme when role == tmod
+    role_title: str | None = None            # required when role == supporting_role
 
 
 class RoleAssignIn(BaseModel):

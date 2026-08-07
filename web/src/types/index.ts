@@ -122,6 +122,7 @@ export interface MeetingRoleAssignment {
   role: MeetingRole;
   evaluates_member_id: string | null;
   speech_duration?: string | null;
+  role_title?: string | null;
   member_name?: string | null;
   member_email?: string | null;
   disqualified?: boolean;
@@ -206,7 +207,7 @@ export interface SpeakerFeedbackPayload {
 
 // ── Voting ──────────────────────────────────────────────────────────────────
 
-export type VoteCategory = 'best_speaker' | 'best_evaluator' | 'best_mrp' | 'best_arp';
+export type VoteCategory = 'best_speaker' | 'best_evaluator' | 'best_mrp' | 'best_arp' | 'best_table_topic';
 
 export interface VotePayload {
   meeting_id: string;

@@ -86,6 +86,7 @@ export interface AdminAssignRolePayload {
   speech_duration?: string | null;
   evaluates_member_id?: string | null;
   theme?: string | null;
+  role_title?: string | null;
 }
 
 export function adminAssignRole(

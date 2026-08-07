@@ -9,6 +9,7 @@ import type { Meeting, MyVotingState, VoteCategory } from '@/types';
 
 const VOTE_CATEGORY_LABELS: Record<VoteCategory, string> = {
   best_speaker: 'Best Speaker',
+  best_table_topic: 'Best Table Topics Speaker',
   best_evaluator: 'Best Evaluator',
   best_mrp: 'Best MRP',
   best_arp: 'Best ARP',

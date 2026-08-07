@@ -92,6 +92,9 @@ export default function LoginPage() {
         <p className="text-center text-xs text-gray-400 mt-8">
           Toastmasters International · Club #7715097
         </p>
+        <p className="text-center text-xs text-gray-300 mt-1.5">
+          Designed and developed by TM Shruti &amp; Amit Vadnalwar
+        </p>
       </div>
     </div>
   );

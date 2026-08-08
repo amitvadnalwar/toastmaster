@@ -213,6 +213,17 @@ async def update_member_club_role(member_id: str, club_role: str) -> dict | None
     return result.data[0] if result.data else None
 
 
+async def get_members_by_club_role(club_id: str, club_role: str) -> list[dict]:
+    result = (
+        supabase.table("members")
+        .select("id, name")
+        .eq("club_id", club_id)
+        .eq("club_role", club_role)
+        .execute()
+    )
+    return result.data
+
+
 async def update_member_app_role(member_id: str, app_role: str) -> dict | None:
     result = (
         supabase.table("members")

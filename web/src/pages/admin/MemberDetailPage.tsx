@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Mail, X, Check, Edit2 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import {
-  getMemberById, setMemberActive, resendInvite,
+  getMemberById, getAllMembers, setMemberActive, resendInvite,
   updateMemberClubRole, updateMemberAppRole, updateMemberDetails,
 } from '@/services/memberService';
 import Spinner from '@/components/ui/Spinner';
@@ -41,6 +41,7 @@ export default function AdminMemberDetailPage() {
   const [pickerTarget, setPickerTarget] = useState<PickerTarget>(null);
   const [savingRole, setSavingRole] = useState(false);
   const [toast, setToast] = useState('');
+  const [roleHolders, setRoleHolders] = useState<Map<ClubRole, { id: string; name: string }>>(new Map());
 
   // Edit details
   const [editing, setEditing] = useState(false);
@@ -66,6 +67,19 @@ export default function AdminMemberDetailPage() {
   }, [session, id]);
 
   useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    if (!session) return;
+    getAllMembers(session.access_token).then((list) => {
+      const map = new Map<ClubRole, { id: string; name: string }>();
+      for (const m of list) {
+        if (m.club_role !== 'member' && m.club_role !== 'guest') {
+          map.set(m.club_role, { id: m.id, name: m.name });
+        }
+      }
+      setRoleHolders(map);
+    }).catch(() => {});
+  }, [session]);
 
   function flash(msg: string) {
     setToast(msg);
@@ -157,9 +171,19 @@ export default function AdminMemberDetailPage() {
     setSavingRole(true);
     try {
       if (target === 'club_role') {
+        const previousHolder = roleHolders.get(value as ClubRole);
         await updateMemberClubRole(member.id, value as ClubRole, session.access_token);
         setMember((prev) => (prev ? { ...prev, club_role: value as ClubRole } : prev));
-        flash(`Club role updated to ${CLUB_ROLE_LABELS[value as ClubRole]}`);
+        if (previousHolder && previousHolder.id !== member.id) {
+          flash(`${CLUB_ROLE_LABELS[value as ClubRole]} transferred from ${previousHolder.name} to ${member.name}`);
+        } else {
+          flash(`Club role updated to ${CLUB_ROLE_LABELS[value as ClubRole]}`);
+        }
+        setRoleHolders((prev) => {
+          const next = new Map(prev);
+          if (value !== 'member') next.set(value as ClubRole, { id: member.id, name: member.name });
+          return next;
+        });
       } else {
         await updateMemberAppRole(member.id, value as AppRole, session.access_token);
         setMember((prev) => (prev ? { ...prev, app_role: value as AppRole } : prev));
@@ -376,18 +400,27 @@ export default function AdminMemberDetailPage() {
               </h3>
               <button onClick={() => setPickerTarget(null)}><X size={20} className="text-gray-500" /></button>
             </div>
-            {pickerOptions.map((opt) => (
-              <button
-                key={opt.value}
-                onClick={() => handleSelectRole(opt.value)}
-                className="w-full px-5 py-4 flex items-center justify-between border-b border-gray-50 last:border-0"
-              >
-                <span className={`text-[15px] ${opt.value === currentPickerValue ? 'text-brand font-bold' : 'text-gray-700'}`}>
-                  {opt.label}
-                </span>
-                {opt.value === currentPickerValue && <Check size={16} className="text-brand" />}
-              </button>
-            ))}
+            {pickerOptions.map((opt) => {
+              const holder = pickerTarget === 'club_role' ? roleHolders.get(opt.value as ClubRole) : undefined;
+              const heldByOther = holder && holder.id !== member.id;
+              return (
+                <button
+                  key={opt.value}
+                  onClick={() => handleSelectRole(opt.value)}
+                  className="w-full px-5 py-4 flex items-center justify-between border-b border-gray-50 last:border-0"
+                >
+                  <div className="text-left">
+                    <span className={`text-[15px] ${opt.value === currentPickerValue ? 'text-brand font-bold' : 'text-gray-700'}`}>
+                      {opt.label}
+                    </span>
+                    {heldByOther && (
+                      <p className="text-[11px] text-gray-400 mt-0.5">Currently: {holder.name} — will move to Member</p>
+                    )}
+                  </div>
+                  {opt.value === currentPickerValue && <Check size={16} className="text-brand" />}
+                </button>
+              );
+            })}
           </div>
         </div>
       )}

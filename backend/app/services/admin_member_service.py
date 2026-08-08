@@ -7,6 +7,19 @@ from app.models.member import AppRole, ClubRole, MemberCreateIn, MemberOut, Memb
 
 _BIRTHDAY_RE = re.compile(r"^(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$")
 
+# Officer positions: at most one member can hold each of these per club.
+# 'member' (the default/base role) and 'guest' are excluded — many members
+# can be plain 'member' at once.
+_SINGLETON_CLUB_ROLES = {
+    ClubRole.president,
+    ClubRole.vp_education,
+    ClubRole.vp_membership,
+    ClubRole.vp_pr,
+    ClubRole.secretary,
+    ClubRole.treasurer,
+    ClubRole.saa,
+}
+
 
 async def create_member(club_id: str, body: MemberCreateIn, background_tasks: BackgroundTasks) -> MemberOut:
     if body.birthday and not _BIRTHDAY_RE.match(body.birthday):
@@ -89,7 +102,7 @@ async def set_member_active(member_id: str, is_active: bool) -> MemberOut:
 
 
 async def update_club_role(
-    _actor_id: str, target_member_id: str, _club_id: str, club_role: ClubRole
+    _actor_id: str, target_member_id: str, club_id: str, club_role: ClubRole
 ) -> MemberOut:
     # Guests always keep club_role = 'guest'; service layer blocks explicit assignment.
     if club_role == ClubRole.guest:
@@ -97,6 +110,14 @@ async def update_club_role(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Cannot assign 'guest' as a club role via this endpoint",
         )
+
+    # Officer roles are singleton per club — assigning one to a new member
+    # automatically demotes whoever currently holds it back to 'member'.
+    if club_role in _SINGLETON_CLUB_ROLES:
+        holders = await db.get_members_by_club_role(club_id, club_role.value)
+        for holder in holders:
+            if holder["id"] != target_member_id:
+                await db.update_member_club_role(holder["id"], ClubRole.member.value)
 
     row = await db.update_member_club_role(target_member_id, club_role.value)
     if not row:

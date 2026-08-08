@@ -70,7 +70,7 @@ export const SINGLETON_ROLES: MeetingRole[] = [
   'table_topics_master',
 ];
 
-export const SPEECH_DURATIONS = ['5-7 mins', '7-9 mins', '10-12 mins'] as const;
+export const SPEECH_DURATIONS = ['4-6 mins', '5-7 mins', '7-9 mins', '10-12 mins'] as const;
 export type SpeechDuration = (typeof SPEECH_DURATIONS)[number];
 
 export const ROLE_LABELS: Record<MeetingRole, string> = {

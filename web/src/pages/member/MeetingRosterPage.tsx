@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, X, Plus, Search, MessageSquare, ArrowRight } from 'lucide-react';
+import { ChevronLeft, X, Plus, Minus, Check, Edit2, Search, MessageSquare, ArrowRight } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
-import { getMeetingRoster, adminAssignRole, withdrawFromRole } from '@/services/meetingService';
+import { getMeetingRoster, updateMeeting, adminAssignRole, withdrawFromRole } from '@/services/meetingService';
 import { getClubMembers } from '@/services/memberService';
 import { MeetingDetailSkeleton } from '@/components/ui/Skeleton';
 import type { MeetingRole, MeetingWithRoster, MemberInitials } from '@/types';
@@ -36,6 +36,9 @@ export default function MeetingRosterPage() {
   const [showRoleTitleModal, setShowRoleTitleModal] = useState(false);
   const [roleTitleInput, setRoleTitleInput] = useState('');
   const [pendingRoleTitle, setPendingRoleTitle] = useState<string | null>(null);
+  const [editingMaxSpeakers, setEditingMaxSpeakers] = useState(false);
+  const [maxSpeakersValue, setMaxSpeakersValue] = useState(3);
+  const [savingMaxSpeakers, setSavingMaxSpeakers] = useState(false);
 
   const load = useCallback(async () => {
     if (!session || !id) return;
@@ -109,6 +112,34 @@ export default function MeetingRosterPage() {
       setAssignRole(null);
       setPendingMember(null);
       setPendingRoleTitle(null);
+    }
+  }
+
+  function startEditMaxSpeakers() {
+    if (!data || isPastMeeting(data.meeting.scheduled_at)) return;
+    setMaxSpeakersValue(data.meeting.max_speakers);
+    setEditingMaxSpeakers(true);
+  }
+
+  async function handleSaveMaxSpeakers() {
+    if (!session || !data) return;
+    setSavingMaxSpeakers(true);
+    try {
+      const m = data.meeting;
+      await updateMeeting(m.id, {
+        title: m.title,
+        scheduled_at: m.scheduled_at,
+        venue: m.venue ?? null,
+        president_id: m.president_id ?? null,
+        saa_id: m.saa_id ?? null,
+        max_speakers: maxSpeakersValue,
+      }, session.access_token);
+      setEditingMaxSpeakers(false);
+      await load();
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : 'Failed to update max speakers');
+    } finally {
+      setSavingMaxSpeakers(false);
     }
   }
 
@@ -232,7 +263,28 @@ export default function MeetingRosterPage() {
         )}
 
         {/* Speakers */}
-        <SectionLabel>Speakers ({speakers.length}/{meeting.max_speakers})</SectionLabel>
+        <div className="flex items-center justify-between mb-2.5">
+          <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Speakers ({speakers.length}/{meeting.max_speakers})</p>
+          {canManage && !editingMaxSpeakers && (
+            <button onClick={startEditMaxSpeakers} className="p-1 -m-1 text-gray-400">
+              <Edit2 size={14} />
+            </button>
+          )}
+        </div>
+        {editingMaxSpeakers && (
+          <div className="flex items-center justify-between bg-white rounded-2xl shadow-sm px-4 py-3 mb-3">
+            <span className="text-[13px] font-semibold text-gray-700">Max Speakers</span>
+            <div className="flex items-center gap-2">
+              <div className="inline-flex items-center border border-gray-300 rounded-[10px] overflow-hidden bg-white">
+                <button onClick={() => setMaxSpeakersValue((v) => Math.max(speakers.length, v - 1))} className="px-3 py-2"><Minus size={16} className="text-gray-700" /></button>
+                <span className="text-base font-bold text-gray-900 min-w-[28px] text-center">{maxSpeakersValue}</span>
+                <button onClick={() => setMaxSpeakersValue((v) => Math.min(8, v + 1))} className="px-3 py-2"><Plus size={16} className="text-gray-700" /></button>
+              </div>
+              <button onClick={() => setEditingMaxSpeakers(false)} disabled={savingMaxSpeakers} className="p-1.5"><X size={16} className="text-gray-400" /></button>
+              <button onClick={handleSaveMaxSpeakers} disabled={savingMaxSpeakers} className="p-1.5"><Check size={18} className="text-green-500" /></button>
+            </div>
+          </div>
+        )}
         <div className="bg-white rounded-2xl shadow-sm overflow-hidden mb-5">
           {speakers.length === 0 && !isAdmin && (
             <div className="py-5 text-center text-[13px] text-gray-400">No speakers enrolled yet</div>

@@ -40,7 +40,7 @@ SINGLETON_ROLES: frozenset[MeetingRole] = frozenset({
     MeetingRole.table_topics_master,
 })
 
-SPEECH_DURATIONS: frozenset[str] = frozenset({"5-7 mins", "7-9 mins", "10-12 mins"})
+SPEECH_DURATIONS: frozenset[str] = frozenset({"4-6 mins", "5-7 mins", "7-9 mins", "10-12 mins"})
 
 
 class MeetingOut(BaseModel):

@@ -10,14 +10,14 @@ import { getMeetingRoster, updateMeeting, deleteMeeting, updateMeetingStatus, up
 import { getClubMembers } from '@/services/memberService';
 import Spinner from '@/components/ui/Spinner';
 import { MeetingDetailSkeleton } from '@/components/ui/Skeleton';
-import type { VotingStatus } from '@/types';
+import type { VotingStatus, MemberInitials } from '@/types';
 import { STATUS_COLOR, STATUS_LABEL } from '@/types';
-import { initials, formatDateTime, formatDateShort, isPastMeeting } from '@/lib/utils';
+import { initials, formatMemberName, formatDateTime, formatDateShort, isPastMeeting } from '@/lib/utils';
 
 const VOTING_LABEL: Record<VotingStatus, string> = { not_started: 'Not started', open: 'Open', closed: 'Closed' };
 const VOTING_COLOR: Record<VotingStatus, string> = { not_started: '#9ca3af', open: '#10b981', closed: '#6b7280' };
 
-interface MemberOption { id: string; name: string }
+interface MemberOption { id: string; name: string; initials: MemberInitials }
 type ActingAction = 'publish' | 'voting' | 'complete' | 'save' | 'delete' | null;
 
 export default function MemberMeetingDetailPage() {
@@ -36,7 +36,7 @@ export default function MemberMeetingDetailPage() {
   });
   const [actingAction, setActingAction] = useState<ActingAction>(null);
   const [members, setMembers] = useState<MemberOption[]>([]);
-  const [memberMap, setMemberMap] = useState<Map<string, string>>(new Map());
+  const [memberMap, setMemberMap] = useState<Map<string, MemberOption>>(new Map());
 
   // Edit mode (admin only)
   const [editing, setEditing] = useState(false);
@@ -53,9 +53,9 @@ export default function MemberMeetingDetailPage() {
   useEffect(() => {
     if (!session) return;
     getClubMembers(session.access_token).then((list) => {
-      const opts = list.map((m) => ({ id: m.id, name: m.name }));
+      const opts = list.map((m) => ({ id: m.id, name: m.name, initials: m.initials }));
       setMembers(opts);
-      setMemberMap(new Map(opts.map((m) => [m.id, m.name])));
+      setMemberMap(new Map(opts.map((m) => [m.id, m])));
     }).catch(() => {});
   }, [session]);
 
@@ -68,8 +68,8 @@ export default function MemberMeetingDetailPage() {
     setEditDate(d.toISOString().slice(0, 10));
     setEditTime(d.toTimeString().slice(0, 5));
     setEditMaxSpeakers(m.max_speakers);
-    setEditPresident(m.president_id ? { id: m.president_id, name: memberMap.get(m.president_id) ?? '…' } : null);
-    setEditSaa(m.saa_id ? { id: m.saa_id, name: memberMap.get(m.saa_id) ?? '…' } : null);
+    setEditPresident(m.president_id ? memberMap.get(m.president_id) ?? { id: m.president_id, name: '…', initials: 'TM' } : null);
+    setEditSaa(m.saa_id ? memberMap.get(m.saa_id) ?? { id: m.saa_id, name: '…', initials: 'TM' } : null);
     setEditing(true);
   }
 
@@ -228,12 +228,12 @@ export default function MemberMeetingDetailPage() {
             )}
             <FieldLabel>President</FieldLabel>
             <button onClick={() => { setMemberSearch(''); setPickerMode('president'); }} className={pickerRowCls}>
-              <span className={`flex-1 text-left ${editPresident ? 'text-gray-900' : 'text-gray-400'}`}>{editPresident ? editPresident.name : 'Select president…'}</span>
+              <span className={`flex-1 text-left ${editPresident ? 'text-gray-900' : 'text-gray-400'}`}>{editPresident ? formatMemberName(editPresident.name, editPresident.initials) : 'Select president…'}</span>
               <ChevronLeft size={16} className="text-gray-400 rotate-180" />
             </button>
             <FieldLabel>SAA</FieldLabel>
             <button onClick={() => { setMemberSearch(''); setPickerMode('saa'); }} className={pickerRowCls}>
-              <span className={`flex-1 text-left ${editSaa ? 'text-gray-900' : 'text-gray-400'}`}>{editSaa ? editSaa.name : 'Select SAA…'}</span>
+              <span className={`flex-1 text-left ${editSaa ? 'text-gray-900' : 'text-gray-400'}`}>{editSaa ? formatMemberName(editSaa.name, editSaa.initials) : 'Select SAA…'}</span>
               <ChevronLeft size={16} className="text-gray-400 rotate-180" />
             </button>
           </>
@@ -319,8 +319,8 @@ export default function MemberMeetingDetailPage() {
               <DetailRow label="Date & Time" value={formatDateTime(meeting.scheduled_at)} />
               {meeting.venue && (<><Divider /><DetailRow label="Venue" value={meeting.venue} /></>)}
               {meeting.theme && (<><Divider /><DetailRow label="Theme" value={meeting.theme} /></>)}
-              {meeting.president_id && (<><Divider /><DetailRow label="President" value={memberMap.get(meeting.president_id) ?? '—'} /></>)}
-              {meeting.saa_id && (<><Divider /><DetailRow label="SAA" value={memberMap.get(meeting.saa_id) ?? '—'} /></>)}
+              {meeting.president_id && (<><Divider /><DetailRow label="President" value={formatMemberName(memberMap.get(meeting.president_id)?.name, memberMap.get(meeting.president_id)?.initials)} /></>)}
+              {meeting.saa_id && (<><Divider /><DetailRow label="SAA" value={formatMemberName(memberMap.get(meeting.saa_id)?.name, memberMap.get(meeting.saa_id)?.initials)} /></>)}
               <Divider /><DetailRow label="Max Speakers" value={String(meeting.max_speakers)} />
               <Divider /><DetailRow label="Created" value={formatDateShort(meeting.created_at)} />
             </div>
@@ -392,7 +392,9 @@ export default function MemberMeetingDetailPage() {
                   <div className="w-[38px] h-[38px] rounded-full bg-brand flex items-center justify-center shrink-0">
                     <span className="text-white text-[13px] font-bold">{initials(m.name)}</span>
                   </div>
-                  <span className="flex-1 text-left text-[15px] text-gray-900 font-medium">{m.name}</span>
+                  <span className="flex-1 text-left text-[15px] text-gray-900 font-medium">
+                    <span className="text-brand">{m.initials}</span> {m.name}
+                  </span>
                 </button>
               ))}
             </div>

@@ -5,11 +5,11 @@ import { useAuthStore } from '@/store/authStore';
 import { getMeetingRoster, adminAssignRole, withdrawFromRole } from '@/services/meetingService';
 import { getClubMembers } from '@/services/memberService';
 import { MeetingDetailSkeleton } from '@/components/ui/Skeleton';
-import type { MeetingRole, MeetingWithRoster } from '@/types';
+import type { MeetingRole, MeetingWithRoster, MemberInitials } from '@/types';
 import { SINGLETON_ROLES, ROLE_LABELS, SPEECH_DURATIONS } from '@/types';
-import { initials, isPastMeeting } from '@/lib/utils';
+import { initials, formatMemberName, isPastMeeting } from '@/lib/utils';
 
-interface MemberOption { id: string; name: string }
+interface MemberOption { id: string; name: string; initials: MemberInitials }
 
 // TODO: re-enable once the role_title backend/DB support is deployed
 const SHOW_ADDITIONAL_ROLE_PLAYERS = false;
@@ -25,7 +25,7 @@ export default function MeetingRosterPage() {
   const [fetching, setFetching] = useState(true);
   const [acting, setActing] = useState(false);
   const [members, setMembers] = useState<MemberOption[]>([]);
-  const [memberMap, setMemberMap] = useState<Map<string, string>>(new Map());
+  const [memberMap, setMemberMap] = useState<Map<string, MemberOption>>(new Map());
 
   const [assignRole, setAssignRole] = useState<MeetingRole | null>(null);
   const [assignSpeakerId, setAssignSpeakerId] = useState<string | null>(null);
@@ -53,9 +53,9 @@ export default function MeetingRosterPage() {
   useEffect(() => {
     if (!session || !isAdmin) return;
     getClubMembers(session.access_token).then((list) => {
-      const opts = list.map((m) => ({ id: m.id, name: m.name }));
+      const opts = list.map((m) => ({ id: m.id, name: m.name, initials: m.initials }));
       setMembers(opts);
-      setMemberMap(new Map(opts.map((m) => [m.id, m.name])));
+      setMemberMap(new Map(opts.map((m) => [m.id, m])));
     }).catch(() => {});
   }, [session, isAdmin]);
 
@@ -146,6 +146,11 @@ export default function MeetingRosterPage() {
   const supportingRoles = roster.filter((r) => r.role === 'supporting_role');
   const filteredMembers = members.filter((m) => m.name.toLowerCase().includes(memberSearch.toLowerCase()));
 
+  function nameFor(memberId: string, name?: string | null, memberInitials?: string | null): string {
+    const fallback = memberMap.get(memberId);
+    return formatMemberName(name ?? fallback?.name, memberInitials ?? fallback?.initials);
+  }
+
   return (
     <div className="flex flex-col min-h-full bg-gray-50">
       <Header onBack={() => navigate(-1)} />
@@ -166,7 +171,7 @@ export default function MeetingRosterPage() {
                     <span className="text-[13px] text-gray-500 font-medium flex-1">{ROLE_LABELS[role]}</span>
                     {a ? (
                       <div className="flex items-center gap-2">
-                        <span className="text-sm text-gray-900 font-semibold truncate max-w-[140px]">{a.member_name ?? memberMap.get(a.member_id) ?? '—'}</span>
+                        <span className="text-sm text-gray-900 font-semibold truncate max-w-[140px]">{nameFor(a.member_id, a.member_name, a.member_initials)}</span>
                         {canManage && (
                           <button onClick={() => handleRemove(a.id, ROLE_LABELS[role])} disabled={acting} className="w-7 h-7 rounded-full bg-[#fef2f2] flex items-center justify-center"><X size={14} className="text-red-500" /></button>
                         )}
@@ -178,7 +183,7 @@ export default function MeetingRosterPage() {
                     )}
                   </div>
                 ) : (
-                  <RosterRow role={role} name={a?.member_name} isMe={a?.member_email === myEmail} />
+                  <RosterRow role={role} name={a?.member_name} memberInitials={a?.member_initials} isMe={a?.member_email === myEmail} />
                 )}
               </div>
             );
@@ -200,14 +205,14 @@ export default function MeetingRosterPage() {
                     <div className="flex items-center gap-2 px-4 py-3">
                       <div className="flex-1 min-w-0">
                         <p className="text-[13px] text-gray-500 font-medium">{s.role_title ?? 'Role Player'}</p>
-                        <p className="text-sm text-gray-900 font-semibold">{s.member_name ?? memberMap.get(s.member_id) ?? '—'}</p>
+                        <p className="text-sm text-gray-900 font-semibold">{nameFor(s.member_id, s.member_name, s.member_initials)}</p>
                       </div>
                       {canManage && (
                         <button onClick={() => handleRemove(s.id, s.role_title ?? 'Role Player')} disabled={acting} className="w-7 h-7 rounded-full bg-[#fef2f2] flex items-center justify-center"><X size={14} className="text-red-500" /></button>
                       )}
                     </div>
                   ) : (
-                    <RosterRow role={s.role_title ?? 'Role Player'} name={s.member_name} isMe={s.member_email === myEmail} />
+                    <RosterRow role={s.role_title ?? 'Role Player'} name={s.member_name} memberInitials={s.member_initials} isMe={s.member_email === myEmail} />
                   )}
                 </div>
               ))}
@@ -238,7 +243,7 @@ export default function MeetingRosterPage() {
               {isAdmin ? (
                 <div className="flex items-center gap-2 px-4 py-3">
                   <div className="flex-1">
-                    <p className="text-sm text-gray-900 font-semibold">{s.member_name ?? memberMap.get(s.member_id) ?? '—'}</p>
+                    <p className="text-sm text-gray-900 font-semibold">{nameFor(s.member_id, s.member_name, s.member_initials)}</p>
                     {s.speech_duration && <p className="text-[11px] text-gray-400 mt-0.5">{s.speech_duration}</p>}
                   </div>
                   {canManage && (
@@ -246,7 +251,7 @@ export default function MeetingRosterPage() {
                   )}
                 </div>
               ) : (
-                <RosterRow role="speaker" name={s.member_name} isMe={s.member_email === myEmail} sub={s.speech_duration ?? undefined} />
+                <RosterRow role="speaker" name={s.member_name} memberInitials={s.member_initials} isMe={s.member_email === myEmail} sub={s.speech_duration ?? undefined} />
               )}
             </div>
           ))}
@@ -276,13 +281,13 @@ export default function MeetingRosterPage() {
                   {i > 0 && <Divider />}
                   {isAdmin ? (
                     <div className="flex items-center gap-2 px-4 py-3">
-                      <p className="flex-1 text-sm text-gray-900 font-semibold">{s.member_name ?? memberMap.get(s.member_id) ?? '—'}</p>
+                      <p className="flex-1 text-sm text-gray-900 font-semibold">{nameFor(s.member_id, s.member_name, s.member_initials)}</p>
                       {canManage && (
                         <button onClick={() => handleRemove(s.id, 'Table Topics Speaker')} disabled={acting} className="w-7 h-7 rounded-full bg-[#fef2f2] flex items-center justify-center"><X size={14} className="text-red-500" /></button>
                       )}
                     </div>
                   ) : (
-                    <RosterRow role="table_topics_speaker" name={s.member_name} isMe={s.member_email === myEmail} />
+                    <RosterRow role="table_topics_speaker" name={s.member_name} memberInitials={s.member_initials} isMe={s.member_email === myEmail} />
                   )}
                 </div>
               ))}
@@ -308,7 +313,7 @@ export default function MeetingRosterPage() {
             <div className="bg-white rounded-2xl shadow-sm overflow-hidden mb-5">
               {speakers.map((s, i) => {
                 const ev = evaluators.find((e) => e.evaluates_member_id === s.member_id);
-                const speakerName = s.member_name ?? memberMap.get(s.member_id) ?? '—';
+                const speakerName = nameFor(s.member_id, s.member_name, s.member_initials);
                 if (isAdmin) {
                   return (
                     <div key={s.id}>
@@ -316,7 +321,7 @@ export default function MeetingRosterPage() {
                       <div className="flex items-center gap-2 px-4 py-3">
                         <div className="flex-1">
                           <p className="text-[11px] text-gray-400 mb-0.5">Evaluator for {speakerName}</p>
-                          <p className={`text-sm font-semibold ${ev ? 'text-gray-900' : 'text-gray-400'}`}>{ev ? (ev.member_name ?? memberMap.get(ev.member_id) ?? '—') : 'Unassigned'}</p>
+                          <p className={`text-sm font-semibold ${ev ? 'text-gray-900' : 'text-gray-400'}`}>{ev ? nameFor(ev.member_id, ev.member_name, ev.member_initials) : 'Unassigned'}</p>
                         </div>
                         {ev ? (
                           canManage && (
@@ -340,7 +345,7 @@ export default function MeetingRosterPage() {
                       </div>
                       {ev ? (
                         <span className={`text-[13px] font-semibold truncate max-w-[130px] ${ev.member_email === myEmail ? 'text-green-600' : 'text-gray-900'}`}>
-                          {ev.member_email === myEmail ? 'You' : ev.member_name ?? '—'}
+                          {ev.member_email === myEmail ? 'You' : nameFor(ev.member_id, ev.member_name, ev.member_initials)}
                         </span>
                       ) : (
                         <span className="text-xs font-medium text-gray-300">Open</span>
@@ -416,7 +421,9 @@ export default function MeetingRosterPage() {
                   <div className="w-[38px] h-[38px] rounded-full bg-brand flex items-center justify-center shrink-0">
                     <span className="text-white text-[13px] font-bold">{initials(m.name)}</span>
                   </div>
-                  <span className="flex-1 text-left text-[15px] text-gray-900 font-medium">{m.name}</span>
+                  <span className="flex-1 text-left text-[15px] text-gray-900 font-medium">
+                    <span className="text-brand">{m.initials}</span> {m.name}
+                  </span>
                 </button>
               ))}
             </div>
@@ -459,7 +466,7 @@ function Header({ onBack }: { onBack: () => void }) {
   );
 }
 
-function RosterRow({ role, name, isMe, sub }: { role: MeetingRole | string; name?: string | null; isMe?: boolean; sub?: string }) {
+function RosterRow({ role, name, memberInitials, isMe, sub }: { role: MeetingRole | string; name?: string | null; memberInitials?: string | null; isMe?: boolean; sub?: string }) {
   return (
     <div className="flex items-center gap-2.5 px-4 py-3.5">
       <div className="flex-1 min-w-0">
@@ -467,7 +474,7 @@ function RosterRow({ role, name, isMe, sub }: { role: MeetingRole | string; name
         {sub && <p className="text-[11px] text-gray-400 mt-0.5">{sub}</p>}
       </div>
       {name ? (
-        <span className={`text-[13px] font-semibold truncate max-w-[130px] ${isMe ? 'text-green-600' : 'text-gray-900'}`}>{isMe ? 'You' : name}</span>
+        <span className={`text-[13px] font-semibold truncate max-w-[130px] ${isMe ? 'text-green-600' : 'text-gray-900'}`}>{isMe ? 'You' : formatMemberName(name, memberInitials)}</span>
       ) : (
         <span className="text-xs font-medium text-gray-300">Open</span>
       )}

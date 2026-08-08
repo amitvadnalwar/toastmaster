@@ -124,6 +124,7 @@ export interface MeetingRoleAssignment {
   speech_duration?: string | null;
   role_title?: string | null;
   member_name?: string | null;
+  member_initials?: MemberInitials | null;
   member_email?: string | null;
   disqualified?: boolean;
 }
@@ -148,6 +149,7 @@ export interface SpeakerFeedback {
   from_member_id: string;
   speaker_member_id: string;
   speaker_name?: string | null;
+  speaker_initials?: MemberInitials | null;
   content_rating: number;
   structure_rating: number;
   confidence_rating: number;
@@ -159,6 +161,7 @@ export interface SpeakerFeedback {
 export interface Attendance {
   member_id: string;
   member_name?: string | null;
+  member_initials?: MemberInitials | null;
   checked_in_at: string;
 }
 
@@ -200,6 +203,7 @@ export interface SpeakingHistoryItem {
 export interface MeetingRating {
   member_id: string;
   member_name?: string | null;
+  member_initials?: MemberInitials | null;
   rating: number;
   comment?: string | null;
   created_at: string;
@@ -249,6 +253,7 @@ export interface VoteSummaryItem {
   category: VoteCategory;
   nominee_id: string;
   nominee_name: string;
+  nominee_initials?: MemberInitials | null;
   count: number;
 }
 
@@ -257,6 +262,7 @@ export interface VoteSummaryItem {
 export interface LeaderboardEntry {
   member_id: string;
   member_name: string;
+  member_initials?: MemberInitials | null;
   points: number;
   rank: number;
 }
@@ -271,6 +277,7 @@ export interface PointsBreakdownItem {
 export interface MemberPointsOut {
   member_id: string;
   member_name: string;
+  member_initials?: MemberInitials | null;
   total_points: number;
   breakdown: PointsBreakdownItem[];
 }

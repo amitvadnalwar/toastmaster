@@ -6,6 +6,7 @@ import { showAlert } from '@/store/alertStore';
 import { getMeetingRoster, getSpeakersFeedbackStatus, publishSpeakerFeedback, getAllRatings } from '@/services/meetingService';
 import { Skeleton } from '@/components/ui/Skeleton';
 import type { Meeting, MeetingRoleAssignment, SpeakerFeedbackStatus, MeetingRating } from '@/types';
+import { formatMemberName } from '@/lib/utils';
 
 export default function FeedbackDetailsPage() {
   const { id } = useParams<{ id: string }>();
@@ -90,7 +91,7 @@ export default function FeedbackDetailsPage() {
                       {i > 0 && <div className="h-px bg-gray-100 mx-4" />}
                       <div className="flex items-center gap-3 px-4 py-3.5">
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-gray-900 truncate">{s.member_name ?? '—'}</p>
+                          <p className="text-sm font-semibold text-gray-900 truncate">{formatMemberName(s.member_name, s.member_initials)}</p>
                           <p className="text-[11px] text-gray-400 mt-0.5">
                             {!st?.has_feedback ? 'No feedback yet' : st.published ? 'Published to speaker' : 'Feedback received — not published'}
                           </p>
@@ -123,7 +124,7 @@ export default function FeedbackDetailsPage() {
               <div>
                 {ratings.map((r) => (
                   <div key={r.member_id} className="bg-white rounded-2xl p-4 mb-3 shadow-sm">
-                    <p className="text-[15px] font-bold text-gray-900 mb-2">{r.member_name ?? '—'}</p>
+                    <p className="text-[15px] font-bold text-gray-900 mb-2">{formatMemberName(r.member_name, r.member_initials)}</p>
                     <div className="flex items-center gap-1 mb-2">
                       {[1, 2, 3, 4, 5].map((n) => (
                         <Star key={n} size={18} className={n <= r.rating ? 'fill-amber-400 text-amber-400' : 'text-gray-200'} />

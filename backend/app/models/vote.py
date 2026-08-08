@@ -28,6 +28,7 @@ class VoteSummaryItem(BaseModel):
     category: VoteCategory
     nominee_id: str
     nominee_name: str
+    nominee_initials: str | None = None
     count: int
 
 
@@ -53,6 +54,7 @@ class MyVotingStateOut(BaseModel):
 class MeetingRatingOut(BaseModel):
     member_id: str
     member_name: str | None = None
+    member_initials: str | None = None
     rating: int
     comment: str | None = None
     created_at: str

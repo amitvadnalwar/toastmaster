@@ -4,10 +4,11 @@ import { useAuthStore } from '@/store/authStore';
 import { getClubMembers } from '@/services/memberService';
 import { MemberBottomNav } from '@/components/layout/BottomNav';
 import { MembersListSkeleton } from '@/components/ui/Skeleton';
+import type { MemberInitials } from '@/types';
 import { CLUB_ROLE_LABELS } from '@/types';
 import { initials } from '@/lib/utils';
 
-type ClubMember = { id: string; name: string; club_role: string; app_role: string | null; is_active: boolean };
+type ClubMember = { id: string; name: string; initials: MemberInitials; club_role: string; app_role: string | null; is_active: boolean };
 
 export default function MemberMembersPage() {
   const navigate = useNavigate();
@@ -55,7 +56,9 @@ export default function MemberMembersPage() {
                       <span className="text-white text-sm font-bold">{initials(m.name)}</span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[15px] font-semibold text-gray-900 truncate">{m.name}</p>
+                      <p className="text-[15px] font-semibold text-gray-900 truncate">
+                        <span className="text-brand">{m.initials}</span> {m.name}
+                      </p>
                       <p className="text-xs text-gray-500 truncate">{CLUB_ROLE_LABELS[m.club_role as keyof typeof CLUB_ROLE_LABELS] ?? m.club_role}</p>
                     </div>
                     {(m.app_role === 'admin' || m.app_role === 'super_admin') && (

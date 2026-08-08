@@ -79,7 +79,7 @@ export function getMyStats(token: string): Promise<{ speeches: number; feedbacks
 
 export function getClubMembers(
   token: string,
-): Promise<{ id: string; name: string; club_role: string; app_role: string | null; is_active: boolean }[]> {
+): Promise<{ id: string; name: string; initials: MemberInitials; club_role: string; app_role: string | null; is_active: boolean }[]> {
   return apiRequest('/members/club', { token });
 }
 

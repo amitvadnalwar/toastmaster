@@ -6,6 +6,7 @@ import { getMeetingRoster, setRoleDisqualified } from '@/services/meetingService
 import { MeetingDetailSkeleton } from '@/components/ui/Skeleton';
 import type { MeetingRole, MeetingWithRoster } from '@/types';
 import { ROLE_LABELS } from '@/types';
+import { formatMemberName } from '@/lib/utils';
 
 const ROLE_ORDER = Object.keys(ROLE_LABELS) as MeetingRole[];
 
@@ -78,7 +79,7 @@ export default function DisqualifyPage() {
                 <div className="flex items-center gap-2 px-4 py-3.5">
                   <div className="flex-1 min-w-0">
                     <p className={`text-sm font-semibold truncate ${r.disqualified ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
-                      {r.member_name ?? '—'}
+                      {formatMemberName(r.member_name, r.member_initials)}
                     </p>
                     <p className="text-[11px] text-gray-400 mt-0.5">{ROLE_LABELS[r.role]}</p>
                   </div>

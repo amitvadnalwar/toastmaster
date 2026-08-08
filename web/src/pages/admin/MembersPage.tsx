@@ -71,7 +71,9 @@ export default function AdminMembersPage() {
                       <span className="text-white text-[15px] font-bold">{initials(m.name)}</span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className={`text-[15px] font-semibold truncate ${m.is_active ? 'text-gray-900' : 'text-gray-500'}`}>{m.name}</p>
+                      <p className={`text-[15px] font-semibold truncate ${m.is_active ? 'text-gray-900' : 'text-gray-500'}`}>
+                        <span className="text-brand">{m.initials}</span> {m.name}
+                      </p>
                       <p className="text-xs text-gray-500 truncate">{m.email}</p>
                       {m.club_role !== 'member' && m.club_role !== 'guest' && (
                         <p className="text-[11px] text-brand font-semibold mt-0.5">

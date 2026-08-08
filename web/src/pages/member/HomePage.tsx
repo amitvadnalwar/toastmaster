@@ -7,9 +7,14 @@ import { getClubMembers, getMe } from '@/services/memberService';
 import { getClub } from '@/services/clubService';
 import { MemberBottomNav } from '@/components/layout/BottomNav';
 import { HomeSkeleton } from '@/components/ui/Skeleton';
-import type { Meeting, MeetingRoleAssignment, Club } from '@/types';
+import type { Meeting, MeetingRoleAssignment, Club, MemberInitials } from '@/types';
 import { CLUB_ROLE_LABELS, STATUS_COLOR } from '@/types';
-import { dateparts, formatDateShort } from '@/lib/utils';
+import { dateparts, formatDateShort, formatMemberName } from '@/lib/utils';
+
+function formatMemberNameFromMap(map: Map<string, { name: string; initials: MemberInitials }>, memberId: string): string | undefined {
+  const m = map.get(memberId);
+  return m ? formatMemberName(m.name, m.initials) : undefined;
+}
 
 interface HomeData {
   club: Club | null;
@@ -18,7 +23,7 @@ interface HomeData {
   stats: { speeches: number; feedbacks: number };
   activeMembers: number;
   rolesFilled: number;
-  memberMap: Map<string, string>;
+  memberMap: Map<string, { name: string; initials: MemberInitials }>;
   clubRole: string;
 }
 
@@ -56,7 +61,7 @@ async function loadHomeData(token: string): Promise<HomeData> {
   }
 
   const activeMembers = members.filter((m) => m.is_active).length;
-  const memberMap = new Map(members.map((m) => [m.id, m.name]));
+  const memberMap = new Map(members.map((m) => [m.id, { name: m.name, initials: m.initials }]));
 
   return { club, nextMeeting, upcoming: future.slice(0, 5), stats, activeMembers, rolesFilled: roster.length, memberMap, clubRole };
 }
@@ -79,7 +84,7 @@ export default function MemberHomePage() {
   const stats = data?.stats ?? { speeches: 0, feedbacks: 0 };
   const activeMembers = data?.activeMembers ?? 0;
   const rolesFilled = data?.rolesFilled ?? 0;
-  const memberMap = data?.memberMap ?? new Map<string, string>();
+  const memberMap = data?.memberMap ?? new Map<string, { name: string; initials: MemberInitials }>();
   const clubRole = data?.clubRole ?? 'member';
   const engagementPct = activeMembers === 0 ? 0 : Math.round((rolesFilled / Math.max(activeMembers, 1)) * 100);
   const totalActivity = stats.speeches + stats.feedbacks;
@@ -144,8 +149,8 @@ export default function MemberHomePage() {
           {nextMeeting ? (
             <NextMeetingCard
               meeting={nextMeeting}
-              presidentName={nextMeeting.president_id ? memberMap.get(nextMeeting.president_id) : undefined}
-              saaName={nextMeeting.saa_id ? memberMap.get(nextMeeting.saa_id) : undefined}
+              presidentName={nextMeeting.president_id ? formatMemberNameFromMap(memberMap, nextMeeting.president_id) : undefined}
+              saaName={nextMeeting.saa_id ? formatMemberNameFromMap(memberMap, nextMeeting.saa_id) : undefined}
               onClick={() => navigate(`/meetings/${nextMeeting.id}`)}
             />
           ) : (

@@ -5,7 +5,8 @@ import { useAuthStore } from '@/store/authStore';
 import { getMeetingRoster } from '@/services/meetingService';
 import { getMemberVotingState } from '@/services/voteService';
 import { Skeleton } from '@/components/ui/Skeleton';
-import type { Meeting, MyVotingState, VoteCategory } from '@/types';
+import type { Meeting, MyVotingState, VoteCategory, MemberInitials } from '@/types';
+import { formatMemberName } from '@/lib/utils';
 
 const VOTE_CATEGORY_LABELS: Record<VoteCategory, string> = {
   best_speaker: 'Best Speaker',
@@ -23,7 +24,7 @@ export default function MemberFeedbackDetailPage() {
   const [meeting, setMeeting] = useState<Meeting | null>(null);
   const [memberName, setMemberName] = useState('');
   const [votingState, setVotingState] = useState<MyVotingState>({ votes: [], rating: null });
-  const [memberMap, setMemberMap] = useState<Map<string, string>>(new Map());
+  const [memberMap, setMemberMap] = useState<Map<string, { name: string; initials?: MemberInitials | null }>>(new Map());
   const [fetching, setFetching] = useState(true);
 
   const load = useCallback(async () => {
@@ -35,9 +36,10 @@ export default function MemberFeedbackDetailPage() {
         getMemberVotingState(id, memberId, session.access_token),
       ]);
       setMeeting(rosterData.meeting);
-      const map = new Map(rosterData.roster.map((r) => [r.member_id, r.member_name ?? '—']));
+      const map = new Map(rosterData.roster.map((r) => [r.member_id, { name: r.member_name ?? '—', initials: r.member_initials }]));
       setMemberMap(map);
-      setMemberName(map.get(memberId) ?? '—');
+      const me = map.get(memberId);
+      setMemberName(me ? formatMemberName(me.name, me.initials) : '—');
       setVotingState(voting);
     } catch { /* ignore */ } finally {
       setFetching(false);
@@ -83,7 +85,7 @@ export default function MemberFeedbackDetailPage() {
                     <div className="flex items-center justify-between px-4 py-3">
                       <span className="text-[13px] text-gray-500 font-medium">{label}</span>
                       <span className={`text-sm font-semibold ${vote ? 'text-gray-900' : 'text-gray-300'}`}>
-                        {vote ? (memberMap.get(vote.nominee_id) ?? '—') : 'Not voted'}
+                        {vote ? (() => { const n = memberMap.get(vote.nominee_id); return n ? formatMemberName(n.name, n.initials) : '—'; })() : 'Not voted'}
                       </span>
                     </div>
                   </div>

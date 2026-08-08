@@ -7,7 +7,7 @@ import {
 import { useAuthStore } from '@/store/authStore';
 import { getLeaderboard } from '@/services/leaderboardService';
 import { MembersListSkeleton } from '@/components/ui/Skeleton';
-import { initials, avatarColor } from '@/lib/utils';
+import { initials, avatarColor, formatMemberName } from '@/lib/utils';
 
 function currentMonthKey(): string {
   const now = new Date();
@@ -104,7 +104,7 @@ export default function LeaderboardPage() {
                 >
                   <span className="text-white text-[13px] font-bold">{initials(e.member_name)}</span>
                 </div>
-                <span className="flex-1 text-[15px] font-semibold text-gray-900 truncate">{e.member_name}</span>
+                <span className="flex-1 text-[15px] font-semibold text-gray-900 truncate">{formatMemberName(e.member_name, e.member_initials)}</span>
                 <div className="flex items-center gap-1 shrink-0">
                   <span className="text-[15px] font-bold text-gray-900">{e.points}</span>
                   <Coins size={16} className="text-amber-500" />

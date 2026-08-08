@@ -86,6 +86,7 @@ class MeetingRoleAssignmentOut(BaseModel):
     speech_duration: str | None = None
     role_title: str | None = None
     member_name: str | None = None
+    member_initials: str | None = None
     member_email: str | None = None
     disqualified: bool = False
 
@@ -142,6 +143,7 @@ class CheckinOut(BaseModel):
 class AttendanceOut(BaseModel):
     member_id: str
     member_name: str | None = None
+    member_initials: str | None = None
     checked_in_at: str
 
 
@@ -167,6 +169,7 @@ class SpeakerFeedbackOut(BaseModel):
     from_member_id: str
     speaker_member_id: str
     speaker_name: str | None = None
+    speaker_initials: str | None = None
     content_rating: int
     structure_rating: int
     confidence_rating: int

@@ -77,9 +77,15 @@ async def _compute_points(club_id: str, month: str) -> dict[str, dict]:
     return points
 
 
+async def _get_initials_map(club_id: str) -> dict[str, str | None]:
+    members = await db_members.get_club_members(club_id)
+    return {m["id"]: m.get("initials") for m in members}
+
+
 async def get_leaderboard(club_id: str, month: str | None) -> list[LeaderboardEntry]:
     resolved_month = month or _current_month()
     points = await _compute_points(club_id, resolved_month)
+    initials_map = await _get_initials_map(club_id)
     ranked = sorted(points.items(), key=lambda kv: kv[1]["total"], reverse=True)
 
     result: list[LeaderboardEntry] = []
@@ -89,7 +95,13 @@ async def get_leaderboard(club_id: str, month: str | None) -> list[LeaderboardEn
         if data["total"] != prev_total:
             rank = i + 1
             prev_total = data["total"]
-        result.append(LeaderboardEntry(member_id=member_id, member_name=data["name"], points=data["total"], rank=rank))
+        result.append(LeaderboardEntry(
+            member_id=member_id,
+            member_name=data["name"],
+            member_initials=initials_map.get(member_id),
+            points=data["total"],
+            rank=rank,
+        ))
     return result
 
 
@@ -101,10 +113,19 @@ async def get_member_points(club_id: str, member_id: str, month: str | None) -> 
     if data is None:
         member = await db_members.get_by_id(member_id)
         name = member["name"] if member else "—"
-        return MemberPointsOut(member_id=member_id, member_name=name, total_points=0, breakdown=[])
+        initials = member.get("initials") if member else None
+        return MemberPointsOut(member_id=member_id, member_name=name, member_initials=initials, total_points=0, breakdown=[])
 
+    member = await db_members.get_by_id(member_id)
+    initials = member.get("initials") if member else None
     breakdown = [
         PointsBreakdownItem(label=label, count=b["count"], points_each=b["points_each"], total=b["total"])
         for label, b in data["breakdown"].items()
     ]
-    return MemberPointsOut(member_id=member_id, member_name=data["name"], total_points=data["total"], breakdown=breakdown)
+    return MemberPointsOut(
+        member_id=member_id,
+        member_name=data["name"],
+        member_initials=initials,
+        total_points=data["total"],
+        breakdown=breakdown,
+    )

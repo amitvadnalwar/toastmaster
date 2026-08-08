@@ -12,6 +12,13 @@ export function initials(name: string | null | undefined): string {
     .toUpperCase();
 }
 
+// Prefixes a member's display name with their Toastmaster designation (TM/DTM),
+// e.g. "TM Jane Doe". Falls back to the bare name when initials aren't known.
+export function formatMemberName(name: string | null | undefined, memberInitials?: string | null): string {
+  if (!name) return '—';
+  return memberInitials ? `${memberInitials} ${name}` : name;
+}
+
 const AVATAR_COLORS = ['#93c5fd', '#c4b5fd', '#86efac', '#fca5a5', '#fcd34d', '#67e8f9', '#f9a8d4'];
 export function avatarColor(name: string): string {
   let hash = 0;

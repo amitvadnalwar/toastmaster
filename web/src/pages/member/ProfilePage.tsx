@@ -6,7 +6,7 @@ import { MemberBottomNav } from '@/components/layout/BottomNav';
 import { ProfileSkeleton } from '@/components/ui/Skeleton';
 import type { Member } from '@/types';
 import { CLUB_ROLE_LABELS, APP_ROLE_LABELS } from '@/types';
-import { initials, formatDateShort } from '@/lib/utils';
+import { initials, formatMemberName, formatDateShort } from '@/lib/utils';
 
 export default function MemberProfilePage() {
   const { session } = useAuthStore();
@@ -41,7 +41,7 @@ export default function MemberProfilePage() {
             <div className="w-20 h-20 rounded-full bg-brand flex items-center justify-center mb-3.5">
               <span className="text-white text-[28px] font-bold">{member ? initials(member.name) : '?'}</span>
             </div>
-            <h2 className="text-[22px] font-bold text-gray-900 mb-1">{member?.name ?? '—'}</h2>
+            <h2 className="text-[22px] font-bold text-gray-900 mb-1">{member ? formatMemberName(member.name, member.initials) : '—'}</h2>
             <p className="text-[13px] text-gray-500 font-medium">{member?.app_role ? APP_ROLE_LABELS[member.app_role] : ''}</p>
           </div>
 

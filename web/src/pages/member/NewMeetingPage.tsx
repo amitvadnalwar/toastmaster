@@ -5,9 +5,10 @@ import { useAuthStore } from '@/store/authStore';
 import { createMeeting } from '@/services/meetingService';
 import { getAllMembers } from '@/services/memberService';
 import Button from '@/components/ui/Button';
-import { initials } from '@/lib/utils';
+import type { MemberInitials } from '@/types';
+import { initials, formatMemberName } from '@/lib/utils';
 
-interface MemberOption { id: string; name: string }
+interface MemberOption { id: string; name: string; initials: MemberInitials }
 type MemberField = 'president' | 'saa' | null;
 
 export default function MemberNewMeetingPage() {
@@ -31,7 +32,7 @@ export default function MemberNewMeetingPage() {
   useEffect(() => {
     if (!session) return;
     getAllMembers(session.access_token)
-      .then((list) => setMembers(list.map((m) => ({ id: m.id, name: m.name }))))
+      .then((list) => setMembers(list.map((m) => ({ id: m.id, name: m.name, initials: m.initials }))))
       .catch(() => {});
   }, [session]);
 
@@ -100,7 +101,7 @@ export default function MemberNewMeetingPage() {
         <button onClick={() => setActiveField('president')} className={pickerCls}>
           <User size={16} className="text-gray-500" />
           <span className={`flex-1 text-left text-[15px] font-medium ${president ? 'text-gray-900' : 'text-gray-400'}`}>
-            {president ? president.name : 'Select president…'}
+            {president ? formatMemberName(president.name, president.initials) : 'Select president…'}
           </span>
           <ChevronRight size={16} className="text-gray-400" />
         </button>
@@ -109,7 +110,7 @@ export default function MemberNewMeetingPage() {
         <button onClick={() => setActiveField('saa')} className={pickerCls}>
           <User size={16} className="text-gray-500" />
           <span className={`flex-1 text-left text-[15px] font-medium ${saa ? 'text-gray-900' : 'text-gray-400'}`}>
-            {saa ? saa.name : 'Select SAA…'}
+            {saa ? formatMemberName(saa.name, saa.initials) : 'Select SAA…'}
           </span>
           <ChevronRight size={16} className="text-gray-400" />
         </button>
@@ -162,7 +163,9 @@ export default function MemberNewMeetingPage() {
                       <div className="w-[38px] h-[38px] rounded-full bg-brand flex items-center justify-center shrink-0">
                         <span className="text-white text-[13px] font-bold">{initials(m.name)}</span>
                       </div>
-                      <span className="flex-1 text-left text-[15px] text-gray-900 font-medium">{m.name}</span>
+                      <span className="flex-1 text-left text-[15px] text-gray-900 font-medium">
+                        <span className="text-brand">{m.initials}</span> {m.name}
+                      </span>
                       {selected && <Check size={16} className="text-brand" />}
                     </button>
                   );

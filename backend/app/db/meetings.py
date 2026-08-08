@@ -127,13 +127,18 @@ async def update_voting_status(meeting_id: str, voting_status: str) -> dict:
 def _flatten_roster_row(r: dict) -> dict:
     # PostgREST returns the joined table under "members" key regardless of the FK hint used in the query
     member = r.pop("members", None) or r.pop("members!meeting_roles_member_id_fkey", None) or {}
-    return {**r, "member_name": member.get("name"), "member_email": member.get("email")}
+    return {
+        **r,
+        "member_name": member.get("name"),
+        "member_initials": member.get("initials"),
+        "member_email": member.get("email"),
+    }
 
 
 async def get_roster(meeting_id: str) -> list[dict]:
     result = (
         supabase.table("meeting_roles")
-        .select("*, members!meeting_roles_member_id_fkey(name, email)")
+        .select("*, members!meeting_roles_member_id_fkey(name, email, initials)")
         .eq("meeting_id", meeting_id)
         .execute()
     )
@@ -235,7 +240,7 @@ async def get_attendance(meeting_id: str, member_id: str) -> dict | None:
 async def get_all_attendance(meeting_id: str) -> list[dict]:
     result = (
         supabase.table("meeting_attendance")
-        .select("*, members(name)")
+        .select("*, members(name, initials)")
         .eq("meeting_id", meeting_id)
         .order("checked_in_at")
         .execute()
@@ -243,7 +248,7 @@ async def get_all_attendance(meeting_id: str) -> list[dict]:
     rows = []
     for r in result.data:
         member = r.pop("members", None) or {}
-        rows.append({**r, "member_name": member.get("name")})
+        rows.append({**r, "member_name": member.get("name"), "member_initials": member.get("initials")})
     return rows
 
 
@@ -264,7 +269,7 @@ async def checkin_member(meeting_id: str, member_id: str) -> dict:
 async def get_my_feedback(meeting_id: str, from_member_id: str) -> list[dict]:
     result = (
         supabase.table("speaker_feedback")
-        .select("*, members!speaker_feedback_speaker_member_id_fkey(name)")
+        .select("*, members!speaker_feedback_speaker_member_id_fkey(name, initials)")
         .eq("meeting_id", meeting_id)
         .eq("from_member_id", from_member_id)
         .execute()
@@ -272,7 +277,7 @@ async def get_my_feedback(meeting_id: str, from_member_id: str) -> list[dict]:
     rows = []
     for r in result.data:
         member = r.pop("members", None) or {}
-        rows.append({**r, "speaker_name": member.get("name")})
+        rows.append({**r, "speaker_name": member.get("name"), "speaker_initials": member.get("initials")})
     return rows
 
 

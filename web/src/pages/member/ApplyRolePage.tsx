@@ -12,7 +12,7 @@ import { getMe } from '@/services/memberService';
 import { MeetingDetailSkeleton } from '@/components/ui/Skeleton';
 import type { MeetingRoleAssignment, MeetingWithRoster, SpeechDuration } from '@/types';
 import { SINGLETON_ROLES, ROLE_LABELS, SPEECH_DURATIONS } from '@/types';
-import { isPastMeeting } from '@/lib/utils';
+import { isPastMeeting, formatMemberName } from '@/lib/utils';
 
 const ROLE_ICON: Record<string, { icon: React.ElementType; bg: string; color: string }> = {
   tmod: { icon: Mic, bg: '#dcfce7', color: '#16a34a' },
@@ -51,7 +51,7 @@ function RoleRow({ roleKey, label, assignment, isMe, canApply, isOpen, isPast, a
         {isMe ? (
           <p className="text-[13px] font-medium text-green-600">You are assigned</p>
         ) : assignment ? (
-          <p className="text-[13px] font-medium text-gray-700">{assignment.member_name ?? '—'}</p>
+          <p className="text-[13px] font-medium text-gray-700">{formatMemberName(assignment.member_name, assignment.member_initials)}</p>
         ) : isPast ? (
           <p className="text-[13px] text-gray-400">Meeting date has passed</p>
         ) : isOpen ? (
@@ -257,14 +257,14 @@ export default function MemberApplyRolePage() {
                     {i > 0 && <div className="h-px bg-gray-100 mx-4" />}
                     <RoleRow
                       roleKey="evaluator"
-                      label={`For ${sp.member_name ?? '—'}`}
+                      label={`For ${formatMemberName(sp.member_name, sp.member_initials)}`}
                       assignment={evaluator}
                       isMe={isMe}
                       canApply={canEnroll && !evaluator}
                       isOpen={isOpen}
                       isPast={isPast}
                       acting={acting}
-                      onApply={() => handleApplyEvaluator(sp.member_id, sp.member_name)}
+                      onApply={() => handleApplyEvaluator(sp.member_id, formatMemberName(sp.member_name, sp.member_initials))}
                       onWithdraw={handleWithdraw}
                     />
                   </div>

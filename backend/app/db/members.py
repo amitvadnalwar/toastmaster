@@ -62,7 +62,7 @@ async def insert_guest(
 async def get_club_members(club_id: str) -> list[dict]:
     result = (
         supabase.table("members")
-        .select("id, name, club_role, app_role, is_active, is_guest")
+        .select("id, name, initials, club_role, app_role, is_active, is_guest")
         .eq("club_id", club_id)
         .eq("is_guest", False)
         .order("name")

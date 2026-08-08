@@ -6,6 +6,7 @@ import { showAlert } from '@/store/alertStore';
 import { getMeetingById, getMeetingRoster, getMyFeedback, submitFeedback } from '@/services/meetingService';
 import { submitVote, submitRating, getMyVotingState } from '@/services/voteService';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { formatMemberName } from '@/lib/utils';
 import type {
   Meeting,
   MeetingRoleAssignment,
@@ -374,7 +375,7 @@ export default function MemberFeedbackPage() {
                         <span className="text-lg font-bold text-blue-500">{(row.assignment.member_name ?? '?').charAt(0).toUpperCase()}</span>
                       </div>
                       <div className="flex-1">
-                        <p className="text-[15px] font-bold text-gray-900">{row.assignment.member_name ?? '—'}</p>
+                        <p className="text-[15px] font-bold text-gray-900">{formatMemberName(row.assignment.member_name, row.assignment.member_initials)}</p>
                         {row.assignment.speech_duration && <p className="text-xs text-gray-400 mt-0.5">{row.assignment.speech_duration}</p>}
                       </div>
                     </div>
@@ -411,7 +412,7 @@ export default function MemberFeedbackPage() {
                 </div>
                 {myFeedback.map((fb) => (
                   <div key={fb.id} className="bg-white rounded-2xl p-4 mb-3 shadow-sm">
-                    <p className="text-[15px] font-bold text-gray-900 mb-2">{fb.speaker_name ?? '—'}</p>
+                    <p className="text-[15px] font-bold text-gray-900 mb-2">{formatMemberName(fb.speaker_name, fb.speaker_initials)}</p>
                     <div className="flex flex-wrap gap-1.5 mb-2">
                       {FEEDBACK_FIELDS.map(({ key, label }) => (
                         <div key={key} className="flex items-center gap-1">
@@ -451,7 +452,10 @@ export default function MemberFeedbackPage() {
                         <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-3 py-2.5">
                           <CheckCircle size={16} className="text-green-600" />
                           <span className="text-[14px] font-semibold text-green-700">
-                            {nominees.find((n) => n.member_id === votedNomineeId)?.member_name ?? 'Voted'}
+                            {(() => {
+                              const voted = nominees.find((n) => n.member_id === votedNomineeId);
+                              return voted ? formatMemberName(voted.member_name, voted.member_initials) : 'Voted';
+                            })()}
                           </span>
                         </div>
                       ) : (
@@ -467,7 +471,7 @@ export default function MemberFeedbackPage() {
                                   selected ? 'border-brand bg-brand/5 text-brand' : 'border-gray-200 text-gray-700'
                                 }`}
                               >
-                                {n.member_name ?? '—'}
+                                {formatMemberName(n.member_name, n.member_initials)}
                               </button>
                             );
                           })}

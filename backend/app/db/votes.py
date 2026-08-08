@@ -61,7 +61,7 @@ async def get_my_rating(meeting_id: str, voter_id: str) -> dict | None:
 async def get_all_ratings(meeting_id: str) -> list[dict]:
     result = (
         supabase.table("meeting_ratings")
-        .select("*, members!meeting_ratings_voter_id_fkey(name)")
+        .select("*, members!meeting_ratings_voter_id_fkey(name, initials)")
         .eq("meeting_id", meeting_id)
         .execute()
     )
@@ -69,14 +69,19 @@ async def get_all_ratings(meeting_id: str) -> list[dict]:
     for r in result.data:
         member = r.pop("members", None) or {}
         voter_id = r.pop("voter_id")
-        rows.append({**r, "member_id": voter_id, "member_name": member.get("name")})
+        rows.append({
+            **r,
+            "member_id": voter_id,
+            "member_name": member.get("name"),
+            "member_initials": member.get("initials"),
+        })
     return rows
 
 
 async def get_summary(meeting_id: str) -> list[dict]:
     result = (
         supabase.table("votes")
-        .select("category, nominee_id, members!votes_nominee_id_fkey(name)")
+        .select("category, nominee_id, members!votes_nominee_id_fkey(name, initials)")
         .eq("meeting_id", meeting_id)
         .execute()
     )
@@ -89,6 +94,7 @@ async def get_summary(meeting_id: str) -> list[dict]:
                 "category": row["category"],
                 "nominee_id": row["nominee_id"],
                 "nominee_name": member.get("name") or "—",
+                "nominee_initials": member.get("initials"),
                 "count": 0,
             }
         counts[key]["count"] += 1

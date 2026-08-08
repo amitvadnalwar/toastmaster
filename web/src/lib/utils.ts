@@ -60,6 +60,30 @@ export function formatDateTime(iso: string): string {
   );
 }
 
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+
+function ordinal(n: number): string {
+  const v = n % 100;
+  if (v >= 11 && v <= 13) return `${n}th`;
+  switch (n % 10) {
+    case 1: return `${n}st`;
+    case 2: return `${n}nd`;
+    case 3: return `${n}rd`;
+    default: return `${n}th`;
+  }
+}
+
+// Formats a MM-DD birthday (no year, by design) as "18th July".
+export function formatBirthday(mmdd: string | null | undefined): string {
+  if (!mmdd) return '—';
+  const [mm, dd] = mmdd.split('-').map(Number);
+  if (!mm || !dd || mm < 1 || mm > 12) return mmdd;
+  return `${ordinal(dd)} ${MONTH_NAMES[mm - 1]}`;
+}
+
 export function isPastMeeting(scheduledAt: string): boolean {
   return new Date(scheduledAt).getTime() < Date.now();
 }

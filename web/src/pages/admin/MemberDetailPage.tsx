@@ -10,7 +10,7 @@ import Spinner from '@/components/ui/Spinner';
 import { ProfileSkeleton } from '@/components/ui/Skeleton';
 import type { Member, ClubRole, AppRole, MemberInitials } from '@/types';
 import { CLUB_ROLE_LABELS, APP_ROLE_LABELS, ASSIGNABLE_CLUB_ROLES, ASSIGNABLE_APP_ROLES, MEMBER_INITIALS } from '@/types';
-import { initials as avatarInitials, formatDateShort } from '@/lib/utils';
+import { initials as avatarInitials, formatDateShort, formatBirthday } from '@/lib/utils';
 
 type PickerTarget = 'club_role' | 'app_role' | null;
 
@@ -325,7 +325,7 @@ export default function AdminMemberDetailPage() {
           <Divider />
           <DetailRow label="Phone" value={member.phone ?? '—'} />
           <Divider />
-          <DetailRow label="Birthday" value={member.birthday ?? '—'} />
+          <DetailRow label="Birthday" value={formatBirthday(member.birthday)} />
           <Divider />
           <DetailRow label="Joined" value={formatDateShort(member.created_at)} />
         </div>

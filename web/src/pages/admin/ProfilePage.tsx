@@ -8,7 +8,7 @@ import { AdminBottomNav } from '@/components/layout/BottomNav';
 import { ProfileSkeleton } from '@/components/ui/Skeleton';
 import type { Member } from '@/types';
 import { CLUB_ROLE_LABELS, APP_ROLE_LABELS } from '@/types';
-import { initials, formatMemberName, formatDateShort } from '@/lib/utils';
+import { initials, formatMemberName, formatDateShort, formatBirthday } from '@/lib/utils';
 
 export default function AdminProfilePage() {
   const navigate = useNavigate();
@@ -59,7 +59,7 @@ export default function AdminProfilePage() {
             <Divider />
             <DetailRow label="Phone" value={member?.phone ?? '—'} />
             <Divider />
-            <DetailRow label="Birthday" value={member?.birthday ?? '—'} />
+            <DetailRow label="Birthday" value={formatBirthday(member?.birthday)} />
             <Divider />
             <DetailRow label="Club Role" value={member ? CLUB_ROLE_LABELS[member.club_role] : '—'} />
             <Divider />

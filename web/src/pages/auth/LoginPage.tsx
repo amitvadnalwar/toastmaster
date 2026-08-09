@@ -1,5 +1,5 @@
 import { useState, FormEvent } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
 import Button from '@/components/ui/Button';
@@ -9,6 +9,8 @@ import { CLUB_SHORT_NAME } from '@/lib/constants';
 
 export default function LoginPage() {
   const { session, _hydrated } = useAuthStore();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
@@ -16,6 +18,11 @@ export default function LoginPage() {
   const [error, setError] = useState('');
 
   if (_hydrated && session) return <Navigate to="/" replace />;
+
+  function goToGuest() {
+    const meetingId = searchParams.get('meeting_id');
+    navigate(meetingId ? `/guest?meeting_id=${meetingId}` : '/guest');
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -43,6 +50,23 @@ export default function LoginPage() {
             <span className="text-white text-2xl font-black">T</span>
           </div>
           <h1 className="text-2xl font-black text-gray-900">{CLUB_SHORT_NAME}</h1>
+        </div>
+
+        {/* Member / Guest toggle */}
+        <div className="flex bg-gray-100 rounded-xl p-1 mb-6">
+          <button
+            type="button"
+            className="flex-1 py-2.5 rounded-lg text-sm font-semibold bg-white text-brand shadow-sm"
+          >
+            Member
+          </button>
+          <button
+            type="button"
+            onClick={goToGuest}
+            className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-gray-500 hover:text-gray-700"
+          >
+            Guest
+          </button>
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">

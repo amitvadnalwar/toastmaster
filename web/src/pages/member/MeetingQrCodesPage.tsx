@@ -7,7 +7,7 @@ import { getMeetingById } from '@/services/meetingService';
 import { Skeleton } from '@/components/ui/Skeleton';
 import type { Meeting } from '@/types';
 
-const GUEST_URL = 'https://amitvadnalwar.github.io/toastmaster/guest-web/';
+const GUEST_URL = `${window.location.origin}${import.meta.env.BASE_URL}guest`;
 
 function downloadCanvas(id: string, filename: string) {
   const canvas = document.getElementById(id) as HTMLCanvasElement | null;

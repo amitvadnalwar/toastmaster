@@ -5,7 +5,6 @@ on:
     branches: [main]
     paths:
       - 'web/**'
-      - 'guest-web/**'
       - '.github/workflows/deploy-web.yml'
   workflow_dispatch: {}
 
@@ -58,7 +57,7 @@ jobs:
             <body>
               <h1>Toastmaster Club of Pune South East</h1>
               <a href="/toastmaster/app/">Open Club App</a>
-              <a href="/toastmaster/guest-web/">Guest Feedback</a>
+              <a href="/toastmaster/app/guest">Guest Feedback</a>
             </body>
           </html>
           EOF
@@ -69,14 +68,6 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: web/dist
           destination_dir: app
-          keep_files: true
-
-      - name: Deploy guest-web to gh-pages (/guest-web)
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: guest-web
-          destination_dir: guest-web
           keep_files: true
 
       - name: Deploy landing page to gh-pages (/)

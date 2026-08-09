@@ -4,22 +4,7 @@ import { Html5Qrcode } from 'html5-qrcode';
 import { ChevronLeft, AlertCircle, VideoOff } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { checkinMeeting } from '@/services/meetingService';
-
-function isPermissionDenied(message: string): boolean {
-  return /NotAllowedError|Permission denied|denied/i.test(message);
-}
-
-// The printed/scanned QR encodes a deep link, e.g.
-// "toastmasters://join?meeting_id=<uuid>" — same convention the guest
-// check-in flow already uses. Falls back to treating the scanned text as a
-// bare id if it isn't a URL at all.
-function extractMeetingId(decodedText: string): string {
-  try {
-    return new URL(decodedText).searchParams.get('meeting_id') ?? decodedText;
-  } catch {
-    return decodedText;
-  }
-}
+import { extractMeetingId, isCameraPermissionDenied } from '@/lib/qr';
 
 export default function MemberScanPage() {
   const navigate = useNavigate();
@@ -86,7 +71,7 @@ export default function MemberScanPage() {
             // some browsers — normalize before inspecting it.
             const message = e instanceof Error ? e.message : String(e);
             fail(
-              isPermissionDenied(message)
+              isCameraPermissionDenied(message)
                 ? 'Camera access was denied. Please allow camera access to check in.'
                 : 'Could not start the camera on this device.',
             );

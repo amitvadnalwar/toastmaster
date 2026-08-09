@@ -8,6 +8,7 @@ import AlertDialog from '@/components/ui/AlertDialog';
 
 import LoginPage from '@/pages/auth/LoginPage';
 import ChangePasswordPage from '@/pages/auth/ChangePasswordPage';
+import GuestPage from '@/pages/guest/GuestPage';
 
 import AdminHomePage from '@/pages/admin/HomePage';
 import AdminMeetingsPage from '@/pages/admin/MeetingsPage';
@@ -71,6 +72,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<RootRedirect />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/guest" element={<GuestPage />} />
         <Route path="/change-password" element={<ChangePasswordPage />} />
 
         {/* Super admin only — unchanged from before */}

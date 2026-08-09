@@ -194,6 +194,7 @@ export default function MemberMeetingDetailPage() {
         onBack={() => navigate('/meetings')}
         onScan={() => navigate('/scan')}
         canScan={isPublished}
+        showScan={meeting.status !== 'completed'}
         canEdit={canEditRoles}
         canDelete={canEditDetails}
         onStartEdit={startEdit}
@@ -421,9 +422,9 @@ function NavButton({ icon, label, sub, onClick }: { icon: React.ReactNode; label
 }
 
 function Header({
-  title, isAdmin, editing, onBack, onScan, canScan, canEdit, canDelete, onStartEdit, onDelete, onSave, onCancelEdit, acting, savingText, saveDisabled,
+  title, isAdmin, editing, onBack, onScan, canScan, showScan = true, canEdit, canDelete, onStartEdit, onDelete, onSave, onCancelEdit, acting, savingText, saveDisabled,
 }: {
-  title: string; isAdmin: boolean; editing: boolean; onBack: () => void; onScan: () => void; canScan: boolean;
+  title: string; isAdmin: boolean; editing: boolean; onBack: () => void; onScan: () => void; canScan: boolean; showScan?: boolean;
   canEdit?: boolean; canDelete?: boolean; onStartEdit?: () => void; onDelete?: () => void; onSave?: () => void; onCancelEdit?: () => void;
   acting?: boolean; savingText?: boolean; saveDisabled?: boolean;
 }) {
@@ -450,11 +451,11 @@ function Header({
                 {canDelete && <button onClick={onDelete} disabled={acting} className="p-2"><Trash2 size={18} className="text-red-500" /></button>}
               </>
             ) : null
-          ) : (
+          ) : showScan ? (
             <button onClick={onScan} disabled={!canScan} className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ backgroundColor: canScan ? '#fff5f5' : '#f9fafb' }}>
               <Maximize size={20} className={canScan ? 'text-brand' : 'text-gray-300'} />
             </button>
-          )}
+          ) : null}
         </div>
       </div>
     </div>

@@ -45,7 +45,7 @@ def _role_out(row: dict) -> MeetingRoleAssignmentOut:
     return MeetingRoleAssignmentOut(**row)
 
 
-async def _auto_complete_if_due(row: dict) -> dict:
+async def auto_complete_if_due(row: dict) -> dict:
     """A published meeting whose date has passed is auto-marked completed.
     Skipped for meetings a super admin has just reopened (reopened=True) so
     the reopen isn't immediately undone on the next read."""
@@ -66,7 +66,7 @@ async def _require_meeting(meeting_id: str) -> dict:
     row = await db_meetings.get_by_id(meeting_id)
     if not row:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meeting not found")
-    return await _auto_complete_if_due(row)
+    return await auto_complete_if_due(row)
 
 
 async def _require_member(user: CurrentUser) -> dict:
@@ -84,7 +84,7 @@ async def get_meeting_by_id(meeting_id: str) -> MeetingOut:
 
 async def get_all_meetings(club_id: str) -> list[MeetingOut]:
     rows = await db_meetings.get_all_for_club(club_id)
-    updated = [await _auto_complete_if_due(r) for r in rows]
+    updated = [await auto_complete_if_due(r) for r in rows]
     return [_meeting_out(r) for r in updated]
 
 
@@ -494,6 +494,7 @@ async def checkin(qr_token: str, user: CurrentUser) -> CheckinOut:
     meeting_row = await db_meetings.get_by_id(qr_token)
     if not meeting_row:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invalid QR code")
+    meeting_row = await auto_complete_if_due(meeting_row)
     if meeting_row["club_id"] != user.club_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your club")
     if meeting_row["status"] != MeetingStatus.published:

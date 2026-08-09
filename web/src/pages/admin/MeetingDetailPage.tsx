@@ -17,7 +17,7 @@ const VOTING_LABEL: Record<VotingStatus, string> = { not_started: 'Not started',
 const VOTING_COLOR: Record<VotingStatus, string> = { not_started: '#9ca3af', open: '#10b981', closed: '#6b7280' };
 
 interface MemberOption { id: string; name: string; initials: MemberInitials }
-type ActingAction = 'publish' | 'voting' | 'complete' | 'save' | 'delete' | null;
+type ActingAction = 'publish' | 'voting' | 'complete' | 'reopen' | 'save' | 'delete' | null;
 
 export default function AdminMeetingDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -134,6 +134,20 @@ export default function AdminMeetingDetailPage() {
       queryClient.setQueryData(queryKey, { ...data, meeting: updated });
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : 'Failed to complete meeting');
+    } finally {
+      setActingAction(null);
+    }
+  }
+
+  async function handleReopen() {
+    if (!session || !data) return;
+    if (!window.confirm('Reopen this meeting? It will be marked as Published again.')) return;
+    setActingAction('reopen');
+    try {
+      const updated = await updateMeetingStatus(data.meeting.id, 'published', session.access_token);
+      queryClient.setQueryData(queryKey, { ...data, meeting: updated });
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : 'Failed to reopen meeting');
     } finally {
       setActingAction(null);
     }
@@ -276,6 +290,15 @@ export default function AdminMeetingDetailPage() {
                   {actingAction === 'complete' ? 'Working…' : 'Complete Meeting'}
                 </button>
               </div>
+            )}
+            {meeting.status === 'completed' && (
+              <button
+                onClick={handleReopen}
+                disabled={acting}
+                className="w-full rounded-xl py-2.5 mb-5 border-[1.5px] border-gray-300 text-gray-700 text-[13px] font-semibold disabled:opacity-50"
+              >
+                {actingAction === 'reopen' ? 'Working…' : 'Reopen Meeting'}
+              </button>
             )}
 
             {/* Details */}

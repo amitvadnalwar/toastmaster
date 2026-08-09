@@ -113,6 +113,7 @@ export interface Meeting {
   created_by: string;
   created_at: string;
   qr_token?: string | null;
+  reopened?: boolean;
 }
 
 export interface MeetingRoleAssignment {

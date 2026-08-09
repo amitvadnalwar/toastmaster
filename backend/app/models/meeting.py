@@ -58,6 +58,7 @@ class MeetingOut(BaseModel):
     created_by: str
     created_at: str
     qr_token: str | None = None
+    reopened: bool = False
 
 
 class MeetingCreateIn(BaseModel):

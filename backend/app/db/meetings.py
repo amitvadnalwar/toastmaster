@@ -104,10 +104,10 @@ async def update_theme(meeting_id: str, theme: str) -> dict:
     return result.data[0]
 
 
-async def update_status(meeting_id: str, status: str) -> dict:
+async def update_status(meeting_id: str, status: str, reopened: bool = False) -> dict:
     result = (
         supabase.table("meetings")
-        .update({"status": status})
+        .update({"status": status, "reopened": reopened})
         .eq("id", meeting_id)
         .execute()
     )

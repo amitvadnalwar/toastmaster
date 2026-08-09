@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime, timezone
 
 from fastapi import HTTPException, status
 
@@ -28,6 +29,9 @@ from app.models.meeting import (
 _VALID_STATUS_TRANSITIONS = {
     MeetingStatus.draft: MeetingStatus.published,
     MeetingStatus.published: MeetingStatus.completed,
+    # Reopening (super_admin only, enforced in update_meeting_status) sends a
+    # completed meeting back to published.
+    MeetingStatus.completed: MeetingStatus.published,
 }
 
 
@@ -41,11 +45,28 @@ def _role_out(row: dict) -> MeetingRoleAssignmentOut:
     return MeetingRoleAssignmentOut(**row)
 
 
+async def _auto_complete_if_due(row: dict) -> dict:
+    """A published meeting whose date has passed is auto-marked completed.
+    Skipped for meetings a super admin has just reopened (reopened=True) so
+    the reopen isn't immediately undone on the next read."""
+    if row["status"] != MeetingStatus.published.value or row.get("reopened"):
+        return row
+    try:
+        scheduled = datetime.fromisoformat(row["scheduled_at"])
+    except (ValueError, TypeError):
+        return row
+    if scheduled.tzinfo is None:
+        scheduled = scheduled.replace(tzinfo=timezone.utc)
+    if scheduled >= datetime.now(timezone.utc):
+        return row
+    return await db_meetings.update_status(row["id"], MeetingStatus.completed.value)
+
+
 async def _require_meeting(meeting_id: str) -> dict:
     row = await db_meetings.get_by_id(meeting_id)
     if not row:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meeting not found")
-    return row
+    return await _auto_complete_if_due(row)
 
 
 async def _require_member(user: CurrentUser) -> dict:
@@ -63,7 +84,8 @@ async def get_meeting_by_id(meeting_id: str) -> MeetingOut:
 
 async def get_all_meetings(club_id: str) -> list[MeetingOut]:
     rows = await db_meetings.get_all_for_club(club_id)
-    return [_meeting_out(r) for r in rows]
+    updated = [await _auto_complete_if_due(r) for r in rows]
+    return [_meeting_out(r) for r in updated]
 
 
 async def get_current_meeting(club_id: str) -> dict:
@@ -130,7 +152,7 @@ async def update_meeting_details(
 
 
 async def update_meeting_status(
-    meeting_id: str, new_status: MeetingStatus, _user: CurrentUser
+    meeting_id: str, new_status: MeetingStatus, user: CurrentUser
 ) -> MeetingOut:
     row = await _require_meeting(meeting_id)
     current = MeetingStatus(row["status"])
@@ -140,7 +162,15 @@ async def update_meeting_status(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Cannot transition from {current} to {new_status}",
         )
-    updated = await db_meetings.update_status(meeting_id, new_status)
+
+    is_reopen = current == MeetingStatus.completed and new_status == MeetingStatus.published
+    if is_reopen and user.app_role != "super_admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only a super admin can reopen a completed meeting",
+        )
+
+    updated = await db_meetings.update_status(meeting_id, new_status, reopened=is_reopen)
     return _meeting_out(updated)
 
 

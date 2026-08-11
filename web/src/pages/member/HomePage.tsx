@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { Bell, Calendar, Clock, MapPin, ChevronRight, Trophy } from 'lucide-react';
+import { Bell, Calendar, Clock, MapPin, ChevronRight, Trophy, Settings } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { getAllMeetings, getMeetingRoster, getSpeakingHistory } from '@/services/meetingService';
 import { getClubMembers, getMe } from '@/services/memberService';
@@ -129,6 +129,9 @@ export default function MemberHomePage() {
                 <p className="text-[15px] font-bold text-gray-900">Manage your club</p>
                 <p className="text-xs text-gray-500 mt-0.5">Create meetings, assign roles, track progress.</p>
               </div>
+              <button onClick={() => navigate('/club-settings')} className="w-9 h-9 rounded-[10px] border-[1.5px] border-brand/30 flex items-center justify-center mr-2 shrink-0">
+                <Settings size={16} className="text-brand" />
+              </button>
               <button onClick={() => navigate('/meetings/new')} className="bg-brand text-white text-[13px] font-bold rounded-[10px] px-3.5 py-2 active:scale-95 transition-transform">
                 + New
               </button>

@@ -315,4 +315,22 @@ export interface Club {
   instagram_url: string | null;
   linkedin_url: string | null;
   whatsapp_invite_url: string | null;
+  facebook_url: string | null;
+  mission_statement: string | null;
+  venue_address_url: string | null;
+}
+
+export interface ClubUpdatePayload {
+  instagram_url?: string | null;
+  linkedin_url?: string | null;
+  whatsapp_invite_url?: string | null;
+  facebook_url?: string | null;
+  mission_statement?: string | null;
+  venue_address_url?: string | null;
+}
+
+export interface ClubOfficer {
+  club_role: ClubRole;
+  member_id: string | null;
+  name: string | null;
 }

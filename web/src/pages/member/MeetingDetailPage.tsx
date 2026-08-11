@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ChevronLeft, Edit2, Trash2, Check, Lock, Search, Minus, Plus,
-  Maximize, ArrowRight, ClipboardList, QrCode, Users, CheckCircle, UserX, BarChart3, UserPlus,
+  Maximize, ArrowRight, ClipboardList, QrCode, Users, CheckCircle, UserX, BarChart3, UserPlus, ScrollText,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { getMeetingRoster, updateMeeting, deleteMeeting, updateMeetingStatus, updateVotingStatus } from '@/services/meetingService';
@@ -332,6 +332,11 @@ export default function MemberMeetingDetailPage() {
               label="Roster"
               sub={`${speakers.length}/${meeting.max_speakers} speakers`}
               onClick={() => navigate(`/meetings/${id}/roster`)}
+            />
+            <NavButton
+              icon={<ScrollText size={20} className="text-brand" />}
+              label="Agenda"
+              onClick={() => navigate(`/meetings/${id}/agenda`)}
             />
             {isAdmin && data.already_checked_in && (
               <NavButton

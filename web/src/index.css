@@ -69,3 +69,26 @@
     animation: none;
   }
 }
+
+/* ── Agenda print / "Download PDF" ──────────────────────────────────────
+   Hides everything except the agenda itself (app chrome, bottom nav,
+   buttons) so window.print() -> "Save as PDF" produces a clean document.
+   Colors are stripped by default by most browsers when printing — force
+   them to render so the branded bands actually show up on paper. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #agenda-print-root,
+  #agenda-print-root * {
+    visibility: visible;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  #agenda-print-root {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+  }
+}

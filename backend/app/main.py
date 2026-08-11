@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.routers import admin_members, club, email, feedbacks, guests, leaderboard, meetings, members, onboarding, posts, roles, votes
+from app.routers import admin_members, agenda, club, email, feedbacks, guests, leaderboard, meetings, members, onboarding, posts, roles, votes
 
 if settings.sentry_dsn:
     sentry_sdk.init(
@@ -24,6 +24,7 @@ app.add_middleware(
 
 app.include_router(onboarding.router, prefix="/onboarding", tags=["onboarding"])
 app.include_router(meetings.router, prefix="/meetings", tags=["meetings"])
+app.include_router(agenda.router, prefix="/meetings", tags=["agenda"])
 app.include_router(roles.router, prefix="/roles", tags=["roles"])
 app.include_router(votes.router, prefix="/votes", tags=["votes"])
 app.include_router(feedbacks.router, prefix="/feedbacks", tags=["feedbacks"])

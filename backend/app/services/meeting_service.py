@@ -5,6 +5,8 @@ from fastapi import HTTPException, status
 
 from app.db import meetings as db_meetings
 from app.db import members as db_members
+from app.db import votes as db_votes
+from app.db import guests as db_guests
 from app.middleware.auth import CurrentUser
 from app.models.meeting import (
     AdminAssignRoleIn,
@@ -15,6 +17,7 @@ from app.models.meeting import (
     MeetingOut,
     MeetingRole,
     MeetingRoleAssignmentOut,
+    MeetingStatsOut,
     MeetingStatus,
     ReceivedFeedbackOut,
     SINGLETON_ROLES,
@@ -520,6 +523,31 @@ async def get_all_attendance(meeting_id: str, user: CurrentUser) -> list[Attenda
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your club")
     rows = await db_meetings.get_all_attendance(meeting_id)
     return [AttendanceOut(**r) for r in rows]
+
+
+async def get_meeting_stats(meeting_id: str, user: CurrentUser) -> MeetingStatsOut:
+    meeting_row = await _require_meeting(meeting_id)
+    if meeting_row["club_id"] != user.club_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your club")
+
+    attendance = await db_meetings.get_all_attendance(meeting_id)
+    checked_in_ids = {r["member_id"] for r in attendance}
+
+    guests = await db_guests.get_guests_for_meeting(meeting_id)
+
+    members = await db_members.get_club_members(meeting_row["club_id"])
+    total_active = len([m for m in members if m["is_active"]])
+
+    voter_ids = set(await db_votes.get_distinct_voter_ids(meeting_id))
+    submitter_ids = set(await db_meetings.get_feedback_submitter_ids(meeting_id))
+
+    return MeetingStatsOut(
+        checked_in_members=len(checked_in_ids),
+        total_active_members=total_active,
+        guests_checked_in=len(guests),
+        voted_count=len(checked_in_ids & voter_ids),
+        feedback_given_count=len(checked_in_ids & submitter_ids),
+    )
 
 
 # ── Speaker feedback ──────────────────────────────────────────────────────

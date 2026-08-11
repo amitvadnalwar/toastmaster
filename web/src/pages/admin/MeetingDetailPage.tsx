@@ -5,11 +5,11 @@ import {
   ChevronLeft, Edit2, Trash2, Check, Search, Minus, Plus, Lock, ClipboardList, ArrowRight, QrCode, Users, UserX, BarChart3, ScrollText,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
-import { getMeetingRoster, updateMeeting, deleteMeeting, updateMeetingStatus, updateVotingStatus } from '@/services/meetingService';
+import { getMeetingRoster, getMeetingStats, updateMeeting, deleteMeeting, updateMeetingStatus, updateVotingStatus } from '@/services/meetingService';
 import { getAllMembers } from '@/services/memberService';
 import Spinner from '@/components/ui/Spinner';
 import { MeetingDetailSkeleton } from '@/components/ui/Skeleton';
-import type { VotingStatus, MemberInitials } from '@/types';
+import type { VotingStatus, MemberInitials, MeetingStats } from '@/types';
 import { STATUS_COLOR, STATUS_LABEL } from '@/types';
 import { initials, formatMemberName, formatDateTime, formatDateShort, isPastMeeting } from '@/lib/utils';
 
@@ -29,6 +29,11 @@ export default function AdminMeetingDetailPage() {
   const { data, isLoading: fetching } = useQuery({
     queryKey,
     queryFn: () => getMeetingRoster(id!, session!.access_token),
+    enabled: !!session && !!id,
+  });
+  const { data: stats } = useQuery({
+    queryKey: ['meeting-stats', id],
+    queryFn: () => getMeetingStats(id!, session!.access_token),
     enabled: !!session && !!id,
   });
   const [actingAction, setActingAction] = useState<ActingAction>(null);
@@ -257,6 +262,8 @@ export default function AdminMeetingDetailPage() {
               <Badge color={VOTING_COLOR[meeting.voting_status]} label={`Voting ${VOTING_LABEL[meeting.voting_status]}`} />
             </div>
 
+            {meeting.status !== 'draft' && stats && <MeetingStatsRow stats={stats} />}
+
             {/* Read-only banner */}
             {isPast && (
               <div className="flex items-center gap-2.5 bg-gray-100 border border-gray-200 rounded-xl px-3.5 py-3 mb-4">
@@ -416,6 +423,26 @@ function Header({ title, onBack }: { title: string; onBack: () => void }) {
         <h1 className="text-lg font-bold text-gray-900">{title}</h1>
         <div className="w-[70px]" />
       </div>
+    </div>
+  );
+}
+
+function MeetingStatsRow({ stats }: { stats: MeetingStats }) {
+  return (
+    <div className="bg-white rounded-2xl py-4 shadow-md flex mb-5">
+      <StatBox value={String(stats.checked_in_members)} label="Checked In" sub={`of ${stats.total_active_members} members`} />
+      <StatBox value={String(stats.guests_checked_in)} label="Guests" sub="registered" />
+      <StatBox value={String(stats.voted_count)} label="Voted" sub={`of ${stats.checked_in_members} checked in`} />
+      <StatBox value={String(stats.feedback_given_count)} label="Feedback" sub={`of ${stats.checked_in_members} checked in`} />
+    </div>
+  );
+}
+function StatBox({ value, label, sub }: { value: string; label: string; sub: string }) {
+  return (
+    <div className="flex-1 flex flex-col items-center">
+      <span className="text-xl font-extrabold text-gray-900">{value}</span>
+      <span className="text-[11px] font-semibold text-gray-700 mt-0.5">{label}</span>
+      <span className="text-[10px] text-gray-400">{sub}</span>
     </div>
   );
 }

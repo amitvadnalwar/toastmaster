@@ -307,6 +307,16 @@ async def get_speakers_feedback_status(meeting_id: str) -> list[dict]:
     return [{"speaker_member_id": k, **v} for k, v in status.items()]
 
 
+async def get_feedback_submitter_ids(meeting_id: str) -> list[str]:
+    result = (
+        supabase.table("speaker_feedback")
+        .select("from_member_id")
+        .eq("meeting_id", meeting_id)
+        .execute()
+    )
+    return list({row["from_member_id"] for row in result.data})
+
+
 async def get_received_feedback(meeting_id: str, speaker_member_id: str) -> list[dict]:
     # Deliberately excludes from_member_id — feedback is shown to the
     # speaker anonymously, so the reviewer's identity is never selected.

@@ -166,6 +166,15 @@ export interface Attendance {
   checked_in_at: string;
 }
 
+// Admin-only: engagement counts for a meeting (checked in, guests, voted, feedback given).
+export interface MeetingStats {
+  checked_in_members: number;
+  total_active_members: number;
+  guests_checked_in: number;
+  voted_count: number;
+  feedback_given_count: number;
+}
+
 // Admin-only: a guest who registered for a meeting via the QR check-in page.
 export interface Guest {
   id: string;

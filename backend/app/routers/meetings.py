@@ -14,6 +14,7 @@ from app.models.meeting import (
     MeetingFeedbackIn,
     MeetingOut,
     MeetingRoleAssignmentOut,
+    MeetingStatsOut,
     MeetingStatusUpdateIn,
     ReceivedFeedbackOut,
     RoleDisqualifyIn,
@@ -205,6 +206,15 @@ async def get_attendance(
     user: CurrentUser = Depends(require_admin),
 ) -> ApiResponse[list[AttendanceOut]]:
     result = await meeting_service.get_all_attendance(meeting_id, user)
+    return ApiResponse(data=result)
+
+
+@router.get("/{meeting_id}/stats", response_model=ApiResponse[MeetingStatsOut])
+async def get_meeting_stats(
+    meeting_id: str,
+    user: CurrentUser = Depends(require_admin),
+) -> ApiResponse[MeetingStatsOut]:
+    result = await meeting_service.get_meeting_stats(meeting_id, user)
     return ApiResponse(data=result)
 
 

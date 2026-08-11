@@ -7,6 +7,7 @@ import type {
   MeetingRating,
   MeetingRole,
   MeetingRoleAssignment,
+  MeetingStats,
   MeetingStatus,
   MeetingWithRoster,
   ReceivedFeedback,
@@ -197,6 +198,10 @@ export function submitFeedback(
 
 export function getAllAttendance(meetingId: string, token: string): Promise<Attendance[]> {
   return apiRequest<Attendance[]>(`/meetings/${meetingId}/attendance`, { token });
+}
+
+export function getMeetingStats(meetingId: string, token: string): Promise<MeetingStats> {
+  return apiRequest<MeetingStats>(`/meetings/${meetingId}/stats`, { token });
 }
 
 export function getMeetingGuests(meetingId: string, token: string): Promise<Guest[]> {

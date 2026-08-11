@@ -78,6 +78,18 @@ async def get_all_ratings(meeting_id: str) -> list[dict]:
     return rows
 
 
+async def get_distinct_voter_ids(meeting_id: str) -> list[str]:
+    """Count-only helper — never expose these ids to the client, only a count
+    (the votes table's voter_id is otherwise never returned in results)."""
+    result = (
+        supabase.table("votes")
+        .select("voter_id")
+        .eq("meeting_id", meeting_id)
+        .execute()
+    )
+    return list({row["voter_id"] for row in result.data})
+
+
 async def get_summary(meeting_id: str) -> list[dict]:
     result = (
         supabase.table("votes")

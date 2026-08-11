@@ -6,11 +6,11 @@ import {
   Maximize, ArrowRight, ClipboardList, QrCode, Users, CheckCircle, UserX, BarChart3, UserPlus, ScrollText,
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
-import { getMeetingRoster, updateMeeting, deleteMeeting, updateMeetingStatus, updateVotingStatus } from '@/services/meetingService';
+import { getMeetingRoster, getMeetingStats, updateMeeting, deleteMeeting, updateMeetingStatus, updateVotingStatus } from '@/services/meetingService';
 import { getClubMembers } from '@/services/memberService';
 import Spinner from '@/components/ui/Spinner';
 import { MeetingDetailSkeleton } from '@/components/ui/Skeleton';
-import type { VotingStatus, MemberInitials } from '@/types';
+import type { VotingStatus, MemberInitials, MeetingStats } from '@/types';
 import { STATUS_COLOR, STATUS_LABEL } from '@/types';
 import { initials, formatMemberName, formatDateTime, formatDateShort, isPastMeeting } from '@/lib/utils';
 
@@ -33,6 +33,11 @@ export default function MemberMeetingDetailPage() {
     queryKey,
     queryFn: () => getMeetingRoster(id!, session!.access_token),
     enabled: !!session && !!id,
+  });
+  const { data: stats } = useQuery({
+    queryKey: ['meeting-stats', id],
+    queryFn: () => getMeetingStats(id!, session!.access_token),
+    enabled: !!session && !!id && isAdmin,
   });
   const [actingAction, setActingAction] = useState<ActingAction>(null);
   const [members, setMembers] = useState<MemberOption[]>([]);
@@ -247,6 +252,8 @@ export default function MemberMeetingDetailPage() {
               <Badge color={STATUS_COLOR[meeting.status]} label={STATUS_LABEL[meeting.status]} />
               <Badge color={VOTING_COLOR[meeting.voting_status]} label={`Voting ${VOTING_LABEL[meeting.voting_status]}`} />
             </div>
+
+            {isAdmin && meeting.status !== 'draft' && stats && <MeetingStatsRow stats={stats} />}
 
             {/* Read-only banner */}
             {isPast && (
@@ -463,6 +470,26 @@ function Header({
           ) : null}
         </div>
       </div>
+    </div>
+  );
+}
+
+function MeetingStatsRow({ stats }: { stats: MeetingStats }) {
+  return (
+    <div className="bg-white rounded-2xl py-4 shadow-md flex mb-5">
+      <StatBox value={String(stats.checked_in_members)} label="Checked In" sub={`of ${stats.total_active_members} members`} />
+      <StatBox value={String(stats.guests_checked_in)} label="Guests" sub="registered" />
+      <StatBox value={String(stats.voted_count)} label="Voted" sub={`of ${stats.checked_in_members} checked in`} />
+      <StatBox value={String(stats.feedback_given_count)} label="Feedback" sub={`of ${stats.checked_in_members} checked in`} />
+    </div>
+  );
+}
+function StatBox({ value, label, sub }: { value: string; label: string; sub: string }) {
+  return (
+    <div className="flex-1 flex flex-col items-center">
+      <span className="text-xl font-extrabold text-gray-900">{value}</span>
+      <span className="text-[11px] font-semibold text-gray-700 mt-0.5">{label}</span>
+      <span className="text-[10px] text-gray-400">{sub}</span>
     </div>
   );
 }

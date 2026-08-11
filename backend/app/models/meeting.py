@@ -148,6 +148,14 @@ class AttendanceOut(BaseModel):
     checked_in_at: str
 
 
+class MeetingStatsOut(BaseModel):
+    checked_in_members: int
+    total_active_members: int
+    guests_checked_in: int
+    voted_count: int
+    feedback_given_count: int
+
+
 # ── Speaker feedback ──────────────────────────────────────────────────────
 # Rating scale: 1 = Need Improvement, 2 = Ok, 3 = Super
 

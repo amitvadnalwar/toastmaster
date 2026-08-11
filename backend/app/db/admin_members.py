@@ -147,7 +147,7 @@ async def set_active(member_id: str, is_active: bool) -> dict | None:
         .execute()
     )
 
-    auth_user_id = member_res.data.get("auth_user_id")
+    auth_user_id = member_res.data[0].get("auth_user_id")
     if auth_user_id:
         ban_duration = "none" if is_active else "876600h"
         supabase.auth.admin.update_user_by_id(

@@ -7,6 +7,7 @@ import { PageSpinner } from '@/components/ui/Spinner';
 import AlertDialog from '@/components/ui/AlertDialog';
 
 import LoginPage from '@/pages/auth/LoginPage';
+import RegisterMemberPage from '@/pages/auth/RegisterMemberPage';
 import ChangePasswordPage from '@/pages/auth/ChangePasswordPage';
 import GuestPage from '@/pages/guest/GuestPage';
 
@@ -74,6 +75,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<RootRedirect />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterMemberPage />} />
         <Route path="/guest" element={<GuestPage />} />
         <Route path="/change-password" element={<ChangePasswordPage />} />
 

@@ -1,11 +1,24 @@
 import re
 
-from fastapi import HTTPException, status
+from fastapi import BackgroundTasks, HTTPException, status
 
 from app.middleware.auth import CurrentUser
-from app.models.member import MemberOut
+from app.models.member import MemberCreateIn, MemberOut
 
 _BIRTHDAY_RE = re.compile(r"^(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$")
+
+
+async def register(body: MemberCreateIn, background_tasks: BackgroundTasks) -> MemberOut:
+    """Public self-registration from the login screen. Reuses the same
+    create-member logic admins use, scoped to the club's own club_id since
+    Phase 1 only supports one club."""
+    from app.db import admin_members as admin_db
+    from app.services import admin_member_service
+
+    club_id = await admin_db.get_default_club_id()
+    if not club_id:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Club not configured")
+    return await admin_member_service.create_member(club_id, body, background_tasks)
 
 
 async def get_me(user: CurrentUser) -> MemberOut:

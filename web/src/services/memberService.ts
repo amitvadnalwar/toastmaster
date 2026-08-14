@@ -31,6 +31,11 @@ export function createMember(payload: MemberCreatePayload, token: string): Promi
   return apiRequest<Member>('/admin/members', { method: 'POST', body: payload, token });
 }
 
+// Public — no auth. Self-registration from the login screen.
+export function registerMember(payload: MemberCreatePayload): Promise<Member> {
+  return apiRequest<Member>('/members/register', { method: 'POST', body: payload });
+}
+
 export function updateMemberDetails(memberId: string, payload: MemberUpdatePayload, token: string): Promise<Member> {
   return apiRequest<Member>(`/admin/members/${memberId}`, { method: 'PUT', body: payload, token });
 }

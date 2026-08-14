@@ -113,6 +113,13 @@ export default function LoginPage() {
           </Button>
         </form>
 
+        <p className="text-center text-sm text-gray-500 mt-5">
+          New here?{' '}
+          <button type="button" onClick={() => navigate('/register')} className="text-brand font-semibold">
+            Register as Member
+          </button>
+        </p>
+
         <p className="text-center text-xs text-gray-400 mt-8">
           Toastmasters International · Club #7715097
         </p>

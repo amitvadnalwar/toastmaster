@@ -5,6 +5,13 @@ from app.utils.password import generate_temp_password
 from app.utils.email import send_temp_password_email
 
 
+async def get_default_club_id() -> str | None:
+    """Phase 1 is single-club — used by the public self-registration endpoint,
+    which has no authenticated club context to read club_id from."""
+    result = supabase.table("clubs").select("id").limit(1).execute()
+    return result.data[0]["id"] if result.data else None
+
+
 def _is_confirmed(auth_user) -> bool:
     """True when the user has set their permanent password (must_change_password cleared)."""
     meta = getattr(auth_user, "app_metadata", None) or {}

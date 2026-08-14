@@ -58,6 +58,8 @@ async def submit_vote(body: VoteIn, user: CurrentUser) -> None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Nominee is not eligible")
 
     member = await _require_member(user)
+    if nominee["member_id"] == member["id"]:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="You cannot vote for yourself")
     try:
         await db_votes.insert_vote(body.meeting_id, member["id"], body.category.value, body.nominee_id)
     except APIError as e:

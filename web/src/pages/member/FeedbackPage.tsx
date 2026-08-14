@@ -242,10 +242,13 @@ export default function MemberFeedbackPage() {
     [votingState],
   );
   const nomineesByCategory = useMemo(() => {
+    const myEmail = session?.user?.email;
     const map: Partial<Record<VoteCategory, MeetingRoleAssignment[]>> = {};
-    for (const cat of VOTE_CATEGORIES) map[cat.key] = roster.filter((r) => cat.roles.includes(r.role) && !r.disqualified);
+    for (const cat of VOTE_CATEGORIES) {
+      map[cat.key] = roster.filter((r) => cat.roles.includes(r.role) && !r.disqualified && r.member_email !== myEmail);
+    }
     return map;
-  }, [roster]);
+  }, [roster, session]);
   const votingOpen = meeting?.voting_status === 'open';
   const allCategoriesVoted = VOTE_CATEGORIES.every((c) => votedMap.has(c.key) || (nomineesByCategory[c.key]?.length ?? 0) === 0);
 

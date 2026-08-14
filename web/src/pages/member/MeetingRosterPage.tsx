@@ -6,7 +6,7 @@ import { getMeetingRoster, updateMeeting, adminAssignRole, withdrawFromRole } fr
 import { getClubMembers } from '@/services/memberService';
 import { MeetingDetailSkeleton } from '@/components/ui/Skeleton';
 import type { MeetingRole, MeetingWithRoster, MemberInitials } from '@/types';
-import { SINGLETON_ROLES, ROLE_LABELS, SPEECH_DURATIONS } from '@/types';
+import { SINGLETON_ROLES, ROLE_LABELS } from '@/types';
 import { initials, formatMemberName, isPastMeeting } from '@/lib/utils';
 
 interface MemberOption { id: string; name: string; initials: MemberInitials }
@@ -32,6 +32,9 @@ export default function MeetingRosterPage() {
   const [pendingMember, setPendingMember] = useState<MemberOption | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [showDuration, setShowDuration] = useState(false);
+  const [durationMin, setDurationMin] = useState('');
+  const [durationMax, setDurationMax] = useState('');
+  const [durationError, setDurationError] = useState('');
   const [memberSearch, setMemberSearch] = useState('');
   const [showRoleTitleModal, setShowRoleTitleModal] = useState(false);
   const [roleTitleInput, setRoleTitleInput] = useState('');
@@ -88,8 +91,37 @@ export default function MeetingRosterPage() {
   function onMemberSelected(m: MemberOption) {
     setPendingMember(m);
     setPickerOpen(false);
-    if (assignRole === 'speaker') setShowDuration(true);
-    else commitAssign(m, null);
+    if (assignRole === 'speaker') {
+      setDurationMin('');
+      setDurationMax('');
+      setDurationError('');
+      setShowDuration(true);
+    } else {
+      commitAssign(m, null);
+    }
+  }
+
+  function confirmDuration() {
+    if (!durationMin.trim() || !durationMax.trim()) {
+      setDurationError('Enter both minimum and maximum minutes.');
+      return;
+    }
+    const min = Number(durationMin);
+    const max = Number(durationMax);
+    if (!Number.isInteger(min) || !Number.isInteger(max)) {
+      setDurationError('Minutes must be whole numbers.');
+      return;
+    }
+    if (min < 1 || max > 60) {
+      setDurationError('Minutes must be between 1 and 60.');
+      return;
+    }
+    if (max < min) {
+      setDurationError('Max must be greater than or equal to min.');
+      return;
+    }
+    if (!pendingMember) return;
+    commitAssign(pendingMember, `${min}-${max} mins`);
   }
 
   async function commitAssign(member: MemberOption, duration: string | null) {
@@ -483,20 +515,57 @@ export default function MeetingRosterPage() {
         </div>
       )}
 
-      {/* Duration picker (admin only) */}
+      {/* Duration picker (admin only) — min/max minutes, entered freely instead of a fixed list */}
       {showDuration && (
         <div className="fixed inset-0 z-50 flex items-end bg-black/40" onClick={() => { setShowDuration(false); setAssignRole(null); }}>
           <div className="w-full bg-white rounded-t-3xl pb-8" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
               <button onClick={() => { setShowDuration(false); setAssignRole(null); }} className="text-gray-500 text-base w-[60px] text-left">Cancel</button>
               <h3 className="text-base font-semibold text-gray-900">Speech Duration</h3>
-              <div className="w-[60px]" />
+              <div className="w-[60px] flex justify-end">
+                <button
+                  onClick={confirmDuration}
+                  disabled={!durationMin.trim() || !durationMax.trim()}
+                  className="text-brand font-semibold text-base disabled:opacity-30"
+                >
+                  Confirm
+                </button>
+              </div>
             </div>
-            {SPEECH_DURATIONS.map((d) => (
-              <button key={d} onClick={() => pendingMember && commitAssign(pendingMember, d)} className="w-full flex items-center justify-between px-5 py-4 border-b border-gray-100">
-                <span className="text-base text-gray-900 font-medium">{d}</span>
-              </button>
-            ))}
+            <div className="px-5 pt-5">
+              <p className="text-[13px] text-gray-500 mb-4">Enter the minimum and maximum speech time, in minutes.</p>
+              <div className="flex items-center gap-3">
+                <div className="flex-1">
+                  <label className="text-[13px] font-medium text-gray-700 mb-1.5 block">Min</label>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min={1}
+                    max={60}
+                    value={durationMin}
+                    onChange={(e) => { setDurationMin(e.target.value); setDurationError(''); }}
+                    placeholder="5"
+                    className="w-full bg-white border border-gray-300 rounded-[10px] px-4 py-3.5 text-base text-gray-900 outline-none focus:border-brand text-center"
+                  />
+                </div>
+                <span className="text-gray-400 font-semibold mt-6">–</span>
+                <div className="flex-1">
+                  <label className="text-[13px] font-medium text-gray-700 mb-1.5 block">Max</label>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min={1}
+                    max={60}
+                    value={durationMax}
+                    onChange={(e) => { setDurationMax(e.target.value); setDurationError(''); }}
+                    placeholder="7"
+                    className="w-full bg-white border border-gray-300 rounded-[10px] px-4 py-3.5 text-base text-gray-900 outline-none focus:border-brand text-center"
+                  />
+                </div>
+                <span className="text-sm text-gray-400 mt-6">mins</span>
+              </div>
+              {durationError && <p className="text-xs text-red-500 mt-3">{durationError}</p>}
+            </div>
           </div>
         </div>
       )}

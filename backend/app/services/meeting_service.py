@@ -1,3 +1,4 @@
+import re
 import uuid
 from datetime import datetime, timezone
 
@@ -21,13 +22,33 @@ from app.models.meeting import (
     MeetingStatus,
     ReceivedFeedbackOut,
     SINGLETON_ROLES,
-    SPEECH_DURATIONS,
     RoleAssignIn,
     SpeakerFeedbackOut,
     SpeakerFeedbackStatusOut,
     SpeakingHistoryItemOut,
     VotingStatus,
 )
+
+_SPEECH_DURATION_RE = re.compile(r"^(\d{1,2})-(\d{1,2}) mins$")
+
+
+def _validate_speech_duration(speech_duration: str | None) -> None:
+    """Admin/member now type their own min-max minutes instead of picking
+    from a fixed list — validate the shape and bounds instead of exact
+    membership in SPEECH_DURATIONS (kept around only as a display default)."""
+    match = _SPEECH_DURATION_RE.match(speech_duration or "")
+    if not match:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="speech_duration must look like '5-7 mins'",
+        )
+    low, high = int(match.group(1)), int(match.group(2))
+    if low < 1 or high > 60 or low > high:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Speech duration minutes must be between 1 and 60, with min <= max",
+        )
+
 
 _VALID_STATUS_TRANSITIONS = {
     MeetingStatus.draft: MeetingStatus.published,
@@ -216,11 +237,7 @@ async def admin_assign_role(
 
     # Speaker: enforce max_speakers and require duration
     if body.role == MeetingRole.speaker:
-        if not body.speech_duration or body.speech_duration not in SPEECH_DURATIONS:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"speech_duration must be one of: {', '.join(sorted(SPEECH_DURATIONS))}",
-            )
+        _validate_speech_duration(body.speech_duration)
         count = await db_meetings.count_speakers(meeting_id)
         if count >= meeting["max_speakers"]:
             raise HTTPException(
@@ -332,11 +349,7 @@ async def enroll_speaker(
     if user.is_guest:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Guests cannot enroll")
 
-    if speech_duration not in SPEECH_DURATIONS:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"speech_duration must be one of: {', '.join(sorted(SPEECH_DURATIONS))}",
-        )
+    _validate_speech_duration(speech_duration)
 
     meeting = await _require_meeting(meeting_id)
     if meeting["club_id"] != user.club_id:

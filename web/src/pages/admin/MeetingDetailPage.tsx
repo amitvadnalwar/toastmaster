@@ -8,6 +8,7 @@ import { useAuthStore } from '@/store/authStore';
 import { getMeetingRoster, getMeetingStats, updateMeeting, deleteMeeting, updateMeetingStatus, updateVotingStatus } from '@/services/meetingService';
 import { getAllMembers } from '@/services/memberService';
 import Spinner from '@/components/ui/Spinner';
+import PullToRefresh from '@/components/PullToRefresh';
 import { MeetingDetailSkeleton } from '@/components/ui/Skeleton';
 import type { VotingStatus, MemberInitials, MeetingStats } from '@/types';
 import { STATUS_COLOR, STATUS_LABEL } from '@/types';
@@ -26,16 +27,20 @@ export default function AdminMeetingDetailPage() {
 
   const queryClient = useQueryClient();
   const queryKey = ['meeting-roster', id];
-  const { data, isLoading: fetching } = useQuery({
+  const { data, isLoading: fetching, refetch: refetchRoster } = useQuery({
     queryKey,
     queryFn: () => getMeetingRoster(id!, session!.access_token),
     enabled: !!session && !!id,
   });
-  const { data: stats } = useQuery({
+  const { data: stats, refetch: refetchStats } = useQuery({
     queryKey: ['meeting-stats', id],
     queryFn: () => getMeetingStats(id!, session!.access_token),
     enabled: !!session && !!id,
   });
+
+  async function handlePullRefresh() {
+    await Promise.all([refetchRoster(), refetchStats()]);
+  }
   const [actingAction, setActingAction] = useState<ActingAction>(null);
   const [members, setMembers] = useState<MemberOption[]>([]);
   const [memberMap, setMemberMap] = useState<Map<string, MemberOption>>(new Map());
@@ -219,7 +224,7 @@ export default function AdminMeetingDetailPage() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-5 pt-5 pb-12 max-w-lg mx-auto w-full">
+      <PullToRefresh onRefresh={handlePullRefresh} className="flex-1 overflow-y-auto px-5 pt-5 pb-12 max-w-lg mx-auto w-full">
         {editing ? (
           <>
             {canEdit && (
@@ -362,7 +367,7 @@ export default function AdminMeetingDetailPage() {
             )}
           </>
         )}
-      </div>
+      </PullToRefresh>
 
       {/* Member picker bottom sheet (edit mode) */}
       {pickerMode && (

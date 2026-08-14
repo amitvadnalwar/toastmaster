@@ -16,7 +16,7 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(),
       VitePWA({
-        registerType: 'autoUpdate',
+        registerType: 'prompt',
         includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
         manifest: {
           name: CLUB_NAME,
@@ -45,8 +45,12 @@ export default defineConfig(({ mode }) => {
         workbox: {
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
           cleanupOutdatedCaches: true,
-          clientsClaim: true,
-          skipWaiting: true,
+          // A new service worker must sit in "waiting" until the user taps
+          // the update banner (see UpdatePrompt.tsx) — skipWaiting/clientsClaim
+          // would make it activate immediately on install, silently, which is
+          // exactly the behavior the banner is replacing.
+          clientsClaim: false,
+          skipWaiting: false,
           navigateFallback: 'index.html',
         },
       }),

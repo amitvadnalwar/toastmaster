@@ -5,6 +5,7 @@ import { useAuthStore } from '@/store/authStore';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { PageSpinner } from '@/components/ui/Spinner';
 import AlertDialog from '@/components/ui/AlertDialog';
+import UpdatePrompt from '@/components/UpdatePrompt';
 
 import LoginPage from '@/pages/auth/LoginPage';
 import RegisterMemberPage from '@/pages/auth/RegisterMemberPage';
@@ -72,6 +73,7 @@ export default function App() {
   return (
     <>
       <AlertDialog />
+      <UpdatePrompt />
       <Routes>
         <Route path="/" element={<RootRedirect />} />
         <Route path="/login" element={<LoginPage />} />

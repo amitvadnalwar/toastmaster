@@ -47,10 +47,11 @@ export default function AdminNewMeetingPage() {
     if (!session) return;
     if (!title.trim()) return setError('Meeting title is required');
     if (!date) return setError('Date is required');
+    const scheduled_at = new Date(`${date}T${time}:00`).toISOString();
+    if (new Date(scheduled_at) <= new Date()) return setError('Meeting date & time must be in the future');
     setError('');
     setLoading(true);
     try {
-      const scheduled_at = new Date(`${date}T${time}:00`).toISOString();
       const meeting = await createMeeting(
         {
           title: title.trim(),
@@ -71,6 +72,7 @@ export default function AdminNewMeetingPage() {
   }
 
   const filteredMembers = members.filter((m) => m.name.toLowerCase().includes(memberSearch.toLowerCase()));
+  const todayStr = new Date().toISOString().slice(0, 10);
 
   return (
     <div className="flex flex-col min-h-full bg-gray-50">
@@ -90,7 +92,7 @@ export default function AdminNewMeetingPage() {
 
         <Label>Date &amp; Time</Label>
         <div className="grid grid-cols-2 gap-3 mb-5">
-          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={inputClsNoMb} />
+          <input type="date" value={date} min={todayStr} onChange={(e) => setDate(e.target.value)} className={inputClsNoMb} />
           <input type="time" value={time} onChange={(e) => setTime(e.target.value)} className={inputClsNoMb} />
         </div>
 

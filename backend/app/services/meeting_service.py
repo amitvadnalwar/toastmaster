@@ -50,6 +50,20 @@ def _validate_speech_duration(speech_duration: str | None) -> None:
         )
 
 
+def _validate_future_datetime(scheduled_at: str) -> None:
+    try:
+        scheduled = datetime.fromisoformat(scheduled_at)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid scheduled_at")
+    if scheduled.tzinfo is None:
+        scheduled = scheduled.replace(tzinfo=timezone.utc)
+    if scheduled <= datetime.now(timezone.utc):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Meeting date & time must be in the future",
+        )
+
+
 _VALID_STATUS_TRANSITIONS = {
     MeetingStatus.draft: MeetingStatus.published,
     MeetingStatus.published: MeetingStatus.completed,
@@ -145,6 +159,7 @@ async def get_meeting_with_roster(meeting_id: str, user: CurrentUser) -> dict:
 # ── Create / Update ───────────────────────────────────────────────────────
 
 async def create_meeting(body: MeetingCreateIn, user: CurrentUser) -> MeetingOut:
+    _validate_future_datetime(body.scheduled_at)
     member = await _require_member(user)
     row = await db_meetings.insert(
         club_id=user.club_id,

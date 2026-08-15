@@ -2,6 +2,7 @@ import { apiRequest } from '@/lib/apiClient';
 import type {
   GuestMeetingFeedbackPayload,
   GuestNomineeCategory,
+  GuestProgress,
   GuestRegisterPayload,
   GuestRegisterResult,
   GuestSpeaker,
@@ -15,6 +16,10 @@ export function registerGuest(payload: GuestRegisterPayload): Promise<GuestRegis
 
 export function getMeetingCheckinStatus(meetingId: string): Promise<{ open: boolean }> {
   return apiRequest<{ open: boolean }>(`/guests/meetings/${meetingId}/checkin-status`);
+}
+
+export function getGuestProgress(guestId: string, meetingId: string): Promise<GuestProgress> {
+  return apiRequest<GuestProgress>(`/guests/${guestId}/progress?meeting_id=${meetingId}`);
 }
 
 export function getMeetingSpeakers(meetingId: string): Promise<GuestSpeaker[]> {

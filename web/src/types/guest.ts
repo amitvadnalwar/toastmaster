@@ -56,3 +56,17 @@ export interface GuestVoteItem {
   category: string;
   nominee_id: string;
 }
+
+export interface GuestProgress {
+  guest_name: string;
+  speaker_feedback: GuestSpeakerFeedbackItem[];
+  meeting_feedback: {
+    punctual_rating: number;
+    agenda_rating: number;
+    inclusive_rating: number;
+    experience_rating: number;
+    overall_rating: number;
+    comment: string | null;
+  } | null;
+  votes: GuestVoteItem[];
+}

@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from app.models.common import ApiResponse
 from app.models.guest import (
     GuestMeetingFeedbackIn,
+    GuestProgressOut,
     GuestRegisterIn,
     GuestRegisterOut,
     GuestSpeakerFeedbackIn,
@@ -31,6 +32,14 @@ async def get_checkin_status(meeting_id: str) -> ApiResponse[MeetingCheckinStatu
 
     is_open = await guest_service.is_meeting_open_for_checkin(meeting_id)
     return ApiResponse(data=MeetingCheckinStatusOut(open=is_open))
+
+
+@router.get("/{guest_id}/progress", response_model=ApiResponse[GuestProgressOut])
+async def get_guest_progress(guest_id: str, meeting_id: str) -> ApiResponse[GuestProgressOut]:
+    from app.services import guest_service
+
+    data = await guest_service.get_guest_progress(guest_id, meeting_id)
+    return ApiResponse(data=data)
 
 
 @router.get("/meetings/{meeting_id}/speakers", response_model=ApiResponse[list[SpeakerOut]])

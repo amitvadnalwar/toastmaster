@@ -13,6 +13,7 @@ import MeetingQualityCard, {
 import NomineeSection from './components/NomineeSection';
 import QrScanner from './components/QrScanner';
 import {
+  getGuestProgress,
   getMeetingCheckinStatus,
   getMeetingNominees,
   getMeetingSpeakers,
@@ -21,7 +22,8 @@ import {
   submitSpeakerFeedback,
   submitVotes,
 } from '@/services/guestService';
-import type { GuestNomineeCategory, GuestSource, GuestSpeaker } from '@/types/guest';
+import { getStoredGuest, storeGuest } from './guestStorage';
+import type { GuestNomineeCategory, GuestProgress, GuestSource, GuestSpeaker } from '@/types/guest';
 
 type Step = 'scan-prompt' | 'scanning' | 'checking' | 'register' | 'speakers' | 'meeting' | 'votes' | 'thanks' | 'invalid';
 
@@ -48,12 +50,72 @@ export default function GuestPage() {
   const [meetingRating, setMeetingRating] = useState<MeetingRatingState>(EMPTY_MEETING_RATING);
   const [votes, setVotes] = useState<Record<string, string>>({});
 
+  function ratingFromProgress(progress: GuestProgress | null, memberId: string): SpeakerRatingState {
+    const fb = progress?.speaker_feedback.find((f) => f.speaker_member_id === memberId);
+    if (!fb) return EMPTY_SPEAKER_RATING;
+    return {
+      content: fb.content_rating,
+      structure: fb.structure_rating,
+      confidence: fb.confidence_rating,
+      interaction: fb.interaction_rating,
+      comment: fb.comment ?? '',
+    };
+  }
+
+  // Loads the meeting's speakers/nominees and, if this guest has already
+  // submitted feedback for this meeting, prefills it so nothing is lost.
+  async function loadGuestContent(mId: string, gId: string) {
+    const [sp, nm, progress] = await Promise.all([
+      getMeetingSpeakers(mId).catch(() => []),
+      getMeetingNominees(mId).catch(() => []),
+      getGuestProgress(gId, mId).catch(() => null),
+    ]);
+    setSpeakers(sp);
+    setSpeakerRatings(Object.fromEntries(sp.map((s) => [s.member_id, ratingFromProgress(progress, s.member_id)])));
+    setNomineeCategories(nm);
+    if (progress?.meeting_feedback) {
+      const mf = progress.meeting_feedback;
+      setMeetingRating({
+        punctual: mf.punctual_rating,
+        agenda: mf.agenda_rating,
+        inclusive: mf.inclusive_rating,
+        experience: mf.experience_rating,
+        overall: mf.overall_rating,
+        comment: mf.comment ?? '',
+      });
+    }
+    if (progress?.votes.length) {
+      setVotes(Object.fromEntries(progress.votes.map((v) => [v.category, v.nominee_id])));
+    }
+  }
+
   async function enterMeeting(id: string) {
     setMeetingId(id);
     setStep('checking');
     try {
       const { open } = await getMeetingCheckinStatus(id);
-      setStep(open ? 'register' : 'invalid');
+      if (!open) {
+        setStep('invalid');
+        return;
+      }
+    } catch {
+      setStep('invalid');
+      return;
+    }
+
+    const stored = getStoredGuest(id);
+    if (!stored) {
+      setStep('register');
+      return;
+    }
+
+    // Already checked in on this device — resume straight into their feedback
+    // instead of registering them again.
+    setGuestId(stored.id);
+    setGuestName(stored.name);
+    try {
+      await loadGuestContent(id, stored.id);
+      setStep('speakers');
     } catch {
       setStep('invalid');
     }
@@ -79,14 +141,9 @@ export default function GuestPage() {
       const result = await registerGuest({ meeting_id: meetingId, name, phone, source });
       setGuestId(result.id);
       setGuestName(result.name);
+      storeGuest(meetingId, { id: result.id, name: result.name });
 
-      const [sp, nm] = await Promise.all([
-        getMeetingSpeakers(meetingId).catch(() => []),
-        getMeetingNominees(meetingId).catch(() => []),
-      ]);
-      setSpeakers(sp);
-      setSpeakerRatings(Object.fromEntries(sp.map((s) => [s.member_id, EMPTY_SPEAKER_RATING])));
-      setNomineeCategories(nm);
+      await loadGuestContent(meetingId, result.id);
       setStep('speakers');
     } catch (err) {
       if (err instanceof ApiError && err.status === 404) {

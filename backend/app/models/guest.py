@@ -94,3 +94,35 @@ class GuestVoteItem(BaseModel):
 class GuestVotesIn(BaseModel):
     meeting_id: UUID
     votes: list[GuestVoteItem]
+
+
+# ── Resuming a returning guest's previously-submitted feedback ────────────────
+
+class GuestSpeakerFeedbackOut(BaseModel):
+    speaker_member_id: str
+    content_rating: int
+    structure_rating: int
+    interaction_rating: int
+    confidence_rating: int
+    comment: str | None = None
+
+
+class GuestMeetingFeedbackOut(BaseModel):
+    punctual_rating: int
+    agenda_rating: int
+    inclusive_rating: int
+    experience_rating: int
+    overall_rating: int
+    comment: str | None = None
+
+
+class GuestVoteOut(BaseModel):
+    category: str
+    nominee_id: str
+
+
+class GuestProgressOut(BaseModel):
+    guest_name: str
+    speaker_feedback: list[GuestSpeakerFeedbackOut]
+    meeting_feedback: GuestMeetingFeedbackOut | None = None
+    votes: list[GuestVoteOut]

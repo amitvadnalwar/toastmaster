@@ -103,6 +103,51 @@ async def get_nominees_for_meeting(meeting_id: str) -> list[dict]:
     return result.data
 
 
+async def get_guest(guest_id: str) -> dict | None:
+    result = (
+        supabase.table("guests")
+        .select("id, name, meeting_id")
+        .eq("id", guest_id)
+        .limit(1)
+        .execute()
+    )
+    return result.data[0] if result.data else None
+
+
+async def get_speaker_feedback_for_guest(guest_id: str, meeting_id: str) -> list[dict]:
+    result = (
+        supabase.table("guest_speaker_feedback")
+        .select("speaker_member_id, content_rating, structure_rating, interaction_rating, confidence_rating, comment")
+        .eq("guest_id", guest_id)
+        .eq("meeting_id", meeting_id)
+        .execute()
+    )
+    return result.data
+
+
+async def get_meeting_feedback_for_guest(guest_id: str, meeting_id: str) -> dict | None:
+    result = (
+        supabase.table("guest_meeting_feedback")
+        .select("punctual_rating, agenda_rating, inclusive_rating, experience_rating, overall_rating, comment")
+        .eq("guest_id", guest_id)
+        .eq("meeting_id", meeting_id)
+        .limit(1)
+        .execute()
+    )
+    return result.data[0] if result.data else None
+
+
+async def get_votes_for_guest(guest_id: str, meeting_id: str) -> list[dict]:
+    result = (
+        supabase.table("guest_votes")
+        .select("category, nominee_id")
+        .eq("guest_id", guest_id)
+        .eq("meeting_id", meeting_id)
+        .execute()
+    )
+    return result.data
+
+
 async def upsert_speaker_feedback(
     guest_id: str, meeting_id: str, feedbacks: list[dict]
 ) -> None:

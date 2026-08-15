@@ -3,10 +3,14 @@ from fastapi import HTTPException, status
 from app.middleware.auth import CurrentUser
 from app.models.guest import (
     GuestMeetingFeedbackIn,
+    GuestMeetingFeedbackOut,
     GuestOut,
+    GuestProgressOut,
     GuestRegisterIn,
     GuestRegisterOut,
     GuestSpeakerFeedbackIn,
+    GuestSpeakerFeedbackOut,
+    GuestVoteOut,
     GuestVotesIn,
     NomineeCategoryOut,
     NomineeOut,
@@ -80,6 +84,25 @@ async def register_guest(body: GuestRegisterIn) -> GuestRegisterOut:
         source=body.source,
     )
     return GuestRegisterOut(id=row["id"], name=row["name"])
+
+
+async def get_guest_progress(guest_id: str, meeting_id: str) -> GuestProgressOut:
+    from app.db import guests as db
+
+    guest = await db.get_guest(guest_id)
+    if not guest or guest["meeting_id"] != meeting_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Guest not found")
+
+    speaker_feedback = await db.get_speaker_feedback_for_guest(guest_id, meeting_id)
+    meeting_feedback = await db.get_meeting_feedback_for_guest(guest_id, meeting_id)
+    votes = await db.get_votes_for_guest(guest_id, meeting_id)
+
+    return GuestProgressOut(
+        guest_name=guest["name"],
+        speaker_feedback=[GuestSpeakerFeedbackOut(**fb) for fb in speaker_feedback],
+        meeting_feedback=GuestMeetingFeedbackOut(**meeting_feedback) if meeting_feedback else None,
+        votes=[GuestVoteOut(**v) for v in votes],
+    )
 
 
 async def get_meeting_guests_for_admin(meeting_id: str, user: CurrentUser) -> list[GuestOut]:

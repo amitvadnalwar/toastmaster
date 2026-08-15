@@ -56,11 +56,10 @@ class NomineeCategoryOut(BaseModel):
 
 class SpeakerFeedbackItem(BaseModel):
     speaker_member_id: UUID
-    content_rating: int = Field(..., ge=1, le=5)
-    structure_rating: int = Field(..., ge=1, le=5)
-    interaction_rating: int = Field(..., ge=1, le=5)
-    confidence_rating: int = Field(..., ge=1, le=5)
-    overall_rating: int = Field(..., ge=1, le=5)
+    content_rating: int = Field(..., ge=1, le=3)
+    structure_rating: int = Field(..., ge=1, le=3)
+    interaction_rating: int = Field(..., ge=1, le=3)
+    confidence_rating: int = Field(..., ge=1, le=3)
     comment: str | None = None
 
 

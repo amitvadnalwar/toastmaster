@@ -39,7 +39,6 @@ export interface GuestSpeakerFeedbackItem {
   structure_rating: number;
   interaction_rating: number;
   confidence_rating: number;
-  overall_rating: number;
   comment: string | null;
 }
 

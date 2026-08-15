@@ -97,10 +97,6 @@ export default function GuestPage() {
         setError(`Please rate all categories for ${s.name}`);
         return;
       }
-      if (!r.overall) {
-        setError(`Please select an overall rating for ${s.name}`);
-        return;
-      }
     }
 
     setLoading(true);
@@ -116,7 +112,6 @@ export default function GuestPage() {
             structure_rating: r.structure!,
             interaction_rating: r.interaction!,
             confidence_rating: r.confidence!,
-            overall_rating: r.overall!,
             comment: r.comment.trim() || null,
           };
         }),

@@ -125,7 +125,6 @@ async def submit_speaker_feedback(guest_id: str, body: GuestSpeakerFeedbackIn) -
             "structure_rating": fb.structure_rating,
             "interaction_rating": fb.interaction_rating,
             "confidence_rating": fb.confidence_rating,
-            "overall_rating": fb.overall_rating,
             "comment": fb.comment,
         }
         for fb in body.feedbacks

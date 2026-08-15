@@ -1,22 +1,19 @@
-import EmojiRating from './EmojiRating';
-import ScaleRating from './ScaleRating';
+import SmileyRating from './SmileyRating';
 import type { GuestSpeaker } from '@/types/guest';
 
 export interface SpeakerRatingState {
   content: number | null;
   structure: number | null;
-  interaction: number | null;
   confidence: number | null;
-  overall: number | null;
+  interaction: number | null;
   comment: string;
 }
 
 export const EMPTY_SPEAKER_RATING: SpeakerRatingState = {
   content: null,
   structure: null,
-  interaction: null,
   confidence: null,
-  overall: null,
+  interaction: null,
   comment: '',
 };
 
@@ -38,23 +35,14 @@ export default function SpeakerCard({ speaker, index, rating, onChange }: Props)
       </div>
 
       <div className="flex flex-col gap-3.5 mb-4">
-        <EmojiRating label="Content" value={rating.content} onChange={(v) => onChange('content', v)} />
-        <EmojiRating label="Structure" value={rating.structure} onChange={(v) => onChange('structure', v)} />
-        <EmojiRating
-          label="Interaction"
+        <SmileyRating label="Content" value={rating.content} onChange={(v) => onChange('content', v)} />
+        <SmileyRating label="Structure" value={rating.structure} onChange={(v) => onChange('structure', v)} />
+        <SmileyRating label="Confidence" value={rating.confidence} onChange={(v) => onChange('confidence', v)} />
+        <SmileyRating
+          label="Interact"
           value={rating.interaction}
           onChange={(v) => onChange('interaction', v)}
         />
-        <EmojiRating
-          label="Confidence"
-          value={rating.confidence}
-          onChange={(v) => onChange('confidence', v)}
-        />
-      </div>
-
-      <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700 mb-1.5">Overall</label>
-        <ScaleRating value={rating.overall} onChange={(v) => onChange('overall', v)} />
       </div>
 
       <div>

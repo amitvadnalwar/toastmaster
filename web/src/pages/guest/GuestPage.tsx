@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { QrCode } from 'lucide-react';
 import { ApiError } from '@/lib/apiClient';
@@ -13,6 +13,7 @@ import MeetingQualityCard, {
 import NomineeSection from './components/NomineeSection';
 import QrScanner from './components/QrScanner';
 import {
+  getMeetingCheckinStatus,
   getMeetingNominees,
   getMeetingSpeakers,
   registerGuest,
@@ -22,7 +23,7 @@ import {
 } from '@/services/guestService';
 import type { GuestNomineeCategory, GuestSource, GuestSpeaker } from '@/types/guest';
 
-type Step = 'scan-prompt' | 'scanning' | 'register' | 'speakers' | 'meeting' | 'votes' | 'thanks' | 'invalid';
+type Step = 'scan-prompt' | 'scanning' | 'checking' | 'register' | 'speakers' | 'meeting' | 'votes' | 'thanks' | 'invalid';
 
 const PROGRESS_STEPS: { step: Step; label: string }[] = [
   { step: 'speakers', label: 'Speakers' },
@@ -34,7 +35,7 @@ export default function GuestPage() {
   const [searchParams] = useSearchParams();
   const [meetingId, setMeetingId] = useState<string | null>(searchParams.get('meeting_id'));
 
-  const [step, setStep] = useState<Step>(meetingId ? 'register' : 'scan-prompt');
+  const [step, setStep] = useState<Step>(meetingId ? 'checking' : 'scan-prompt');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -47,9 +48,27 @@ export default function GuestPage() {
   const [meetingRating, setMeetingRating] = useState<MeetingRatingState>(EMPTY_MEETING_RATING);
   const [votes, setVotes] = useState<Record<string, string>>({});
 
+  async function enterMeeting(id: string) {
+    setMeetingId(id);
+    setStep('checking');
+    try {
+      const { open } = await getMeetingCheckinStatus(id);
+      setStep(open ? 'register' : 'invalid');
+    } catch {
+      setStep('invalid');
+    }
+  }
+
+  // Validate a meeting_id that arrived straight from the URL (deep link),
+  // same as a freshly scanned QR code.
+  useEffect(() => {
+    const initialMeetingId = searchParams.get('meeting_id');
+    if (initialMeetingId) enterMeeting(initialMeetingId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   function handleScan(scannedMeetingId: string) {
-    setMeetingId(scannedMeetingId);
-    setStep('register');
+    enterMeeting(scannedMeetingId);
   }
 
   async function handleRegister(name: string, phone: string | null, source: GuestSource) {
@@ -244,6 +263,13 @@ export default function GuestPage() {
 
         {step === 'scanning' && (
           <QrScanner onScan={handleScan} onCancel={() => setStep('scan-prompt')} />
+        )}
+
+        {step === 'checking' && (
+          <div className="flex flex-col items-center gap-4 py-16">
+            <span className="w-8 h-8 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+            <p className="text-sm text-gray-400">Checking meeting…</p>
+          </div>
         )}
 
         {step === 'register' && (

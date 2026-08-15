@@ -34,6 +34,10 @@ class GuestOut(BaseModel):
     created_at: str
 
 
+class MeetingCheckinStatusOut(BaseModel):
+    open: bool
+
+
 # ── Meeting speakers & nominees ───────────────────────────────────────────────
 
 class SpeakerOut(BaseModel):

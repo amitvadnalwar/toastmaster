@@ -31,19 +31,32 @@ _CATEGORY_LABELS: dict[str, str] = {
 }
 
 
-async def register_guest(body: GuestRegisterIn) -> GuestRegisterOut:
-    from app.db import guests as db
+async def _fetch_current_meeting(meeting_id: str) -> dict | None:
     from app.db import meetings as db_meetings
-    from app.models.meeting import MeetingStatus
     from app.services.meeting_service import auto_complete_if_due
 
-    meeting_row = await db_meetings.get_by_id(str(body.meeting_id))
+    meeting_row = await db_meetings.get_by_id(meeting_id)
     if not meeting_row:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meeting not found")
-
+        return None
     # Mirrors the member QR check-in flow: a published meeting whose date has
     # passed is auto-completed, and registration only stays open while published.
-    meeting_row = await auto_complete_if_due(meeting_row)
+    return await auto_complete_if_due(meeting_row)
+
+
+async def is_meeting_open_for_checkin(meeting_id: str) -> bool:
+    from app.models.meeting import MeetingStatus
+
+    meeting_row = await _fetch_current_meeting(meeting_id)
+    return meeting_row is not None and meeting_row["status"] == MeetingStatus.published
+
+
+async def register_guest(body: GuestRegisterIn) -> GuestRegisterOut:
+    from app.db import guests as db
+    from app.models.meeting import MeetingStatus
+
+    meeting_row = await _fetch_current_meeting(str(body.meeting_id))
+    if not meeting_row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meeting not found")
     if meeting_row["status"] != MeetingStatus.published:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

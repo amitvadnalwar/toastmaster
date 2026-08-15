@@ -13,6 +13,10 @@ export function registerGuest(payload: GuestRegisterPayload): Promise<GuestRegis
   return apiRequest<GuestRegisterResult>('/guests/register', { method: 'POST', body: payload });
 }
 
+export function getMeetingCheckinStatus(meetingId: string): Promise<{ open: boolean }> {
+  return apiRequest<{ open: boolean }>(`/guests/meetings/${meetingId}/checkin-status`);
+}
+
 export function getMeetingSpeakers(meetingId: string): Promise<GuestSpeaker[]> {
   return apiRequest<GuestSpeaker[]>(`/guests/meetings/${meetingId}/speakers`);
 }

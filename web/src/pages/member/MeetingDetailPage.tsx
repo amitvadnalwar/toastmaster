@@ -9,7 +9,8 @@ import { useAuthStore } from '@/store/authStore';
 import { getMeetingRoster, getMeetingStats, updateMeeting, deleteMeeting, updateMeetingStatus, updateVotingStatus } from '@/services/meetingService';
 import { getClubMembers } from '@/services/memberService';
 import Spinner from '@/components/ui/Spinner';
-import PullToRefresh from '@/components/PullToRefresh';
+// TEMP DIAGNOSTIC: pull-to-refresh disabled to isolate an Android scroll bug report.
+// import PullToRefresh from '@/components/PullToRefresh';
 import { MeetingDetailSkeleton } from '@/components/ui/Skeleton';
 import type { VotingStatus, MemberInitials, MeetingStats } from '@/types';
 import { STATUS_COLOR, STATUS_LABEL } from '@/types';
@@ -215,7 +216,8 @@ export default function MemberMeetingDetailPage() {
         saveDisabled={!editTitle.trim()}
       />
 
-      <PullToRefresh onRefresh={handlePullRefresh} className="flex-1 overflow-y-auto px-5 pt-5 pb-28 max-w-lg mx-auto w-full">
+      {/* TEMP DIAGNOSTIC: was <PullToRefresh onRefresh={handlePullRefresh} className="..."> — swapped for a plain div to isolate an Android scroll bug report. */}
+      <div className="flex-1 overflow-y-auto px-5 pt-5 pb-28 max-w-lg mx-auto w-full">
         {editing ? (
           <>
             {canEditDetails && (
@@ -387,7 +389,7 @@ export default function MemberMeetingDetailPage() {
             )}
           </>
         )}
-      </PullToRefresh>
+      </div>
 
       {/* Member picker bottom sheet (admin only, edit mode) */}
       {pickerMode && (

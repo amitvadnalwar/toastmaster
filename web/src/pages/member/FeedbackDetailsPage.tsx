@@ -102,7 +102,7 @@ export default function FeedbackDetailsPage() {
                             disabled={publishing === s.member_id}
                             className="flex items-center gap-1.5 bg-brand text-white text-[13px] font-semibold rounded-lg px-3 py-2 disabled:opacity-60"
                           >
-                            <Send size={13} /> {publishing === s.member_id ? 'Publishing…' : 'Publish'}
+                            <Send size={13} /> {publishing === s.member_id ? 'Sending…' : 'Send'}
                           </button>
                         )}
                         {st?.published && <CheckCircle2 size={18} className="text-green-500 shrink-0" />}

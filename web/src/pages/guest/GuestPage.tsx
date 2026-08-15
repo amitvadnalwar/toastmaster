@@ -246,7 +246,12 @@ export default function GuestPage() {
           <QrScanner onScan={handleScan} onCancel={() => setStep('scan-prompt')} />
         )}
 
-        {step === 'register' && <RegisterForm loading={loading} onSubmit={handleRegister} />}
+        {step === 'register' && (
+          <>
+            {error && <ErrorBanner message={error} />}
+            <RegisterForm loading={loading} onSubmit={handleRegister} />
+          </>
+        )}
 
         {step === 'speakers' && (
           <>

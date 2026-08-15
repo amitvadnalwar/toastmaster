@@ -88,6 +88,12 @@ export function isPastMeeting(scheduledAt: string): boolean {
   return new Date(scheduledAt).getTime() < Date.now();
 }
 
+const APPLICATION_WINDOW_CLOSE_MINUTES = 15;
+
+export function isApplicationWindowClosed(scheduledAt: string): boolean {
+  return Date.now() >= new Date(scheduledAt).getTime() - APPLICATION_WINDOW_CLOSE_MINUTES * 60 * 1000;
+}
+
 export function dateparts(iso: string) {
   const d = new Date(iso);
   return {

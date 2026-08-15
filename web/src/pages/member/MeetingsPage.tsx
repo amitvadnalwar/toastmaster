@@ -6,7 +6,7 @@ import { getAllMeetings } from '@/services/meetingService';
 import { MemberBottomNav } from '@/components/layout/BottomNav';
 import { MeetingListSkeleton } from '@/components/ui/Skeleton';
 import type { Meeting, MeetingStatus } from '@/types';
-import { formatDate, formatTime, isPastMeeting } from '@/lib/utils';
+import { formatDate, formatTime, isPastMeeting, isApplicationWindowClosed } from '@/lib/utils';
 
 const STATUS_BADGE: Record<MeetingStatus, { label: string; bg: string; color: string }> = {
   draft: { label: 'Scheduled', bg: '#f3f4f6', color: '#6b7280' },
@@ -17,6 +17,7 @@ const STATUS_BADGE: Record<MeetingStatus, { label: string; bg: string; color: st
 function appStatus(m: Meeting): { text: string; color: string } {
   if (m.status === 'completed') return { text: 'Meeting completed', color: '#9ca3af' };
   if (isPastMeeting(m.scheduled_at)) return { text: 'Meeting date has passed', color: '#9ca3af' };
+  if (m.status === 'published' && isApplicationWindowClosed(m.scheduled_at)) return { text: 'Application window closed', color: '#9ca3af' };
   if (m.status === 'published') return { text: 'Application window open', color: '#16a34a' };
   return { text: 'Application not opened yet', color: '#9ca3af' };
 }
@@ -70,7 +71,7 @@ export default function MemberMeetingsPage() {
             const badge = STATUS_BADGE[m.status];
             const app = appStatus(m);
             const past = m.status === 'completed' || isPastMeeting(m.scheduled_at);
-            const canApply = m.status === 'published' && !isPastMeeting(m.scheduled_at);
+            const canApply = m.status === 'published' && !isPastMeeting(m.scheduled_at) && !isApplicationWindowClosed(m.scheduled_at);
             return (
               <button
                 key={m.id}

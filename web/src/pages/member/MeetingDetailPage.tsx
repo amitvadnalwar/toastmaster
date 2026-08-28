@@ -14,7 +14,7 @@ import Spinner from '@/components/ui/Spinner';
 import { MeetingDetailSkeleton } from '@/components/ui/Skeleton';
 import type { VotingStatus, MemberInitials, MeetingStats } from '@/types';
 import { STATUS_COLOR, STATUS_LABEL } from '@/types';
-import { initials, formatMemberName, formatDateTime, formatDateShort, isPastMeeting } from '@/lib/utils';
+import { initials, formatMemberName, formatDateTime, formatDateShort, isMeetingLocked } from '@/lib/utils';
 
 const VOTING_LABEL: Record<VotingStatus, string> = { not_started: 'Not started', open: 'Open', closed: 'Closed' };
 const VOTING_COLOR: Record<VotingStatus, string> = { not_started: '#9ca3af', open: '#10b981', closed: '#6b7280' };
@@ -71,7 +71,7 @@ export default function MemberMeetingDetailPage() {
   }, [session]);
 
   function startEdit() {
-    if (!data || isPastMeeting(data.meeting.scheduled_at)) return;
+    if (!data || isMeetingLocked(data.meeting)) return;
     const m = data.meeting;
     const d = new Date(m.scheduled_at);
     setEditTitle(m.title);
@@ -113,7 +113,7 @@ export default function MemberMeetingDetailPage() {
   }
 
   async function handleDelete() {
-    if (!session || !data || isPastMeeting(data.meeting.scheduled_at)) return;
+    if (!session || !data || isMeetingLocked(data.meeting)) return;
     if (!window.confirm('This will permanently delete the meeting and all data.')) return;
     setActingAction('delete');
     try {
@@ -126,7 +126,7 @@ export default function MemberMeetingDetailPage() {
   }
 
   async function handlePublish() {
-    if (!session || !data || isPastMeeting(data.meeting.scheduled_at)) return;
+    if (!session || !data || isMeetingLocked(data.meeting)) return;
     if (!window.confirm('Publish this meeting so members can see it?')) return;
     setActingAction('publish');
     try {
@@ -140,7 +140,7 @@ export default function MemberMeetingDetailPage() {
   }
 
   async function handleComplete() {
-    if (!session || !data || isPastMeeting(data.meeting.scheduled_at)) return;
+    if (!session || !data || isMeetingLocked(data.meeting)) return;
     if (!window.confirm('Mark this meeting as completed? This closes it out for good.')) return;
     setActingAction('complete');
     try {
@@ -154,7 +154,7 @@ export default function MemberMeetingDetailPage() {
   }
 
   async function handleVotingToggle() {
-    if (!session || !data || isPastMeeting(data.meeting.scheduled_at)) return;
+    if (!session || !data || isMeetingLocked(data.meeting)) return;
     const next: VotingStatus = data.meeting.voting_status === 'open' ? 'closed' : 'open';
     setActingAction('voting');
     try {
@@ -186,7 +186,7 @@ export default function MemberMeetingDetailPage() {
 
   const { meeting, roster } = data;
   const votingIsOpen = meeting.voting_status === 'open';
-  const isPast = isPastMeeting(meeting.scheduled_at);
+  const isPast = isMeetingLocked(meeting);
   const canEditDetails = isAdmin && meeting.status === 'draft' && !isPast;
   const canEditRoles = isAdmin && !isPast;
   const canManageMeeting = isAdmin && !isPast;
@@ -267,7 +267,7 @@ export default function MemberMeetingDetailPage() {
               <div className="flex items-center gap-2.5 bg-gray-100 border border-gray-200 rounded-xl px-3.5 py-3 mb-4">
                 <Lock size={15} className="text-gray-400 shrink-0" />
                 <p className="text-[13px] text-gray-500 font-medium leading-5">
-                  This meeting's date has passed — details are read-only.
+                  This meeting is closed — details are read-only.
                 </p>
               </div>
             )}

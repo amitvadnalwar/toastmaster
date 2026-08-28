@@ -8,7 +8,7 @@ import { getClubMembers } from '@/services/memberService';
 import { getClub, getClubOfficers } from '@/services/clubService';
 import { getAgenda, saveAgenda, clonePreviousAgenda } from '@/services/agendaService';
 import { computeTimes } from '@/lib/agendaCascade';
-import { isPastMeeting } from '@/lib/utils';
+import { isMeetingLocked } from '@/lib/utils';
 import { MeetingDetailSkeleton } from '@/components/ui/Skeleton';
 import AgendaRowEditor from './agenda/AgendaRowEditor';
 import AgendaReadView from './agenda/AgendaReadView';
@@ -155,8 +155,7 @@ export default function MeetingAgendaPage() {
   }
   if (!meeting || !agenda) return null;
 
-  const isPast = isPastMeeting(meeting.scheduled_at);
-  const canManage = isAdmin && !isPast;
+  const canManage = isAdmin && !isMeetingLocked(meeting);
   const previewRows = computeTimes(rows);
 
   const guestUrl = `${window.location.origin}${import.meta.env.BASE_URL}guest?meeting_id=${meeting.id}`;

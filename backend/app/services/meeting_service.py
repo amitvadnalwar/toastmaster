@@ -1,7 +1,7 @@
 import random
 import re
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException, status
 
@@ -85,10 +85,20 @@ def _role_out(row: dict) -> MeetingRoleAssignmentOut:
     return MeetingRoleAssignmentOut(**row)
 
 
+# Fixed UTC+5:30 rather than zoneinfo("Asia/Kolkata") — India has no DST, so
+# a fixed offset is exact, and avoids depending on IANA tzdata being present
+# on the host (not guaranteed on every deploy target).
+_CLUB_TZ = timezone(timedelta(hours=5, minutes=30))
+
+
 async def auto_complete_if_due(row: dict) -> dict:
-    """A published meeting whose date has passed is auto-marked completed.
-    Skipped for meetings a super admin has just reopened (reopened=True) so
-    the reopen isn't immediately undone on the next read."""
+    """A published meeting is auto-marked completed once its scheduled
+    calendar day (in the club's local time zone) has passed — not the
+    instant the scheduled time passes, since meetings routinely run past
+    their start time and admins need full access (editing, voting, roster,
+    checking members in) for the rest of that day. Skipped for meetings a
+    super admin has just reopened (reopened=True) so the reopen isn't
+    immediately undone on the next read."""
     if row["status"] != MeetingStatus.published.value or row.get("reopened"):
         return row
     try:
@@ -97,7 +107,10 @@ async def auto_complete_if_due(row: dict) -> dict:
         return row
     if scheduled.tzinfo is None:
         scheduled = scheduled.replace(tzinfo=timezone.utc)
-    if scheduled >= datetime.now(timezone.utc):
+
+    local_date = scheduled.astimezone(_CLUB_TZ).date()
+    end_of_meeting_day = datetime(local_date.year, local_date.month, local_date.day, tzinfo=_CLUB_TZ) + timedelta(days=1)
+    if datetime.now(timezone.utc) < end_of_meeting_day:
         return row
     return await db_meetings.update_status(row["id"], MeetingStatus.completed.value)
 

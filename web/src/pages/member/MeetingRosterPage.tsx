@@ -7,7 +7,7 @@ import { getClubMembers } from '@/services/memberService';
 import { MeetingDetailSkeleton } from '@/components/ui/Skeleton';
 import type { MeetingRole, MeetingWithRoster, MemberInitials } from '@/types';
 import { SINGLETON_ROLES, ROLE_LABELS } from '@/types';
-import { initials, formatMemberName, isPastMeeting } from '@/lib/utils';
+import { initials, formatMemberName, isPastMeeting, isMeetingLocked } from '@/lib/utils';
 
 interface MemberOption { id: string; name: string; initials: MemberInitials }
 
@@ -66,7 +66,7 @@ export default function MeetingRosterPage() {
   }, [session, isAdmin]);
 
   function startAssign(role: MeetingRole, speakerMemberId?: string) {
-    if (!data || isPastMeeting(data.meeting.scheduled_at)) return;
+    if (!data || isMeetingLocked(data.meeting)) return;
     setAssignRole(role);
     setAssignSpeakerId(speakerMemberId ?? null);
     setPendingMember(null);
@@ -75,7 +75,7 @@ export default function MeetingRosterPage() {
   }
 
   function startAddSupportingRole() {
-    if (!data || isPastMeeting(data.meeting.scheduled_at)) return;
+    if (!data || isMeetingLocked(data.meeting)) return;
     setRoleTitleInput('');
     setShowRoleTitleModal(true);
   }
@@ -148,7 +148,7 @@ export default function MeetingRosterPage() {
   }
 
   function startEditMaxSpeakers() {
-    if (!data || isPastMeeting(data.meeting.scheduled_at)) return;
+    if (!data || isMeetingLocked(data.meeting)) return;
     setMaxSpeakersValue(data.meeting.max_speakers);
     setEditingMaxSpeakers(true);
   }
@@ -176,7 +176,7 @@ export default function MeetingRosterPage() {
   }
 
   async function handleRemove(roleId: string, label: string) {
-    if (!session || !data || isPastMeeting(data.meeting.scheduled_at)) return;
+    if (!session || !data || isMeetingLocked(data.meeting)) return;
     if (!window.confirm(`Remove ${label} assignment?`)) return;
     setActing(true);
     try {
@@ -200,9 +200,10 @@ export default function MeetingRosterPage() {
   if (!data) return null;
 
   const { meeting, roster } = data;
-  const isPast = isPastMeeting(meeting.scheduled_at);
-  const canManage = isAdmin && !isPast;
-  const canApply = !isAdmin && meeting.status === 'published' && !isPast;
+  // Admin management stays available all day (or until the meeting is
+  // completed) — self-enrollment still cuts off at the exact start time.
+  const canManage = isAdmin && !isMeetingLocked(meeting);
+  const canApply = !isAdmin && meeting.status === 'published' && !isPastMeeting(meeting.scheduled_at);
   const speakers = roster.filter((r) => r.role === 'speaker');
   const evaluators = roster.filter((r) => r.role === 'evaluator');
   const tableTopicsSpeakers = roster.filter((r) => r.role === 'table_topics_speaker');

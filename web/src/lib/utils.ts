@@ -88,6 +88,21 @@ export function isPastMeeting(scheduledAt: string): boolean {
   return new Date(scheduledAt).getTime() < Date.now();
 }
 
+// Admin management (editing details/roles, voting, completing) used to lock
+// the instant the scheduled time passed — too early, since a meeting often
+// runs past its start time. Admins keep access through the whole day of the
+// meeting (or until they explicitly mark it completed), only locking out
+// starting the next calendar day.
+export function isPastMeetingDay(scheduledAt: string): boolean {
+  const scheduled = new Date(scheduledAt);
+  const endOfMeetingDay = new Date(scheduled.getFullYear(), scheduled.getMonth(), scheduled.getDate() + 1);
+  return Date.now() >= endOfMeetingDay.getTime();
+}
+
+export function isMeetingLocked(meeting: { scheduled_at: string; status: string }): boolean {
+  return meeting.status === 'completed' || isPastMeetingDay(meeting.scheduled_at);
+}
+
 const APPLICATION_WINDOW_CLOSE_MINUTES = 15;
 
 export function isApplicationWindowClosed(scheduledAt: string): boolean {

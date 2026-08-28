@@ -5,6 +5,8 @@ from app.models.common import ApiResponse
 from app.models.meeting import (
     AdminAssignRoleIn,
     AttendanceOut,
+    CheckinByCodeIn,
+    CheckinCodeOut,
     CheckinIn,
     CheckinOut,
     EnrollEvaluatorIn,
@@ -189,7 +191,7 @@ async def enroll_evaluator(
     return ApiResponse(data=result)
 
 
-# ── QR check-in ───────────────────────────────────────────────────────────
+# ── Check-in (QR scan or 6-digit code) ─────────────────────────────────────
 
 @router.post("/checkin", response_model=ApiResponse[CheckinOut])
 async def checkin(
@@ -197,6 +199,24 @@ async def checkin(
     user: CurrentUser = Depends(require_member),
 ) -> ApiResponse[CheckinOut]:
     result = await meeting_service.checkin(body.qr_token, user)
+    return ApiResponse(data=result)
+
+
+@router.post("/checkin-by-code", response_model=ApiResponse[CheckinOut])
+async def checkin_by_code(
+    body: CheckinByCodeIn,
+    user: CurrentUser = Depends(require_member),
+) -> ApiResponse[CheckinOut]:
+    result = await meeting_service.checkin_by_code(body.code, user)
+    return ApiResponse(data=result)
+
+
+@router.post("/{meeting_id}/checkin-code", response_model=ApiResponse[CheckinCodeOut])
+async def generate_checkin_code(
+    meeting_id: str,
+    user: CurrentUser = Depends(require_admin),
+) -> ApiResponse[CheckinCodeOut]:
+    result = await meeting_service.generate_checkin_code(meeting_id, user)
     return ApiResponse(data=result)
 
 

@@ -1,168 +1,125 @@
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Html5Qrcode } from 'html5-qrcode';
-import { ChevronLeft, AlertCircle, VideoOff } from 'lucide-react';
+import { ChevronLeft, AlertCircle, KeyRound } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
-import { checkinMeeting } from '@/services/meetingService';
-import { extractMeetingId, isCameraPermissionDenied } from '@/lib/qr';
+import { checkinByCode } from '@/services/meetingService';
+
+const CODE_LENGTH = 6;
 
 export default function MemberScanPage() {
   const navigate = useNavigate();
   const { session } = useAuthStore();
-  // Depend on the token string, not the session object — Supabase's
-  // autoRefreshToken replaces the session object (new reference) at each
-  // natural token refresh even when the token itself is still effectively
-  // the same session; keying off the object would restart the camera and
-  // interrupt an in-progress scan every time that happens.
   const accessToken = session?.access_token;
+
+  const [digits, setDigits] = useState<string[]>(Array(CODE_LENGTH).fill(''));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Camera never started at all (permission denied, no camera, construction
-  // failure, anything) — distinct from a scan/checkin error, which should
-  // keep retrying with the camera live.
-  const [cameraBlocked, setCameraBlocked] = useState(false);
-  const scannerRef = useRef<Html5Qrcode | null>(null);
-  const scannedRef = useRef(false);
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  useEffect(() => {
-    let cancelled = false;
-    let scanner: Html5Qrcode | null = null;
-
-    // Every path that can end scanning funnels through here — guarantees we
-    // always land in a stable fallback state instead of an uncaught throw.
-    function fail(message: string) {
-      if (cancelled) return;
-      setError(message);
-      setCameraBlocked(true);
-      if (scanner) {
-        try { scanner.clear(); } catch { /* nothing to clear */ }
-      }
-    }
-
-    async function handleScan(decodedText: string) {
-      if (scannedRef.current || !accessToken || !scanner) return;
-      scannedRef.current = true;
-      setLoading(true);
-      setError(null);
-      try {
-        await scanner.stop();
-      } catch { /* already stopping */ }
-      try {
-        const meetingId = extractMeetingId(decodedText);
-        const result = await checkinMeeting(meetingId, accessToken);
-        navigate(`/meetings/${result.meeting.id}/feedback`, { replace: true });
-      } catch (e: unknown) {
-        setError(e instanceof Error ? e.message : 'Invalid QR code. Please try again.');
-        setLoading(false);
-        setTimeout(() => {
-          scannedRef.current = false;
-          if (!cancelled) startScanning();
-        }, 2000);
-      }
-    }
-
-    function startScanning() {
-      if (!scanner || cancelled) return;
-      try {
-        scanner
-          .start({ facingMode: 'environment' }, { fps: 10, qrbox: { width: 240, height: 240 } }, handleScan, undefined)
-          .catch((e: unknown) => {
-            // html5-qrcode rejects with a plain string, not an Error, on
-            // some browsers — normalize before inspecting it.
-            const message = e instanceof Error ? e.message : String(e);
-            fail(
-              isCameraPermissionDenied(message)
-                ? 'Camera access was denied. Please allow camera access to check in.'
-                : 'Could not start the camera on this device.',
-            );
-          });
-      } catch {
-        // .start() throwing synchronously instead of rejecting, on some
-        // browser/device combinations.
-        fail('Could not start the camera on this device.');
-      }
-    }
-
+  async function submitCode(code: string) {
+    if (!accessToken || loading) return;
+    setLoading(true);
+    setError(null);
     try {
-      const el = document.getElementById('qr-reader');
-      if (!el) {
-        fail('Could not start the camera on this device.');
-      } else {
-        scanner = new Html5Qrcode('qr-reader', { verbose: false });
-        scannerRef.current = scanner;
-        startScanning();
-      }
-    } catch {
-      // Constructing Html5Qrcode itself can throw on some browsers/devices
-      // that lack camera APIs entirely — never let that crash the page.
-      fail('Could not start the camera on this device.');
+      const result = await checkinByCode(code, accessToken);
+      navigate(`/meetings/${result.meeting.id}/feedback`, { replace: true });
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Invalid code. Please try again.');
+      setLoading(false);
+      setDigits(Array(CODE_LENGTH).fill(''));
+      inputRefs.current[0]?.focus();
+    }
+  }
+
+  // Reads/writes `digits` directly rather than via setDigits(prev => ...) —
+  // StrictMode double-invokes updater functions in dev, and submitCode (a
+  // network call) must only ever fire once per completed entry.
+  function handleChange(index: number, raw: string) {
+    const value = raw.replace(/\D/g, '');
+    const next = [...digits];
+
+    if (!value) {
+      next[index] = '';
+      setDigits(next);
+      return;
     }
 
-    return () => {
-      cancelled = true;
-      if (scanner) {
-        // stop() throws SYNCHRONOUSLY ("Cannot stop, scanner is not running
-        // or paused") if called before start() has resolved — e.g. React
-        // StrictMode's synthetic unmount racing ahead of a still-pending
-        // getUserMedia prompt. A .catch() alone doesn't help since it never
-        // gets attached if stop() throws before returning a promise at all.
-        try {
-          scanner.stop().catch(() => {}).finally(() => {
-            try { scanner!.clear(); } catch { /* nothing to clear */ }
-          });
-        } catch {
-          try { scanner.clear(); } catch { /* nothing to clear */ }
-        }
-      }
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [accessToken]);
+    // Handles a full code pasted or autofilled into one box, not just single digits.
+    let i = index;
+    for (const ch of value.split('')) {
+      if (i >= CODE_LENGTH) break;
+      next[i] = ch;
+      i++;
+    }
+    setDigits(next);
+
+    const joined = next.join('');
+    if (joined.length === CODE_LENGTH) {
+      submitCode(joined);
+    } else {
+      inputRefs.current[Math.min(i, CODE_LENGTH - 1)]?.focus();
+    }
+  }
+
+  function handleKeyDown(index: number, e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Backspace' && !digits[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+      setDigits((prev) => { const next = [...prev]; next[index - 1] = ''; return next; });
+      e.preventDefault();
+    }
+  }
 
   return (
-    <div className="flex flex-col min-h-full bg-black">
-      <div className="bg-black px-4 py-3">
+    <div className="flex flex-col min-h-full bg-[#f5f5f5]">
+      <div className="bg-white border-b border-gray-100 px-4 py-3 sticky top-0 z-20">
         <div className="max-w-lg mx-auto flex items-center justify-between">
-          <button onClick={() => navigate('/home')} className="flex items-center text-white font-semibold text-base w-[60px]">
+          <button onClick={() => navigate('/home')} className="flex items-center text-brand font-semibold text-base w-[60px]">
             <ChevronLeft size={20} /> Back
           </button>
-          <h1 className="text-[17px] font-bold text-white">Scan QR Code</h1>
+          <h1 className="text-[17px] font-bold text-gray-900">Check In</h1>
           <div className="w-[60px]" />
         </div>
       </div>
 
-      {cameraBlocked ? (
-        <div className="flex-1 flex flex-col items-center justify-center gap-4 px-8 text-center">
-          <div className="w-16 h-16 rounded-full bg-white/10 flex items-center justify-center">
-            <VideoOff size={28} className="text-white/70" />
-          </div>
-          <p className="text-white text-[15px] font-medium">{error}</p>
-          <button
-            onClick={() => navigate('/home', { replace: true })}
-            className="mt-2 bg-brand text-white rounded-xl px-6 py-3 text-sm font-bold active:scale-95 transition-transform"
-          >
-            Back to Dashboard
-          </button>
+      <div className="flex-1 flex flex-col items-center px-6 pt-16">
+        <div className="w-16 h-16 rounded-full bg-brand-light flex items-center justify-center mb-5">
+          <KeyRound size={28} className="text-brand" />
         </div>
-      ) : (
-        <div className="flex-1 relative max-w-lg mx-auto w-full">
-          <div id="qr-reader" className="w-full" />
-          <div className="absolute inset-x-0 bottom-10 flex justify-center px-8">
-            {loading ? (
-              <div className="flex items-center gap-2 text-white">
-                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                <span className="text-sm font-semibold">Checking in…</span>
-              </div>
-            ) : error ? (
-              <div className="flex items-center gap-1.5 text-red-300">
-                <AlertCircle size={16} />
-                <span className="text-[13px] text-center">{error}</span>
-              </div>
-            ) : (
-              <p className="text-sm text-white/75 text-center">Point your camera at the meeting QR code</p>
-            )}
-          </div>
+        <h2 className="text-xl font-bold text-gray-900 mb-1.5 text-center">Enter Check-In Code</h2>
+        <p className="text-[15px] text-gray-500 text-center leading-relaxed mb-8 max-w-xs">
+          Ask your TMOD or SAA for today's 6-digit code, shown on screen at the meeting.
+        </p>
+
+        <div className="flex gap-2.5 mb-6">
+          {digits.map((d, i) => (
+            <input
+              key={i}
+              ref={(el) => { inputRefs.current[i] = el; }}
+              value={d}
+              onChange={(e) => handleChange(i, e.target.value)}
+              onKeyDown={(e) => handleKeyDown(i, e)}
+              disabled={loading}
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={CODE_LENGTH}
+              autoFocus={i === 0}
+              className="w-11 h-14 text-center text-2xl font-bold text-gray-900 bg-white border-2 border-gray-200 rounded-xl outline-none focus:border-brand disabled:opacity-60"
+            />
+          ))}
         </div>
-      )}
+
+        {loading ? (
+          <div className="flex items-center gap-2 text-gray-500">
+            <span className="w-4 h-4 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+            <span className="text-sm font-semibold">Checking in…</span>
+          </div>
+        ) : error ? (
+          <div className="flex items-center gap-1.5 text-red-500">
+            <AlertCircle size={16} />
+            <span className="text-[13px] text-center">{error}</span>
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }

@@ -114,6 +114,7 @@ export interface Meeting {
   created_at: string;
   qr_token?: string | null;
   reopened?: boolean;
+  checkin_code?: string | null;
 }
 
 export interface MeetingRoleAssignment {

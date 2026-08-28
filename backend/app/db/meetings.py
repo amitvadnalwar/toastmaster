@@ -124,6 +124,28 @@ async def update_voting_status(meeting_id: str, voting_status: str) -> dict:
     return result.data[0]
 
 
+async def set_checkin_code(meeting_id: str, code: str) -> dict:
+    result = (
+        supabase.table("meetings")
+        .update({"checkin_code": code})
+        .eq("id", meeting_id)
+        .execute()
+    )
+    return result.data[0]
+
+
+async def get_by_checkin_code(club_id: str, code: str) -> dict | None:
+    result = (
+        supabase.table("meetings")
+        .select("*")
+        .eq("club_id", club_id)
+        .eq("checkin_code", code)
+        .limit(1)
+        .execute()
+    )
+    return result.data[0] if result.data else None
+
+
 def _flatten_roster_row(r: dict) -> dict:
     # PostgREST returns the joined table under "members" key regardless of the FK hint used in the query
     member = r.pop("members", None) or r.pop("members!meeting_roles_member_id_fkey", None) or {}

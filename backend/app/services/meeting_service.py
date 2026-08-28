@@ -1,3 +1,4 @@
+import random
 import re
 import uuid
 from datetime import datetime, timezone
@@ -12,6 +13,7 @@ from app.middleware.auth import CurrentUser
 from app.models.meeting import (
     AdminAssignRoleIn,
     AttendanceOut,
+    CheckinCodeOut,
     CheckinOut,
     MeetingCreateIn,
     MeetingFeedbackIn,
@@ -508,23 +510,9 @@ async def delete_role(role_id: str) -> None:
     await db_meetings.delete_role(role_id)
 
 
-# ── QR check-in ───────────────────────────────────────────────────────────
+# ── Check-in (QR scan or 6-digit code) ─────────────────────────────────────
 
-async def checkin(qr_token: str, user: CurrentUser) -> CheckinOut:
-    # The printed/scanned QR encodes the meeting's id (same convention the
-    # guest check-in flow already uses) — the frontend extracts it from the
-    # `toastmasters://join?meeting_id=...` deep link before calling this.
-    # Validate the format ourselves too: a camera can scan any QR code in
-    # the world, and an unrelated one would otherwise reach the database as
-    # a malformed uuid and crash with an unhandled 500.
-    try:
-        uuid.UUID(qr_token)
-    except ValueError:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invalid QR code")
-
-    meeting_row = await db_meetings.get_by_id(qr_token)
-    if not meeting_row:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invalid QR code")
+async def _finish_checkin(meeting_row: dict, user: CurrentUser) -> CheckinOut:
     meeting_row = await auto_complete_if_due(meeting_row)
     if meeting_row["club_id"] != user.club_id:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your club")
@@ -543,6 +531,53 @@ async def checkin(qr_token: str, user: CurrentUser) -> CheckinOut:
         meeting=_meeting_out(meeting_row),
         already_checked_in=existing is not None,
     )
+
+
+async def checkin(qr_token: str, user: CurrentUser) -> CheckinOut:
+    # The printed/scanned QR encodes the meeting's id (same convention the
+    # guest check-in flow already uses) — the frontend extracts it from the
+    # `toastmasters://join?meeting_id=...` deep link before calling this.
+    # Validate the format ourselves too: a camera can scan any QR code in
+    # the world, and an unrelated one would otherwise reach the database as
+    # a malformed uuid and crash with an unhandled 500.
+    try:
+        uuid.UUID(qr_token)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invalid QR code")
+
+    meeting_row = await db_meetings.get_by_id(qr_token)
+    if not meeting_row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invalid QR code")
+    return await _finish_checkin(meeting_row, user)
+
+
+async def checkin_by_code(code: str, user: CurrentUser) -> CheckinOut:
+    code = code.strip()
+    if not re.fullmatch(r"\d{6}", code):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Enter the 6-digit check-in code")
+
+    meeting_row = await db_meetings.get_by_checkin_code(user.club_id, code)
+    if not meeting_row:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid check-in code")
+    return await _finish_checkin(meeting_row, user)
+
+
+async def generate_checkin_code(meeting_id: str, user: CurrentUser) -> CheckinCodeOut:
+    meeting_row = await _require_meeting(meeting_id)
+    if meeting_row["club_id"] != user.club_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your club")
+
+    # 1M possible codes — a same-club collision with another currently-coded
+    # meeting is vanishingly unlikely, but a couple of retries costs nothing.
+    code = f"{random.randint(0, 999999):06d}"
+    for _ in range(5):
+        clash = await db_meetings.get_by_checkin_code(user.club_id, code)
+        if not clash or clash["id"] == meeting_id:
+            break
+        code = f"{random.randint(0, 999999):06d}"
+
+    updated = await db_meetings.set_checkin_code(meeting_id, code)
+    return CheckinCodeOut(checkin_code=updated["checkin_code"])
 
 
 async def get_all_attendance(meeting_id: str, user: CurrentUser) -> list[AttendanceOut]:

@@ -59,6 +59,7 @@ class MeetingOut(BaseModel):
     created_at: str
     qr_token: str | None = None
     reopened: bool = False
+    checkin_code: str | None = None
 
 
 class MeetingCreateIn(BaseModel):
@@ -136,9 +137,17 @@ class CheckinIn(BaseModel):
     qr_token: str
 
 
+class CheckinByCodeIn(BaseModel):
+    code: str
+
+
 class CheckinOut(BaseModel):
     meeting: MeetingOut
     already_checked_in: bool
+
+
+class CheckinCodeOut(BaseModel):
+    checkin_code: str
 
 
 class AttendanceOut(BaseModel):

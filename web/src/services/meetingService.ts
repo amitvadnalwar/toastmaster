@@ -166,12 +166,27 @@ export function enrollAsEvaluator(
   });
 }
 
-// ── QR check-in ───────────────────────────────────────────────────────────
+// ── Check-in (QR scan or 6-digit code) ──────────────────────────────────────
 
 export function checkinMeeting(qrToken: string, token: string): Promise<CheckinResult> {
   return apiRequest<CheckinResult>('/meetings/checkin', {
     method: 'POST',
     body: { qr_token: qrToken },
+    token,
+  });
+}
+
+export function checkinByCode(code: string, token: string): Promise<CheckinResult> {
+  return apiRequest<CheckinResult>('/meetings/checkin-by-code', {
+    method: 'POST',
+    body: { code },
+    token,
+  });
+}
+
+export function generateCheckinCode(meetingId: string, token: string): Promise<{ checkin_code: string }> {
+  return apiRequest<{ checkin_code: string }>(`/meetings/${meetingId}/checkin-code`, {
+    method: 'POST',
     token,
   });
 }

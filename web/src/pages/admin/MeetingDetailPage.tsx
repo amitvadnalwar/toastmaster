@@ -363,7 +363,7 @@ export default function AdminMeetingDetailPage() {
             {canManage && (
               <NavButton
                 icon={<QrCode size={20} className="text-brand" />}
-                label="QR Codes"
+                label="Check-In Code"
                 onClick={() => navigate(`/meetings/${id}/qr-codes`)}
               />
             )}

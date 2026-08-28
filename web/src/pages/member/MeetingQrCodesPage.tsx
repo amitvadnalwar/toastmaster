@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { QRCodeCanvas } from 'qrcode.react';
-import { ChevronLeft, Share2 } from 'lucide-react';
+import { ChevronLeft, Share2, RefreshCw } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
-import { getMeetingById } from '@/services/meetingService';
+import { getMeetingById, generateCheckinCode } from '@/services/meetingService';
 import { Skeleton } from '@/components/ui/Skeleton';
 import type { Meeting } from '@/types';
 
@@ -38,6 +38,7 @@ export default function MeetingQrCodesPage() {
 
   const [meeting, setMeeting] = useState<Meeting | null>(null);
   const [fetching, setFetching] = useState(true);
+  const [generating, setGenerating] = useState(false);
 
   const load = useCallback(async () => {
     if (!session || !id) return;
@@ -51,6 +52,19 @@ export default function MeetingQrCodesPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  async function handleGenerateCode() {
+    if (!session || !id) return;
+    setGenerating(true);
+    try {
+      const { checkin_code } = await generateCheckinCode(id, session.access_token);
+      setMeeting((prev) => (prev ? { ...prev, checkin_code } : prev));
+    } catch (e: unknown) {
+      alert(e instanceof Error ? e.message : 'Failed to generate code');
+    } finally {
+      setGenerating(false);
+    }
+  }
+
   return (
     <div className="flex flex-col min-h-full bg-gray-50">
       <div className="bg-white border-b border-gray-100 px-4 py-3 sticky top-0 z-20">
@@ -58,7 +72,7 @@ export default function MeetingQrCodesPage() {
           <button onClick={() => navigate(-1)} className="flex items-center text-brand font-semibold text-base w-[70px]">
             <ChevronLeft size={20} /> Back
           </button>
-          <h1 className="text-lg font-bold text-gray-900 truncate">QR Codes</h1>
+          <h1 className="text-lg font-bold text-gray-900 truncate">Check-In Code</h1>
           <div className="w-[70px]" />
         </div>
       </div>
@@ -67,22 +81,38 @@ export default function MeetingQrCodesPage() {
         {fetching || !meeting ? (
           <>
             <Skeleton className="w-48 h-6 rounded-full mb-4" />
-            <Skeleton className="w-full h-72 rounded-2xl" />
+            <Skeleton className="w-full h-56 rounded-2xl" />
           </>
         ) : (
           <>
             <h2 className="text-lg font-bold text-gray-900 mb-5">{meeting.title}</h2>
 
-            <SectionLabel>Member QR Code</SectionLabel>
-            <QrCard
-              hint="Members scan this to join the meeting (requires app)"
-              canvasId="member-qr"
-              value={`toastmasters://join?meeting_id=${meeting.id}`}
-              meetingId={meeting.id}
-              label="Member"
-            />
+            <SectionLabel>Member Check-In Code</SectionLabel>
+            <div className="bg-white rounded-2xl p-6 shadow-sm flex flex-col items-center mb-6">
+              <p className="text-[13px] text-gray-500 mb-5 text-center">
+                Display this on screen — members enter it on their Check In tab to join the meeting
+              </p>
+              {meeting.checkin_code ? (
+                <div className="flex gap-2.5 mb-1">
+                  {meeting.checkin_code.split('').map((d, i) => (
+                    <div key={i} className="w-11 h-14 flex items-center justify-center text-3xl font-black text-gray-900 bg-gray-50 border-2 border-gray-200 rounded-xl">
+                      {d}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-400 mb-1">No code generated yet</p>
+              )}
+              <button
+                onClick={handleGenerateCode}
+                disabled={generating}
+                className="flex items-center gap-1.5 mt-5 bg-brand text-white text-sm font-semibold rounded-xl px-4 py-2.5 disabled:opacity-60"
+              >
+                <RefreshCw size={15} className={generating ? 'animate-spin' : ''} />
+                {meeting.checkin_code ? 'Regenerate Code' : 'Generate Code'}
+              </button>
+            </div>
 
-            <div className="mt-6" />
             <SectionLabel>Guest QR Code</SectionLabel>
             <QrCard
               hint="Guests scan this to register (no app needed)"

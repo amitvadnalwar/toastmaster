@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { Home, Calendar, Award, Users, User, Scan } from 'lucide-react';
+import { Home, Calendar, Award, Users, User, KeyRound } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface NavItem {
@@ -47,7 +47,7 @@ export function MemberBottomNav() {
       <div className="flex items-center max-w-lg mx-auto px-2 pb-safe pt-1.5">
         <NavButton to="/home" label="Home" icon={<Home size={22} />} end />
         <NavButton to="/meetings" label="Meetings" icon={<Calendar size={22} />} />
-        <NavButton to="/scan" label="Scan" icon={<Scan size={22} />} />
+        <NavButton to="/scan" label="Check In" icon={<KeyRound size={22} />} />
         <NavButton to="/members" label="Members" icon={<Users size={22} />} />
         <NavButton to="/profile" label="Profile" icon={<User size={22} />} />
       </div>

@@ -252,21 +252,24 @@ export default function MemberApplyRolePage() {
             <h2 className="text-sm font-bold text-gray-900 mb-2.5">Evaluators</h2>
             <div className="bg-white rounded-2xl shadow-sm overflow-hidden mb-5">
               {speakers.map((sp, i) => {
-                const evaluator = evaluators.find((e) => e.evaluates_member_id === sp.member_id);
+                // A guest speaker (no member_id) can't have an evaluator —
+                // there's no account for the evaluates_member_id to point to.
+                const evaluator = sp.member_id ? evaluators.find((e) => e.evaluates_member_id === sp.member_id) : undefined;
                 const isMe = evaluator?.member_id === myMemberId;
+                const speakerMemberId = sp.member_id;
                 return (
                   <div key={`eval-${sp.id}`}>
                     {i > 0 && <div className="h-px bg-gray-100 mx-4" />}
                     <RoleRow
                       roleKey="evaluator"
-                      label={`For ${formatMemberName(sp.member_name, sp.member_initials)}`}
+                      label={`For ${formatMemberName(sp.member_name ?? sp.guest_name, sp.member_initials)}`}
                       assignment={evaluator}
                       isMe={isMe}
-                      canApply={canEnroll && !evaluator}
+                      canApply={canEnroll && !evaluator && !!speakerMemberId}
                       isOpen={isOpen}
                       isPast={isPast}
                       acting={acting}
-                      onApply={() => handleApplyEvaluator(sp.member_id, formatMemberName(sp.member_name, sp.member_initials))}
+                      onApply={() => speakerMemberId && handleApplyEvaluator(speakerMemberId, formatMemberName(sp.member_name, sp.member_initials))}
                       onWithdraw={handleWithdraw}
                     />
                   </div>

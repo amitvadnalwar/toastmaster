@@ -30,7 +30,9 @@ export default function FeedbackDetailsPage() {
         getAllRatings(id, session.access_token),
       ]);
       setMeeting(rosterData.meeting);
-      setSpeakers(rosterData.roster.filter((r) => r.role === 'speaker'));
+      // Guest speakers (no member_id) can never have feedback — there's no
+      // account for speaker_feedback.speaker_member_id to reference.
+      setSpeakers(rosterData.roster.filter((r) => r.role === 'speaker' && !!r.member_id));
       setFeedbackStatus(statusList);
       setRatings(ratingsList);
     } catch { /* ignore */ } finally {
@@ -98,7 +100,7 @@ export default function FeedbackDetailsPage() {
                         </div>
                         {st?.has_feedback && !st.published && (
                           <button
-                            onClick={() => handlePublish(s.member_id)}
+                            onClick={() => handlePublish(s.member_id!)}
                             disabled={publishing === s.member_id}
                             className="flex items-center gap-1.5 bg-brand text-white text-[13px] font-semibold rounded-lg px-3 py-2 disabled:opacity-60"
                           >

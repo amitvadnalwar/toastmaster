@@ -36,7 +36,13 @@ export default function MemberFeedbackDetailPage() {
         getMemberVotingState(id, memberId, session.access_token),
       ]);
       setMeeting(rosterData.meeting);
-      const map = new Map(rosterData.roster.map((r) => [r.member_id, { name: r.member_name ?? '—', initials: r.member_initials }]));
+      // Guest entries (no member_id) were never valid vote targets — exclude
+      // them rather than putting a null key in a Map<string, ...>.
+      const map = new Map(
+        rosterData.roster
+          .filter((r): r is typeof r & { member_id: string } => !!r.member_id)
+          .map((r) => [r.member_id, { name: r.member_name ?? '—', initials: r.member_initials }]),
+      );
       setMemberMap(map);
       const me = map.get(memberId);
       setMemberName(me ? formatMemberName(me.name, me.initials) : '—');

@@ -36,6 +36,11 @@ export function getMeetingById(meetingId: string, token: string): Promise<Meetin
   return apiRequest<Meeting>(`/meetings/${meetingId}`, { token });
 }
 
+// Throws a 404 ApiError when there's no meeting scheduled today.
+export function getTodaysMeeting(token: string): Promise<CheckinResult> {
+  return apiRequest<CheckinResult>('/meetings/today', { token });
+}
+
 export function getMeetingRoster(meetingId: string, token: string): Promise<MeetingWithRoster> {
   return apiRequest<MeetingWithRoster>(`/meetings/${meetingId}/roster`, { token });
 }

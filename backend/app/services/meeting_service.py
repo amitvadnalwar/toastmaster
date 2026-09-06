@@ -152,6 +152,32 @@ async def get_current_meeting(club_id: str) -> dict:
     }
 
 
+async def get_todays_meeting(user: CurrentUser) -> CheckinOut:
+    """The club's meeting scheduled for today (club-local calendar day), used
+    to show the post-login check-in interstitial. Independent of whether the
+    scheduled time has already passed — matches the day-based access window
+    the rest of the app uses (see auto_complete_if_due)."""
+    now_local = datetime.now(timezone.utc).astimezone(_CLUB_TZ)
+    start_of_day = datetime(now_local.year, now_local.month, now_local.day, tzinfo=_CLUB_TZ)
+    end_of_day = start_of_day + timedelta(days=1)
+
+    meeting_row = await db_meetings.get_scheduled_between(
+        user.club_id,
+        start_of_day.astimezone(timezone.utc).isoformat(),
+        end_of_day.astimezone(timezone.utc).isoformat(),
+    )
+    if not meeting_row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No meeting today")
+
+    already_checked_in = False
+    member = await db_members.get_by_auth_user_id(user.id)
+    if member:
+        attendance = await db_meetings.get_attendance(meeting_row["id"], member["id"])
+        already_checked_in = attendance is not None
+
+    return CheckinOut(meeting=_meeting_out(meeting_row), already_checked_in=already_checked_in)
+
+
 async def get_meeting_with_roster(meeting_id: str, user: CurrentUser) -> dict:
     meeting_row = await _require_meeting(meeting_id)
     if meeting_row["club_id"] != user.club_id:

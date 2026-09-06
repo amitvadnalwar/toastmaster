@@ -36,6 +36,7 @@ import LeaderboardDetailPage from '@/pages/member/LeaderboardDetailPage';
 import MemberNewMeetingPage from '@/pages/member/NewMeetingPage';
 import MemberApplyRolePage from '@/pages/member/ApplyRolePage';
 import MemberScanPage from '@/pages/member/ScanPage';
+import TodayCheckInPage from '@/pages/member/TodayCheckInPage';
 import MemberFeedbackPage from '@/pages/member/FeedbackPage';
 import FeedbackDetailsPage from '@/pages/member/FeedbackDetailsPage';
 import MeetingGuestsPage from '@/pages/member/MeetingGuestsPage';
@@ -54,7 +55,9 @@ function RootRedirect() {
   if (appRole === 'super_admin') {
     return <Navigate to="/admin" replace />;
   }
-  return <Navigate to="/home" replace />;
+  // Member/admin land on the check-in interstitial first — it silently
+  // passes through to /home itself when there's no meeting scheduled today.
+  return <Navigate to="/today" replace />;
 }
 
 export default function App() {
@@ -92,6 +95,7 @@ export default function App() {
         <Route path="/admin/profile" element={<ProtectedRoute roles={['super_admin']}><AdminProfilePage /></ProtectedRoute>} />
 
         {/* Member + admin — admin sees the same screens, with extra controls layered in */}
+        <Route path="/today" element={<ProtectedRoute roles={['member', 'admin']}><TodayCheckInPage /></ProtectedRoute>} />
         <Route path="/home" element={<ProtectedRoute roles={['member', 'admin']}><MemberHomePage /></ProtectedRoute>} />
         <Route path="/meetings" element={<ProtectedRoute roles={['member', 'admin']}><MemberMeetingsPage /></ProtectedRoute>} />
         <Route path="/meetings/new" element={<ProtectedRoute roles={['admin']}><MemberNewMeetingPage /></ProtectedRoute>} />

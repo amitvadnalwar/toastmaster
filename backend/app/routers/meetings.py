@@ -50,6 +50,15 @@ async def get_current_meeting(
     return ApiResponse(data=result)
 
 
+# Declared before /{meeting_id} — see comment on /speaking-history below.
+@router.get("/today", response_model=ApiResponse[CheckinOut])
+async def get_todays_meeting(
+    user: CurrentUser = Depends(require_member),
+) -> ApiResponse[CheckinOut]:
+    result = await meeting_service.get_todays_meeting(user)
+    return ApiResponse(data=result)
+
+
 # Declared before /{meeting_id} — a literal segment must come first or it
 # would be swallowed by that catch-all path parameter.
 @router.get("/speaking-history", response_model=ApiResponse[list[SpeakingHistoryItemOut]])

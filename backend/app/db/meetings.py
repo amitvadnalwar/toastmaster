@@ -12,6 +12,24 @@ async def get_all_for_club(club_id: str) -> list[dict]:
     return result.data
 
 
+async def get_scheduled_between(club_id: str, start_iso: str, end_iso: str) -> dict | None:
+    """A published meeting whose scheduled_at falls within [start_iso, end_iso)
+    — used for "today's meeting", independent of whether the scheduled time
+    has already passed (unlike get_current_for_club, which only looks ahead)."""
+    result = (
+        supabase.table("meetings")
+        .select("*")
+        .eq("club_id", club_id)
+        .eq("status", "published")
+        .gte("scheduled_at", start_iso)
+        .lt("scheduled_at", end_iso)
+        .order("scheduled_at", desc=False)
+        .limit(1)
+        .execute()
+    )
+    return result.data[0] if result.data else None
+
+
 async def get_current_for_club(club_id: str) -> dict | None:
     """Next upcoming published meeting (scheduled_at >= now, soonest first)."""
     from datetime import datetime, timezone

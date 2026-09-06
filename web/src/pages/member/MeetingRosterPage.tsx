@@ -28,7 +28,7 @@ export default function MeetingRosterPage() {
   const [memberMap, setMemberMap] = useState<Map<string, MemberOption>>(new Map());
 
   const [assignRole, setAssignRole] = useState<MeetingRole | null>(null);
-  const [assignSpeakerId, setAssignSpeakerId] = useState<string | null>(null);
+  const [assignEvaluatesRoleId, setAssignEvaluatesRoleId] = useState<string | null>(null);
   const [pendingMember, setPendingMember] = useState<MemberOption | null>(null);
   const [pendingGuestName, setPendingGuestName] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -66,10 +66,10 @@ export default function MeetingRosterPage() {
     }).catch(() => {});
   }, [session, isAdmin]);
 
-  function startAssign(role: MeetingRole, speakerMemberId?: string) {
+  function startAssign(role: MeetingRole, evaluatesRoleId?: string) {
     if (!data || isMeetingLocked(data.meeting)) return;
     setAssignRole(role);
-    setAssignSpeakerId(speakerMemberId ?? null);
+    setAssignEvaluatesRoleId(evaluatesRoleId ?? null);
     setPendingMember(null);
     setPendingGuestName(null);
     setMemberSearch('');
@@ -158,7 +158,7 @@ export default function MeetingRosterPage() {
         guest_name: guestName,
         role: assignRole,
         speech_duration: duration,
-        evaluates_member_id: assignSpeakerId,
+        evaluates_role_id: assignEvaluatesRoleId,
         role_title: assignRole === 'supporting_role' ? pendingRoleTitle : null,
       }, session.access_token);
       await load();
@@ -430,28 +430,34 @@ export default function MeetingRosterPage() {
             <SectionLabel>Evaluators</SectionLabel>
             <div className="bg-white rounded-2xl shadow-sm overflow-hidden mb-5">
               {speakers.map((s, i) => {
-                const ev = s.member_id ? evaluators.find((e) => e.evaluates_member_id === s.member_id) : undefined;
+                // Matched by role-assignment id, not member_id — a speaker
+                // with no account can have evaluators too, and any number
+                // of evaluators can point at the same speaker.
+                const speakerEvaluators = evaluators.filter((e) => e.evaluates_role_id === s.id);
                 const speakerName = nameFor(s.member_id, s.member_name, s.member_initials, s.guest_name);
                 if (isAdmin) {
                   return (
                     <div key={s.id}>
                       {i > 0 && <Divider />}
-                      <div className="flex items-center gap-2 px-4 py-3">
-                        <div className="flex-1">
-                          <p className="text-[11px] text-gray-400 mb-0.5">Evaluator for {speakerName}</p>
-                          {!s.member_id ? (
-                            <p className="text-sm font-medium text-gray-300">Not applicable — no account on file</p>
-                          ) : (
-                            <p className={`text-sm font-semibold ${ev ? 'text-gray-900' : 'text-gray-400'}`}>{ev ? nameFor(ev.member_id, ev.member_name, ev.member_initials) : 'Unassigned'}</p>
-                          )}
-                        </div>
-                        {!s.member_id ? null : ev ? (
-                          canManage && (
-                            <button onClick={() => handleRemove(ev.id, 'Evaluator')} disabled={acting} className="w-7 h-7 rounded-full bg-[#fef2f2] flex items-center justify-center"><X size={14} className="text-red-500" /></button>
-                          )
-                        ) : canManage ? (
-                          <AssignButton onClick={() => startAssign('evaluator', s.member_id!)} disabled={acting} />
-                        ) : null}
+                      <div className="px-4 py-3">
+                        <p className="text-[11px] text-gray-400 mb-1">Evaluator for {speakerName}</p>
+                        {speakerEvaluators.length === 0 ? (
+                          <p className="text-sm font-medium text-gray-400 mb-2">Unassigned</p>
+                        ) : (
+                          <div className="flex flex-col gap-1.5 mb-2">
+                            {speakerEvaluators.map((ev) => (
+                              <div key={ev.id} className="flex items-center gap-2">
+                                <span className="text-sm font-semibold text-gray-900 flex-1 truncate">{nameFor(ev.member_id, ev.member_name, ev.member_initials)}</span>
+                                {canManage && (
+                                  <button onClick={() => handleRemove(ev.id, 'Evaluator')} disabled={acting} className="w-7 h-7 rounded-full bg-[#fef2f2] flex items-center justify-center shrink-0"><X size={14} className="text-red-500" /></button>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {canManage && (
+                          <AssignButton onClick={() => startAssign('evaluator', s.id)} disabled={acting} />
+                        )}
                       </div>
                     </div>
                   );
@@ -459,21 +465,23 @@ export default function MeetingRosterPage() {
                 return (
                   <div key={`ev-${s.id}`}>
                     {i > 0 && <Divider />}
-                    <div className="flex items-center gap-2.5 px-4 py-3.5">
-                      <MessageSquare size={14} className={ev ? 'text-violet-500' : 'text-gray-300'} />
+                    <div className="flex items-start gap-2.5 px-4 py-3.5">
+                      <MessageSquare size={14} className={`mt-0.5 ${speakerEvaluators.length ? 'text-violet-500' : 'text-gray-300'}`} />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-gray-700">Evaluator</p>
                         <p className="text-[11px] text-gray-400 mt-0.5">For {speakerName}</p>
                       </div>
-                      {ev ? (
-                        <span className={`text-[13px] font-semibold truncate max-w-[130px] ${ev.member_email === myEmail ? 'text-green-600' : 'text-gray-900'}`}>
-                          {ev.member_email === myEmail ? 'You' : nameFor(ev.member_id, ev.member_name, ev.member_initials)}
-                        </span>
-                      ) : !s.member_id ? (
-                        <span className="text-xs font-medium text-gray-300">N/A</span>
-                      ) : (
-                        <span className="text-xs font-medium text-gray-300">Open</span>
-                      )}
+                      <div className="flex flex-col items-end gap-0.5">
+                        {speakerEvaluators.length === 0 ? (
+                          <span className="text-xs font-medium text-gray-300">Open</span>
+                        ) : (
+                          speakerEvaluators.map((ev) => (
+                            <span key={ev.id} className={`text-[13px] font-semibold truncate max-w-[130px] ${ev.member_email === myEmail ? 'text-green-600' : 'text-gray-900'}`}>
+                              {ev.member_email === myEmail ? 'You' : nameFor(ev.member_id, ev.member_name, ev.member_initials)}
+                            </span>
+                          ))
+                        )}
+                      </div>
                     </div>
                   </div>
                 );

@@ -159,13 +159,13 @@ export default function MemberApplyRolePage() {
     } finally { setActing(false); }
   }
 
-  async function handleApplyEvaluator(speakerMemberId: string, speakerName?: string | null) {
+  async function handleApplyEvaluator(evaluatesRoleId: string, speakerName?: string | null) {
     if (isPast) { alert('This meeting date has passed. Applications are closed.'); return; }
     if (!window.confirm(`Evaluate ${speakerName ?? 'this speaker'}?`)) return;
     if (!session || !id) return;
     setActing(true);
     try {
-      await enrollAsEvaluator(id, speakerMemberId, session.access_token);
+      await enrollAsEvaluator(id, evaluatesRoleId, session.access_token);
       await load();
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : 'Failed to apply');
@@ -252,26 +252,48 @@ export default function MemberApplyRolePage() {
             <h2 className="text-sm font-bold text-gray-900 mb-2.5">Evaluators</h2>
             <div className="bg-white rounded-2xl shadow-sm overflow-hidden mb-5">
               {speakers.map((sp, i) => {
-                // A guest speaker (no member_id) can't have an evaluator —
-                // there's no account for the evaluates_member_id to point to.
-                const evaluator = sp.member_id ? evaluators.find((e) => e.evaluates_member_id === sp.member_id) : undefined;
-                const isMe = evaluator?.member_id === myMemberId;
-                const speakerMemberId = sp.member_id;
+                // Matched by role-assignment id, not member_id — a speaker
+                // with no account can be evaluated too, and any number of
+                // evaluators can be assigned to the same speaker.
+                const speakerEvaluators = evaluators.filter((e) => e.evaluates_role_id === sp.id);
+                const amEvaluating = speakerEvaluators.some((e) => e.member_id === myMemberId);
+                const speakerLabel = formatMemberName(sp.member_name ?? sp.guest_name, sp.member_initials);
                 return (
                   <div key={`eval-${sp.id}`}>
                     {i > 0 && <div className="h-px bg-gray-100 mx-4" />}
-                    <RoleRow
-                      roleKey="evaluator"
-                      label={`For ${formatMemberName(sp.member_name ?? sp.guest_name, sp.member_initials)}`}
-                      assignment={evaluator}
-                      isMe={isMe}
-                      canApply={canEnroll && !evaluator && !!speakerMemberId}
-                      isOpen={isOpen}
-                      isPast={isPast}
-                      acting={acting}
-                      onApply={() => speakerMemberId && handleApplyEvaluator(speakerMemberId, formatMemberName(sp.member_name, sp.member_initials))}
-                      onWithdraw={handleWithdraw}
-                    />
+                    <div className="flex items-center gap-3 px-4 py-3.5">
+                      <div className="w-[42px] h-[42px] rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: '#f5f3ff' }}>
+                        <MessageSquare size={18} style={{ color: '#8b5cf6' }} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[15px] font-bold text-gray-900">Evaluator</p>
+                        <p className="text-[13px] font-medium text-gray-700 truncate">
+                          For {speakerLabel}
+                          {speakerEvaluators.length > 0 && (
+                            <span className="text-gray-400">
+                              {' · '}
+                              {speakerEvaluators
+                                .map((e) => (e.member_id === myMemberId ? 'You' : formatMemberName(e.member_name, e.member_initials)))
+                                .join(', ')}
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                      {amEvaluating ? (
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="text-xs font-bold text-green-600 bg-green-100 rounded-full px-2.5 py-1">Assigned</span>
+                          <button onClick={handleWithdraw} disabled={acting}><XCircle size={16} className="text-gray-300" /></button>
+                        </div>
+                      ) : canEnroll ? (
+                        <button
+                          onClick={() => handleApplyEvaluator(sp.id, speakerLabel)}
+                          disabled={acting}
+                          className="shrink-0 bg-[#fef2f2] rounded-full px-2.5 py-1 text-xs font-bold text-brand"
+                        >
+                          Apply Now
+                        </button>
+                      ) : null}
+                    </div>
                   </div>
                 );
               })}

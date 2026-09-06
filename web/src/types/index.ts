@@ -123,6 +123,7 @@ export interface MeetingRoleAssignment {
   member_id: string | null;
   role: MeetingRole;
   evaluates_member_id: string | null;
+  evaluates_role_id?: string | null;
   speech_duration?: string | null;
   role_title?: string | null;
   // Set instead of member_id for a Speaker/Table Topics Speaker who isn't a

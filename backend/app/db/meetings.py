@@ -208,25 +208,12 @@ async def get_member_roles_in_meeting(meeting_id: str, member_id: str) -> list[d
     return result.data
 
 
-async def get_evaluator_for_speaker(meeting_id: str, speaker_member_id: str) -> dict | None:
-    """Return the evaluator row for a speaker in this meeting, or None."""
-    result = (
-        supabase.table("meeting_roles")
-        .select("*")
-        .eq("meeting_id", meeting_id)
-        .eq("role", "evaluator")
-        .eq("evaluates_member_id", speaker_member_id)
-        .limit(1)
-        .execute()
-    )
-    return result.data[0] if result.data else None
-
-
 async def insert_role(
     meeting_id: str,
     member_id: str | None,
     role: str,
     evaluates_member_id: str | None = None,
+    evaluates_role_id: str | None = None,
     speech_duration: str | None = None,
     role_title: str | None = None,
     guest_name: str | None = None,
@@ -238,6 +225,7 @@ async def insert_role(
             "member_id": member_id,
             "role": role,
             "evaluates_member_id": evaluates_member_id,
+            "evaluates_role_id": evaluates_role_id,
             "speech_duration": speech_duration,
             "role_title": role_title,
             "guest_name": guest_name,

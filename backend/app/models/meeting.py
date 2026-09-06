@@ -85,6 +85,7 @@ class MeetingRoleAssignmentOut(BaseModel):
     member_id: str | None
     role: MeetingRole
     evaluates_member_id: str | None
+    evaluates_role_id: str | None = None
     speech_duration: str | None = None
     role_title: str | None = None
     guest_name: str | None = None
@@ -111,7 +112,7 @@ class EnrollSpeakerIn(BaseModel):
 
 
 class EnrollEvaluatorIn(BaseModel):
-    evaluates_member_id: str  # member_id of the speaker to evaluate
+    evaluates_role_id: str  # id of the speaker's role-assignment row to evaluate
 
 
 # ── Admin assignment (admin picks any member for any role) ────────────────
@@ -121,7 +122,7 @@ class AdminAssignRoleIn(BaseModel):
     guest_name: str | None = None            # alternative to member_id — speaker/table_topics_speaker only
     role: MeetingRole
     speech_duration: str | None = None       # required when role == speaker
-    evaluates_member_id: str | None = None   # required when role == evaluator
+    evaluates_role_id: str | None = None     # required when role == evaluator — the speaker's role-assignment id
     theme: str | None = None                 # optional: sets meeting theme when role == tmod
     role_title: str | None = None            # required when role == supporting_role
 

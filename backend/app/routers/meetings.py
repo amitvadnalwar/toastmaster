@@ -196,7 +196,7 @@ async def enroll_evaluator(
     body: EnrollEvaluatorIn,
     user: CurrentUser = Depends(require_member),
 ) -> ApiResponse[MeetingRoleAssignmentOut]:
-    result = await meeting_service.enroll_evaluator(meeting_id, body.evaluates_member_id, user)
+    result = await meeting_service.enroll_evaluator(meeting_id, body.evaluates_role_id, user)
     return ApiResponse(data=result)
 
 

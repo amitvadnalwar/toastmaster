@@ -92,7 +92,7 @@ export interface AdminAssignRolePayload {
   guest_name?: string | null; // alternative to member_id — speaker/table_topics_speaker only
   role: MeetingRole;
   speech_duration?: string | null;
-  evaluates_member_id?: string | null;
+  evaluates_role_id?: string | null; // required when role === 'evaluator' — the speaker's role-assignment id
   theme?: string | null;
   role_title?: string | null;
 }
@@ -162,12 +162,12 @@ export function enrollAsSpeaker(
 
 export function enrollAsEvaluator(
   meetingId: string,
-  evaluatesMemberId: string,
+  evaluatesRoleId: string,
   token: string,
 ): Promise<MeetingRoleAssignment> {
   return apiRequest<MeetingRoleAssignment>(`/meetings/${meetingId}/enroll/evaluator`, {
     method: 'POST',
-    body: { evaluates_member_id: evaluatesMemberId },
+    body: { evaluates_role_id: evaluatesRoleId },
     token,
   });
 }

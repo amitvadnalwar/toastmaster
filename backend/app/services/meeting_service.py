@@ -316,27 +316,24 @@ async def admin_assign_role(
                 status_code=status.HTTP_409_CONFLICT, detail="Speaker slots are full"
             )
 
-    # Evaluator: require target speaker, check uniqueness
+    # Evaluator: require target speaker (by role-assignment id, not member_id,
+    # so a speaker with no account can have one too). Multiple evaluators per
+    # speaker are allowed — no uniqueness check.
+    evaluated_speaker = None
     if body.role == MeetingRole.evaluator:
-        if not body.evaluates_member_id:
+        if not body.evaluates_role_id:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="evaluates_member_id is required for evaluator role",
+                detail="evaluates_role_id is required for evaluator role",
             )
-        speaker_enrolled = any(
-            r["member_id"] == body.evaluates_member_id and r["role"] == "speaker"
-            for r in roster
+        evaluated_speaker = next(
+            (r for r in roster if r["id"] == body.evaluates_role_id and r["role"] == "speaker"),
+            None,
         )
-        if not speaker_enrolled:
+        if not evaluated_speaker:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Target speaker is not enrolled in this meeting",
-            )
-        existing = await db_meetings.get_evaluator_for_speaker(meeting_id, body.evaluates_member_id)
-        if existing:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="This speaker already has an evaluator",
             )
 
     if body.role == MeetingRole.tmod and body.theme:
@@ -356,7 +353,8 @@ async def admin_assign_role(
         meeting_id=meeting_id,
         member_id=body.member_id,
         role=body.role,
-        evaluates_member_id=body.evaluates_member_id,
+        evaluates_member_id=evaluated_speaker["member_id"] if evaluated_speaker else None,
+        evaluates_role_id=body.evaluates_role_id if body.role == MeetingRole.evaluator else None,
         speech_duration=body.speech_duration,
         role_title=role_title,
         guest_name=body.guest_name.strip() if body.guest_name else None,
@@ -454,7 +452,7 @@ async def enroll_speaker(
 
 
 async def enroll_evaluator(
-    meeting_id: str, evaluates_member_id: str, user: CurrentUser
+    meeting_id: str, evaluates_role_id: str, user: CurrentUser
 ) -> MeetingRoleAssignmentOut:
     if user.is_guest:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Guests cannot enroll")
@@ -476,26 +474,24 @@ async def enroll_evaluator(
             detail="You are already assigned as an evaluator",
         )
 
+    # Matched by role-assignment id, not member_id, so a speaker with no
+    # account can be evaluated too. Multiple evaluators per speaker are
+    # allowed — no uniqueness check here.
     roster = await db_meetings.get_roster(meeting_id)
-    speaker_enrolled = any(
-        r["member_id"] == evaluates_member_id and r["role"] == "speaker" for r in roster
+    evaluated_speaker = next(
+        (r for r in roster if r["id"] == evaluates_role_id and r["role"] == "speaker"),
+        None,
     )
-    if not speaker_enrolled:
+    if not evaluated_speaker:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Target speaker is not enrolled in this meeting",
         )
 
-    existing_eval = await db_meetings.get_evaluator_for_speaker(meeting_id, evaluates_member_id)
-    if existing_eval:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="This speaker already has an evaluator",
-        )
-
     row = await db_meetings.insert_role(
         meeting_id, member["id"], MeetingRole.evaluator,
-        evaluates_member_id=evaluates_member_id,
+        evaluates_member_id=evaluated_speaker["member_id"],
+        evaluates_role_id=evaluates_role_id,
     )
     return _role_out({**row, "member_name": member["name"], "member_email": member["email"]})
 

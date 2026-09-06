@@ -18,6 +18,7 @@ export default function UpdatePrompt() {
     onRegisteredSW(_swUrl, registration) {
       if (!registration) return;
       const check = () => registration.update().catch(() => {});
+      check(); // catch a fresh deploy immediately, not just on the next interval/focus
       const interval = setInterval(check, CHECK_INTERVAL_MS);
       const onVisible = () => {
         if (document.visibilityState === 'visible') check();

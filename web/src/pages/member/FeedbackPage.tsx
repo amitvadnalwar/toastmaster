@@ -197,9 +197,11 @@ export default function MemberFeedbackPage() {
       const myEmail = session.user?.email;
       const feedbackMap = new Map<string, SpeakerFeedback>(feedback.map((fb) => [fb.speaker_member_id, fb]));
       const rows: SpeakerRow[] = rosterData.roster
-        .filter((r) => r.role === 'speaker' && r.member_email !== myEmail && !r.disqualified)
+        // Guest speakers (no member_id — not a registered member) can't
+        // receive written feedback; there's no account to attach it to.
+        .filter((r) => r.role === 'speaker' && !!r.member_id && r.member_email !== myEmail && !r.disqualified)
         .map((a) => {
-          const prev = feedbackMap.get(a.member_id);
+          const prev = feedbackMap.get(a.member_id!);
           return {
             assignment: a,
             content: prev?.content_rating ?? 0,
@@ -245,7 +247,9 @@ export default function MemberFeedbackPage() {
     const myEmail = session?.user?.email;
     const map: Partial<Record<VoteCategory, MeetingRoleAssignment[]>> = {};
     for (const cat of VOTE_CATEGORIES) {
-      map[cat.key] = roster.filter((r) => cat.roles.includes(r.role) && !r.disqualified && r.member_email !== myEmail);
+      // Guest entries (no member_id) can't be voted for — there's no member
+      // record to attach the vote to.
+      map[cat.key] = roster.filter((r) => cat.roles.includes(r.role) && !!r.member_id && !r.disqualified && r.member_email !== myEmail);
     }
     return map;
   }, [roster, session]);
@@ -271,7 +275,8 @@ export default function MemberFeedbackPage() {
     setSubmittingFeedback(true);
     try {
       const payload: SpeakerFeedbackPayload[] = speakers.map((r) => ({
-        speaker_member_id: r.assignment.member_id,
+        // Non-null: `speakers` already excludes guest (member_id-less) rows.
+        speaker_member_id: r.assignment.member_id!,
         content_rating: r.content,
         structure_rating: r.structure,
         confidence_rating: r.confidence,
@@ -469,7 +474,7 @@ export default function MemberFeedbackPage() {
                               <button
                                 key={n.id}
                                 type="button"
-                                onClick={() => setSelections((prev) => ({ ...prev, [cat.key]: n.member_id }))}
+                                onClick={() => setSelections((prev) => ({ ...prev, [cat.key]: n.member_id! }))}
                                 className={`text-left px-3.5 py-2.5 rounded-xl border text-[14px] font-semibold transition-colors ${
                                   selected ? 'border-brand bg-brand/5 text-brand' : 'border-gray-200 text-gray-700'
                                 }`}

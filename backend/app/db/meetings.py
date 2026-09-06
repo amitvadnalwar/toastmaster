@@ -224,11 +224,12 @@ async def get_evaluator_for_speaker(meeting_id: str, speaker_member_id: str) -> 
 
 async def insert_role(
     meeting_id: str,
-    member_id: str,
+    member_id: str | None,
     role: str,
     evaluates_member_id: str | None = None,
     speech_duration: str | None = None,
     role_title: str | None = None,
+    guest_name: str | None = None,
 ) -> dict:
     result = (
         supabase.table("meeting_roles")
@@ -239,6 +240,7 @@ async def insert_role(
             "evaluates_member_id": evaluates_member_id,
             "speech_duration": speech_duration,
             "role_title": role_title,
+            "guest_name": guest_name,
         })
         .execute()
     )

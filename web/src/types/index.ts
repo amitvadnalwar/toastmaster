@@ -120,11 +120,15 @@ export interface Meeting {
 export interface MeetingRoleAssignment {
   id: string;
   meeting_id: string;
-  member_id: string;
+  member_id: string | null;
   role: MeetingRole;
   evaluates_member_id: string | null;
   speech_duration?: string | null;
   role_title?: string | null;
+  // Set instead of member_id for a Speaker/Table Topics Speaker who isn't a
+  // registered member (a prospective member, or a guest speaking). Excluded
+  // from feedback/voting/leaderboard points, which all require member_id.
+  guest_name?: string | null;
   member_name?: string | null;
   member_initials?: MemberInitials | null;
   member_email?: string | null;

@@ -51,7 +51,9 @@ function RoleRow({ roleKey, label, assignment, isMe, canApply, isOpen, isPast, a
         {isMe ? (
           <p className="text-[13px] font-medium text-green-600">You are assigned</p>
         ) : assignment ? (
-          <p className="text-[13px] font-medium text-gray-700">{formatMemberName(assignment.member_name, assignment.member_initials)}</p>
+          <p className="text-[13px] font-medium text-gray-700">
+            {formatMemberName(assignment.member_name ?? assignment.guest_name, assignment.member_initials)}
+          </p>
         ) : isPast ? (
           <p className="text-[13px] text-gray-400">Meeting date has passed</p>
         ) : isOpen ? (

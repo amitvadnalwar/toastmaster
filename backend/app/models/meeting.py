@@ -82,11 +82,12 @@ class VotingStatusUpdateIn(BaseModel):
 class MeetingRoleAssignmentOut(BaseModel):
     id: str
     meeting_id: str
-    member_id: str
+    member_id: str | None
     role: MeetingRole
     evaluates_member_id: str | None
     speech_duration: str | None = None
     role_title: str | None = None
+    guest_name: str | None = None
     member_name: str | None = None
     member_initials: str | None = None
     member_email: str | None = None
@@ -116,7 +117,8 @@ class EnrollEvaluatorIn(BaseModel):
 # ── Admin assignment (admin picks any member for any role) ────────────────
 
 class AdminAssignRoleIn(BaseModel):
-    member_id: str
+    member_id: str | None = None
+    guest_name: str | None = None            # alternative to member_id — speaker/table_topics_speaker only
     role: MeetingRole
     speech_duration: str | None = None       # required when role == speaker
     evaluates_member_id: str | None = None   # required when role == evaluator

@@ -281,6 +281,22 @@ async def admin_assign_role(
             detail="Cannot assign roles to a completed meeting",
         )
 
+    # A name-only entry (no app account) is only meaningful for the two roles
+    # that commonly involve someone who isn't a registered member yet — a
+    # prospective speaker, or a guest giving an impromptu Table Topics
+    # speech. It's excluded from feedback/voting/leaderboard points by
+    # construction, since those all require a real member_id.
+    if bool(body.member_id) == bool(body.guest_name):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Provide exactly one of member_id or guest_name",
+        )
+    if body.guest_name and body.role not in (MeetingRole.speaker, MeetingRole.table_topics_speaker):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="A name-only entry is only allowed for Speaker or Table Topics Speaker",
+        )
+
     roster = await db_meetings.get_roster(meeting_id)
 
     # Singleton roles: only one per meeting
@@ -343,6 +359,7 @@ async def admin_assign_role(
         evaluates_member_id=body.evaluates_member_id,
         speech_duration=body.speech_duration,
         role_title=role_title,
+        guest_name=body.guest_name.strip() if body.guest_name else None,
     )
     # Re-fetch with member name/email
     roster_fresh = await db_meetings.get_roster(meeting_id)

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, X, Plus, Minus, Check, Edit2, Search, MessageSquare, ArrowRight } from 'lucide-react';
+import { ChevronLeft, X, Plus, Minus, Check, Edit2, Search, MessageSquare, ArrowRight, UserPlus } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { getMeetingRoster, updateMeeting, adminAssignRole, withdrawFromRole } from '@/services/meetingService';
 import { getClubMembers } from '@/services/memberService';
@@ -30,6 +30,7 @@ export default function MeetingRosterPage() {
   const [assignRole, setAssignRole] = useState<MeetingRole | null>(null);
   const [assignSpeakerId, setAssignSpeakerId] = useState<string | null>(null);
   const [pendingMember, setPendingMember] = useState<MemberOption | null>(null);
+  const [pendingGuestName, setPendingGuestName] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [showDuration, setShowDuration] = useState(false);
   const [durationMin, setDurationMin] = useState('');
@@ -70,9 +71,14 @@ export default function MeetingRosterPage() {
     setAssignRole(role);
     setAssignSpeakerId(speakerMemberId ?? null);
     setPendingMember(null);
+    setPendingGuestName(null);
     setMemberSearch('');
     setPickerOpen(true);
   }
+
+  // Speaker/Table Topics Speaker only — lets the admin fill the slot with a
+  // plain name for someone who isn't a registered member.
+  const canAddAsGuest = assignRole === 'speaker' || assignRole === 'table_topics_speaker';
 
   function startAddSupportingRole() {
     if (!data || isMeetingLocked(data.meeting)) return;
@@ -90,6 +96,7 @@ export default function MeetingRosterPage() {
 
   function onMemberSelected(m: MemberOption) {
     setPendingMember(m);
+    setPendingGuestName(null);
     setPickerOpen(false);
     if (assignRole === 'speaker') {
       setDurationMin('');
@@ -97,7 +104,21 @@ export default function MeetingRosterPage() {
       setDurationError('');
       setShowDuration(true);
     } else {
-      commitAssign(m, null);
+      commitAssign(m, null, null);
+    }
+  }
+
+  function onGuestNameSelected(name: string) {
+    setPendingMember(null);
+    setPendingGuestName(name);
+    setPickerOpen(false);
+    if (assignRole === 'speaker') {
+      setDurationMin('');
+      setDurationMax('');
+      setDurationError('');
+      setShowDuration(true);
+    } else {
+      commitAssign(null, null, name);
     }
   }
 
@@ -120,17 +141,21 @@ export default function MeetingRosterPage() {
       setDurationError('Max must be greater than or equal to min.');
       return;
     }
-    if (!pendingMember) return;
-    commitAssign(pendingMember, `${min}-${max} mins`);
+    if (pendingMember) {
+      commitAssign(pendingMember, `${min}-${max} mins`, null);
+    } else if (pendingGuestName) {
+      commitAssign(null, `${min}-${max} mins`, pendingGuestName);
+    }
   }
 
-  async function commitAssign(member: MemberOption, duration: string | null) {
-    if (!session || !data || !assignRole) return;
+  async function commitAssign(member: MemberOption | null, duration: string | null, guestName: string | null) {
+    if (!session || !data || !assignRole || (!member && !guestName)) return;
     setShowDuration(false);
     setActing(true);
     try {
       await adminAssignRole(data.meeting.id, {
-        member_id: member.id,
+        member_id: member?.id ?? null,
+        guest_name: guestName,
         role: assignRole,
         speech_duration: duration,
         evaluates_member_id: assignSpeakerId,
@@ -143,6 +168,7 @@ export default function MeetingRosterPage() {
       setActing(false);
       setAssignRole(null);
       setPendingMember(null);
+      setPendingGuestName(null);
       setPendingRoleTitle(null);
     }
   }
@@ -210,8 +236,9 @@ export default function MeetingRosterPage() {
   const supportingRoles = roster.filter((r) => r.role === 'supporting_role');
   const filteredMembers = members.filter((m) => m.name.toLowerCase().includes(memberSearch.toLowerCase()));
 
-  function nameFor(memberId: string, name?: string | null, memberInitials?: string | null): string {
-    const fallback = memberMap.get(memberId);
+  function nameFor(memberId: string | null, name?: string | null, memberInitials?: string | null, guestName?: string | null): string {
+    if (!memberId && guestName) return guestName;
+    const fallback = memberId ? memberMap.get(memberId) : undefined;
     return formatMemberName(name ?? fallback?.name, memberInitials ?? fallback?.initials);
   }
 
@@ -328,7 +355,10 @@ export default function MeetingRosterPage() {
               {isAdmin ? (
                 <div className="flex items-center gap-2 px-4 py-3">
                   <div className="flex-1">
-                    <p className="text-sm text-gray-900 font-semibold">{nameFor(s.member_id, s.member_name, s.member_initials)}</p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-sm text-gray-900 font-semibold">{nameFor(s.member_id, s.member_name, s.member_initials, s.guest_name)}</p>
+                      {!s.member_id && <GuestBadge />}
+                    </div>
                     {s.speech_duration && <p className="text-[11px] text-gray-400 mt-0.5">{s.speech_duration}</p>}
                   </div>
                   {canManage && (
@@ -336,7 +366,7 @@ export default function MeetingRosterPage() {
                   )}
                 </div>
               ) : (
-                <RosterRow role="speaker" name={s.member_name} memberInitials={s.member_initials} isMe={s.member_email === myEmail} sub={s.speech_duration ?? undefined} />
+                <RosterRow role="speaker" name={s.member_name ?? s.guest_name} memberInitials={s.member_initials} isMe={s.member_email === myEmail} sub={s.speech_duration ?? undefined} isGuest={!s.member_id} />
               )}
             </div>
           ))}
@@ -366,13 +396,16 @@ export default function MeetingRosterPage() {
                   {i > 0 && <Divider />}
                   {isAdmin ? (
                     <div className="flex items-center gap-2 px-4 py-3">
-                      <p className="flex-1 text-sm text-gray-900 font-semibold">{nameFor(s.member_id, s.member_name, s.member_initials)}</p>
+                      <div className="flex-1 flex items-center gap-1.5">
+                        <p className="text-sm text-gray-900 font-semibold">{nameFor(s.member_id, s.member_name, s.member_initials, s.guest_name)}</p>
+                        {!s.member_id && <GuestBadge />}
+                      </div>
                       {canManage && (
                         <button onClick={() => handleRemove(s.id, 'Table Topics Speaker')} disabled={acting} className="w-7 h-7 rounded-full bg-[#fef2f2] flex items-center justify-center"><X size={14} className="text-red-500" /></button>
                       )}
                     </div>
                   ) : (
-                    <RosterRow role="table_topics_speaker" name={s.member_name} memberInitials={s.member_initials} isMe={s.member_email === myEmail} />
+                    <RosterRow role="table_topics_speaker" name={s.member_name ?? s.guest_name} memberInitials={s.member_initials} isMe={s.member_email === myEmail} isGuest={!s.member_id} />
                   )}
                 </div>
               ))}
@@ -397,8 +430,8 @@ export default function MeetingRosterPage() {
             <SectionLabel>Evaluators</SectionLabel>
             <div className="bg-white rounded-2xl shadow-sm overflow-hidden mb-5">
               {speakers.map((s, i) => {
-                const ev = evaluators.find((e) => e.evaluates_member_id === s.member_id);
-                const speakerName = nameFor(s.member_id, s.member_name, s.member_initials);
+                const ev = s.member_id ? evaluators.find((e) => e.evaluates_member_id === s.member_id) : undefined;
+                const speakerName = nameFor(s.member_id, s.member_name, s.member_initials, s.guest_name);
                 if (isAdmin) {
                   return (
                     <div key={s.id}>
@@ -406,14 +439,18 @@ export default function MeetingRosterPage() {
                       <div className="flex items-center gap-2 px-4 py-3">
                         <div className="flex-1">
                           <p className="text-[11px] text-gray-400 mb-0.5">Evaluator for {speakerName}</p>
-                          <p className={`text-sm font-semibold ${ev ? 'text-gray-900' : 'text-gray-400'}`}>{ev ? nameFor(ev.member_id, ev.member_name, ev.member_initials) : 'Unassigned'}</p>
+                          {!s.member_id ? (
+                            <p className="text-sm font-medium text-gray-300">Not applicable for a guest speaker</p>
+                          ) : (
+                            <p className={`text-sm font-semibold ${ev ? 'text-gray-900' : 'text-gray-400'}`}>{ev ? nameFor(ev.member_id, ev.member_name, ev.member_initials) : 'Unassigned'}</p>
+                          )}
                         </div>
-                        {ev ? (
+                        {!s.member_id ? null : ev ? (
                           canManage && (
                             <button onClick={() => handleRemove(ev.id, 'Evaluator')} disabled={acting} className="w-7 h-7 rounded-full bg-[#fef2f2] flex items-center justify-center"><X size={14} className="text-red-500" /></button>
                           )
                         ) : canManage ? (
-                          <AssignButton onClick={() => startAssign('evaluator', s.member_id)} disabled={acting} />
+                          <AssignButton onClick={() => startAssign('evaluator', s.member_id!)} disabled={acting} />
                         ) : null}
                       </div>
                     </div>
@@ -432,6 +469,8 @@ export default function MeetingRosterPage() {
                         <span className={`text-[13px] font-semibold truncate max-w-[130px] ${ev.member_email === myEmail ? 'text-green-600' : 'text-gray-900'}`}>
                           {ev.member_email === myEmail ? 'You' : nameFor(ev.member_id, ev.member_name, ev.member_initials)}
                         </span>
+                      ) : !s.member_id ? (
+                        <span className="text-xs font-medium text-gray-300">N/A</span>
                       ) : (
                         <span className="text-xs font-medium text-gray-300">Open</span>
                       )}
@@ -496,9 +535,28 @@ export default function MeetingRosterPage() {
             </div>
             <div className="mx-4 my-3 flex items-center gap-2 bg-gray-100 rounded-[10px] px-3 py-2.5">
               <Search size={15} className="text-gray-400" />
-              <input autoFocus value={memberSearch} onChange={(e) => setMemberSearch(e.target.value)} placeholder="Search members…" className="flex-1 bg-transparent outline-none text-[15px] text-gray-900" />
+              <input
+                autoFocus
+                value={memberSearch}
+                onChange={(e) => setMemberSearch(e.target.value)}
+                placeholder={canAddAsGuest ? 'Search members, or type a name…' : 'Search members…'}
+                className="flex-1 bg-transparent outline-none text-[15px] text-gray-900"
+              />
             </div>
             <div className="overflow-y-auto pb-8">
+              {canAddAsGuest && memberSearch.trim().length >= 2 && (
+                <button
+                  onClick={() => onGuestNameSelected(memberSearch.trim())}
+                  className="w-full flex items-center gap-3 px-4 py-3.5 border-b border-gray-100 bg-brand/5"
+                >
+                  <div className="w-[38px] h-[38px] rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                    <UserPlus size={18} className="text-amber-700" />
+                  </div>
+                  <span className="flex-1 text-left text-[15px] text-gray-900">
+                    Add <span className="font-semibold">&ldquo;{memberSearch.trim()}&rdquo;</span> as a guest
+                  </span>
+                </button>
+              )}
               {filteredMembers.length === 0 ? (
                 <div className="py-10 text-center text-sm text-gray-400">No members found</div>
               ) : filteredMembers.map((m) => (
@@ -588,7 +646,7 @@ function Header({ onBack }: { onBack: () => void }) {
   );
 }
 
-function RosterRow({ role, name, memberInitials, isMe, sub }: { role: MeetingRole | string; name?: string | null; memberInitials?: string | null; isMe?: boolean; sub?: string }) {
+function RosterRow({ role, name, memberInitials, isMe, sub, isGuest }: { role: MeetingRole | string; name?: string | null; memberInitials?: string | null; isMe?: boolean; sub?: string; isGuest?: boolean }) {
   return (
     <div className="flex items-center gap-2.5 px-4 py-3.5">
       <div className="flex-1 min-w-0">
@@ -596,7 +654,10 @@ function RosterRow({ role, name, memberInitials, isMe, sub }: { role: MeetingRol
         {sub && <p className="text-[11px] text-gray-400 mt-0.5">{sub}</p>}
       </div>
       {name ? (
-        <span className={`text-[13px] font-semibold truncate max-w-[130px] ${isMe ? 'text-green-600' : 'text-gray-900'}`}>{isMe ? 'You' : formatMemberName(name, memberInitials)}</span>
+        <div className="flex items-center gap-1.5">
+          {isGuest && <GuestBadge />}
+          <span className={`text-[13px] font-semibold truncate max-w-[130px] ${isMe ? 'text-green-600' : 'text-gray-900'}`}>{isMe ? 'You' : formatMemberName(name, memberInitials)}</span>
+        </div>
       ) : (
         <span className="text-xs font-medium text-gray-300">Open</span>
       )}
@@ -609,6 +670,14 @@ function AssignButton({ onClick, disabled }: { onClick: () => void; disabled: bo
     <button onClick={onClick} disabled={disabled} className="flex items-center gap-1 bg-[#fef2f2] rounded-lg px-2.5 py-1.5 text-brand text-[13px] font-semibold">
       <Plus size={13} /> Assign
     </button>
+  );
+}
+
+function GuestBadge() {
+  return (
+    <span className="text-[10px] font-bold text-amber-700 bg-amber-100 rounded-full px-1.5 py-0.5 shrink-0">
+      Guest
+    </span>
   );
 }
 

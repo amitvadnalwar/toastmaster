@@ -72,7 +72,8 @@ export default function VotingResultsPage() {
 
           const participantMap = new Map<string, Participant>();
           for (const r of roster) {
-            if (!cat.roles.includes(r.role) || r.disqualified) continue;
+            // Guest entries (no member_id) were never voteable candidates.
+            if (!cat.roles.includes(r.role) || r.disqualified || !r.member_id) continue;
             if (!participantMap.has(r.member_id)) {
               participantMap.set(r.member_id, {
                 memberId: r.member_id,

@@ -88,7 +88,8 @@ export function updateVotingStatus(
 // ── Admin role assignment ─────────────────────────────────────────────────
 
 export interface AdminAssignRolePayload {
-  member_id: string;
+  member_id?: string | null;
+  guest_name?: string | null; // alternative to member_id — speaker/table_topics_speaker only
   role: MeetingRole;
   speech_duration?: string | null;
   evaluates_member_id?: string | null;

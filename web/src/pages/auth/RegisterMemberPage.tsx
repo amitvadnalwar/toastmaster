@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { ChevronLeft, X } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
-import { registerMember } from '@/services/memberService';
+import { registerMember, simpleLogin } from '@/services/memberService';
 import { showAlert } from '@/store/alertStore';
 import Button from '@/components/ui/Button';
 import type { MemberInitials } from '@/types';
@@ -71,10 +72,19 @@ export default function RegisterMemberPage() {
     }
     setSubmitting(true);
     try {
+      const trimmedName = name.trim();
+      const trimmedEmail = email.trim().toLowerCase();
+      const trimmedPhone = phone.trim();
       const birthday = birthMonth && birthDay ? `${birthMonth}-${birthDay}` : undefined;
-      await registerMember({ name: name.trim(), email: email.trim().toLowerCase(), phone: phone.trim(), birthday, initials });
-      await showAlert('You are registered! The password has been sent to your email.');
-      navigate('/login', { replace: true });
+      await registerMember({ name: trimmedName, email: trimmedEmail, phone: trimmedPhone, birthday, initials });
+
+      // Straight into the app — no separate login step for a brand-new member.
+      const result = await simpleLogin({ name: trimmedName, email: trimmedEmail, phone: trimmedPhone });
+      const { error: verifyErr } = await supabase.auth.verifyOtp({
+        token_hash: result.hashed_token,
+        type: 'magiclink',
+      });
+      if (verifyErr) throw verifyErr;
     } catch (e: unknown) {
       await showAlert(e instanceof Error ? e.message : 'Failed to register');
     } finally {

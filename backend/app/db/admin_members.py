@@ -1,8 +1,6 @@
 from fastapi import BackgroundTasks
 
 from app.db.client import supabase
-from app.utils.password import generate_temp_password
-from app.utils.email import send_temp_password_email
 
 
 async def get_default_club_id() -> str | None:
@@ -24,17 +22,14 @@ async def insert_member(
     email: str,
     phone: str,
     birthday: str | None,
-    background_tasks: BackgroundTasks,
+    background_tasks: BackgroundTasks,  # noqa: ARG001 — kept for call-site compatibility
     initials: str = "TM",
 ) -> dict:
-    temp_password = generate_temp_password()
-
-    # Create auth user with email already confirmed so they can log in immediately
+    # No password — members sign in via the simple email/name/phone flow
+    # (see member_service.simple_login), not a credential set at creation.
     create_res = supabase.auth.admin.create_user({
         "email": email,
-        "password": temp_password,
         "email_confirm": True,
-        "app_metadata": {"must_change_password": True},
     })
     auth_user_id = create_res.user.id
 
@@ -54,11 +49,6 @@ async def insert_member(
         payload["birthday_collected"] = True
 
     result = supabase.table("members").insert(payload).execute()
-
-    # Member creation must succeed regardless of email deliverability — send
-    # after the response goes out instead of blocking the request on it.
-    background_tasks.add_task(send_temp_password_email, email, name, temp_password)
-
     return result.data[0]
 
 

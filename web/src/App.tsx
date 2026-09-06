@@ -46,11 +46,10 @@ import MemberProfilePage from '@/pages/member/ProfilePage';
 import MemberMembersPage from '@/pages/member/MembersPage';
 
 function RootRedirect() {
-  const { session, appRole, mustChangePassword, _hydrated } = useAuthStore();
+  const { session, appRole, _hydrated } = useAuthStore();
 
   if (!_hydrated) return <PageSpinner />;
   if (!session) return <Navigate to="/login" replace />;
-  if (mustChangePassword) return <Navigate to="/change-password" replace />;
 
   if (appRole === 'super_admin') {
     return <Navigate to="/admin" replace />;

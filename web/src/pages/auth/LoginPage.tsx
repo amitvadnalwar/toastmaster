@@ -2,18 +2,27 @@ import { useState, FormEvent } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/store/authStore';
+import { ApiError } from '@/lib/apiClient';
+import { simpleLogin } from '@/services/memberService';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import { Eye, EyeOff } from 'lucide-react';
 import { CLUB_SHORT_NAME } from '@/lib/constants';
+
+const SUPER_ADMIN_PASSWORD_REQUIRED = 'Super admin accounts sign in with a password.';
 
 export default function LoginPage() {
   const { session, _hydrated } = useAuthStore();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [email, setEmail] = useState('');
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
+  // Revealed only for a super admin's email — everyone else never sees a
+  // password field at all.
+  const [needsPassword, setNeedsPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -29,13 +38,28 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      const { error: authErr } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password,
+      if (needsPassword) {
+        const { error: authErr } = await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password,
+        });
+        if (authErr) throw authErr;
+        return;
+      }
+
+      const result = await simpleLogin({ email: email.trim(), name: name.trim(), phone: phone.trim() });
+      const { error: verifyErr } = await supabase.auth.verifyOtp({
+        token_hash: result.hashed_token,
+        type: 'magiclink',
       });
-      if (authErr) throw authErr;
+      if (verifyErr) throw verifyErr;
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Sign in failed');
+      if (err instanceof ApiError && err.message === SUPER_ADMIN_PASSWORD_REQUIRED) {
+        setNeedsPassword(true);
+        setError('This account signs in with a password.');
+      } else {
+        setError(err instanceof Error ? err.message : 'Sign in failed');
+      }
     } finally {
       setLoading(false);
     }
@@ -75,32 +99,56 @@ export default function LoginPage() {
             type="email"
             placeholder="you@example.com"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => { setEmail(e.target.value); setNeedsPassword(false); setError(''); }}
             autoComplete="email"
             required
           />
 
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-semibold text-gray-700">Password</label>
-            <div className="relative">
-              <input
-                type={showPw ? 'text' : 'password'}
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete="current-password"
-                required
-                className="w-full px-4 py-3 pr-12 rounded-xl border border-gray-200 bg-white text-gray-900 text-sm placeholder:text-gray-400 outline-none transition-colors focus:border-brand focus:ring-2 focus:ring-brand/10"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPw((v) => !v)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
-              >
-                {showPw ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
+          {needsPassword ? (
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-semibold text-gray-700">Password</label>
+              <div className="relative">
+                <input
+                  type={showPw ? 'text' : 'password'}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="current-password"
+                  autoFocus
+                  required
+                  className="w-full px-4 py-3 pr-12 rounded-xl border border-gray-200 bg-white text-gray-900 text-sm placeholder:text-gray-400 outline-none transition-colors focus:border-brand focus:ring-2 focus:ring-brand/10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPw((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1"
+                >
+                  {showPw ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
-          </div>
+          ) : (
+            <>
+              <Input
+                label="Full Name"
+                type="text"
+                placeholder="e.g. Priya Sharma"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                autoComplete="name"
+                required
+              />
+              <Input
+                label="Mobile Number"
+                type="tel"
+                placeholder="+91 98765 43210"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                autoComplete="tel"
+                required
+              />
+            </>
+          )}
 
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3">
@@ -109,7 +157,7 @@ export default function LoginPage() {
           )}
 
           <Button type="submit" fullWidth size="lg" loading={loading} className="mt-2">
-            Sign In
+            {needsPassword ? 'Sign In' : 'Continue'}
           </Button>
         </form>
 

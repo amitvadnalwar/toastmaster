@@ -36,6 +36,24 @@ export function registerMember(payload: MemberCreatePayload): Promise<Member> {
   return apiRequest<Member>('/members/register', { method: 'POST', body: payload });
 }
 
+export interface SimpleLoginPayload {
+  email: string;
+  name: string;
+  phone: string;
+}
+
+export interface SimpleLoginResult {
+  email: string;
+  hashed_token: string;
+}
+
+// Public — no auth. Passwordless sign-in: email gates entry, name/phone are
+// recorded but don't have to match exactly. Returns a token the caller
+// exchanges via supabase.auth.verifyOtp({ email, token_hash, type: 'magiclink' }).
+export function simpleLogin(payload: SimpleLoginPayload): Promise<SimpleLoginResult> {
+  return apiRequest<SimpleLoginResult>('/members/simple-login', { method: 'POST', body: payload });
+}
+
 export function updateMemberDetails(memberId: string, payload: MemberUpdatePayload, token: string): Promise<Member> {
   return apiRequest<Member>(`/admin/members/${memberId}`, { method: 'PUT', body: payload, token });
 }

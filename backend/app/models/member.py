@@ -70,3 +70,14 @@ class MemberUpdateIn(BaseModel):
 
 class BirthdayUpdateIn(BaseModel):
     birthday: str  # validated as MM-DD in service layer
+
+
+class SimpleLoginIn(BaseModel):
+    email: str
+    name: str
+    phone: str
+
+
+class SimpleLoginOut(BaseModel):
+    email: str
+    hashed_token: str

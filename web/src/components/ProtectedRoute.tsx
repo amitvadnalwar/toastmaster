@@ -10,14 +10,11 @@ interface Props {
 }
 
 export default function ProtectedRoute({ children, roles }: Props) {
-  const { session, appRole, mustChangePassword, _hydrated } = useAuthStore();
+  const { session, appRole, _hydrated } = useAuthStore();
   const location = useLocation();
 
   if (!_hydrated) return <PageSpinner />;
   if (!session) return <Navigate to="/login" replace state={{ from: location }} />;
-  if (mustChangePassword && location.pathname !== '/change-password') {
-    return <Navigate to="/change-password" replace />;
-  }
   if (appRole && !roles.includes(appRole)) {
     return <Navigate to="/" replace />;
   }

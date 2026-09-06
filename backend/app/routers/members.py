@@ -2,7 +2,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends
 
 from app.middleware.auth import CurrentUser, require_member
 from app.models.common import ApiResponse
-from app.models.member import BirthdayUpdateIn, MemberCreateIn, MemberOut
+from app.models.member import BirthdayUpdateIn, MemberCreateIn, MemberOut, SimpleLoginIn, SimpleLoginOut
 from app.services import member_service
 
 router = APIRouter()
@@ -19,6 +19,14 @@ async def register_member(
 ) -> ApiResponse[MemberOut]:
     member = await member_service.register(body, background_tasks)
     return ApiResponse(data=member)
+
+
+# Public — no auth. The passwordless sign-in used by the login screen: email
+# gates entry, name/phone are recorded but don't have to match exactly.
+@router.post("/simple-login", response_model=ApiResponse[SimpleLoginOut])
+async def simple_login(body: SimpleLoginIn) -> ApiResponse[SimpleLoginOut]:
+    result = await member_service.simple_login(body)
+    return ApiResponse(data=result)
 
 
 @router.get("/me", response_model=ApiResponse[MemberOut])

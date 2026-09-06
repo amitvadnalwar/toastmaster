@@ -23,6 +23,21 @@ async def get_by_auth_user_id(auth_user_id: str) -> dict | None:
     return result.data[0] if result.data else None
 
 
+async def get_by_email(email: str) -> dict | None:
+    result = (
+        supabase.table("members")
+        .select("*")
+        .ilike("email", email)
+        .limit(1)
+        .execute()
+    )
+    return result.data[0] if result.data else None
+
+
+async def update_contact_info(member_id: str, name: str, phone: str) -> None:
+    supabase.table("members").update({"name": name, "phone": phone}).eq("id", member_id).execute()
+
+
 async def get_by_identity(identity: str, club_id: str) -> dict | None:
     result = (
         supabase.table("members")

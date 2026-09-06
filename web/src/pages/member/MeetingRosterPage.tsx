@@ -440,7 +440,7 @@ export default function MeetingRosterPage() {
                         <div className="flex-1">
                           <p className="text-[11px] text-gray-400 mb-0.5">Evaluator for {speakerName}</p>
                           {!s.member_id ? (
-                            <p className="text-sm font-medium text-gray-300">Not applicable for a guest speaker</p>
+                            <p className="text-sm font-medium text-gray-300">Not applicable — no account on file</p>
                           ) : (
                             <p className={`text-sm font-semibold ${ev ? 'text-gray-900' : 'text-gray-400'}`}>{ev ? nameFor(ev.member_id, ev.member_name, ev.member_initials) : 'Unassigned'}</p>
                           )}
@@ -536,13 +536,17 @@ export default function MeetingRosterPage() {
             <div className="mx-4 my-3 flex items-center gap-2 bg-gray-100 rounded-[10px] px-3 py-2.5">
               <Search size={15} className="text-gray-400" />
               <input
-                autoFocus
                 value={memberSearch}
                 onChange={(e) => setMemberSearch(e.target.value)}
-                placeholder={canAddAsGuest ? 'Search members, or type a name…' : 'Search members…'}
+                placeholder="Search members…"
                 className="flex-1 bg-transparent outline-none text-[15px] text-gray-900"
               />
             </div>
+            {canAddAsGuest && (
+              <p className="mx-4 -mt-1 mb-2 text-[12px] text-gray-400">
+                Not on the list? Type their name above to add them without an account.
+              </p>
+            )}
             <div className="overflow-y-auto pb-8">
               {canAddAsGuest && memberSearch.trim().length >= 2 && (
                 <button
@@ -553,7 +557,7 @@ export default function MeetingRosterPage() {
                     <UserPlus size={18} className="text-amber-700" />
                   </div>
                   <span className="flex-1 text-left text-[15px] text-gray-900">
-                    Add <span className="font-semibold">&ldquo;{memberSearch.trim()}&rdquo;</span> as a guest
+                    Add <span className="font-semibold">&ldquo;{memberSearch.trim()}&rdquo;</span> without an account
                   </span>
                 </button>
               )}
@@ -674,9 +678,11 @@ function AssignButton({ onClick, disabled }: { onClick: () => void; disabled: bo
 }
 
 function GuestBadge() {
+  // Deliberately not "Guest" — this person could just as easily be a real
+  // club member who hasn't registered in the app yet, not a visitor.
   return (
     <span className="text-[10px] font-bold text-amber-700 bg-amber-100 rounded-full px-1.5 py-0.5 shrink-0">
-      Guest
+      No account
     </span>
   );
 }

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Calendar, Clock, MapPin, CheckCircle2, KeyRound, ArrowRight } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { ApiError } from '@/lib/apiClient';
-import { getTodaysMeeting } from '@/services/meetingService';
+import { getTodaysMeeting, checkinMeeting } from '@/services/meetingService';
 import { formatDate, formatTime } from '@/lib/utils';
 import { PageSpinner } from '@/components/ui/Spinner';
 import Button from '@/components/ui/Button';
@@ -15,6 +15,8 @@ export default function TodayCheckInPage() {
   const { session } = useAuthStore();
   const [result, setResult] = useState<CheckinResult | null>(null);
   const [fetching, setFetching] = useState(true);
+  const [checkingIn, setCheckingIn] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     if (!session) return;
@@ -30,6 +32,22 @@ export default function TodayCheckInPage() {
       .finally(() => setFetching(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session]);
+
+  // TEMPORARY: skips the 6-digit code prompt — checks the member straight
+  // into today's meeting on tap. Revert to navigating to /scan once the
+  // code step comes back.
+  async function handleCheckIn() {
+    if (!session || !result) return;
+    setCheckingIn(true);
+    setError('');
+    try {
+      const updated = await checkinMeeting(result.meeting.id, session.access_token);
+      navigate(`/meetings/${updated.meeting.id}/feedback`, { replace: true });
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to check in. Please try again.');
+      setCheckingIn(false);
+    }
+  }
 
   if (fetching || !result) return <PageSpinner />;
 
@@ -76,6 +94,12 @@ export default function TodayCheckInPage() {
         </div>
 
         <div className="w-full max-w-sm">
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-4">
+              <p className="text-sm text-red-600 font-medium">{error}</p>
+            </div>
+          )}
+
           {already_checked_in ? (
             <Button
               fullWidth
@@ -89,7 +113,8 @@ export default function TodayCheckInPage() {
             <Button
               fullWidth
               size="lg"
-              onClick={() => navigate('/scan')}
+              loading={checkingIn}
+              onClick={handleCheckIn}
               className="flex items-center justify-center gap-2"
             >
               <KeyRound size={18} /> Check In

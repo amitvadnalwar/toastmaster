@@ -1,73 +1,43 @@
-import { useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, AlertCircle, KeyRound } from 'lucide-react';
+import { ChevronLeft, AlertCircle, CalendarX } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
-import { checkinByCode } from '@/services/meetingService';
+import { ApiError } from '@/lib/apiClient';
+import { getTodaysMeeting, checkinMeeting } from '@/services/meetingService';
+import Button from '@/components/ui/Button';
 
-const CODE_LENGTH = 6;
-
+// TEMPORARY: skips the 6-digit code prompt — checks the member straight into
+// today's meeting on arrival. Revert to code entry (see git history for this
+// file) once that step comes back.
 export default function MemberScanPage() {
   const navigate = useNavigate();
   const { session } = useAuthStore();
   const accessToken = session?.access_token;
 
-  const [digits, setDigits] = useState<string[]>(Array(CODE_LENGTH).fill(''));
-  const [loading, setLoading] = useState(false);
+  const [noMeetingToday, setNoMeetingToday] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
-  async function submitCode(code: string) {
-    if (!accessToken || loading) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await checkinByCode(code, accessToken);
-      navigate(`/meetings/${result.meeting.id}/feedback`, { replace: true });
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Invalid code. Please try again.');
-      setLoading(false);
-      setDigits(Array(CODE_LENGTH).fill(''));
-      inputRefs.current[0]?.focus();
-    }
-  }
+  useEffect(() => {
+    if (!accessToken) return;
+    let cancelled = false;
 
-  // Reads/writes `digits` directly rather than via setDigits(prev => ...) —
-  // StrictMode double-invokes updater functions in dev, and submitCode (a
-  // network call) must only ever fire once per completed entry.
-  function handleChange(index: number, raw: string) {
-    const value = raw.replace(/\D/g, '');
-    const next = [...digits];
+    (async () => {
+      try {
+        const today = await getTodaysMeeting(accessToken);
+        const result = await checkinMeeting(today.meeting.id, accessToken);
+        if (!cancelled) navigate(`/meetings/${result.meeting.id}/feedback`, { replace: true });
+      } catch (e: unknown) {
+        if (cancelled) return;
+        if (e instanceof ApiError && e.status === 404) {
+          setNoMeetingToday(true);
+        } else {
+          setError(e instanceof Error ? e.message : 'Failed to check in. Please try again.');
+        }
+      }
+    })();
 
-    if (!value) {
-      next[index] = '';
-      setDigits(next);
-      return;
-    }
-
-    // Handles a full code pasted or autofilled into one box, not just single digits.
-    let i = index;
-    for (const ch of value.split('')) {
-      if (i >= CODE_LENGTH) break;
-      next[i] = ch;
-      i++;
-    }
-    setDigits(next);
-
-    const joined = next.join('');
-    if (joined.length === CODE_LENGTH) {
-      submitCode(joined);
-    } else {
-      inputRefs.current[Math.min(i, CODE_LENGTH - 1)]?.focus();
-    }
-  }
-
-  function handleKeyDown(index: number, e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === 'Backspace' && !digits[index] && index > 0) {
-      inputRefs.current[index - 1]?.focus();
-      setDigits((prev) => { const next = [...prev]; next[index - 1] = ''; return next; });
-      e.preventDefault();
-    }
-  }
+    return () => { cancelled = true; };
+  }, [accessToken, navigate]);
 
   return (
     <div className="flex flex-col min-h-full bg-[#f5f5f5]">
@@ -82,43 +52,31 @@ export default function MemberScanPage() {
       </div>
 
       <div className="flex-1 flex flex-col items-center px-6 pt-16">
-        <div className="w-16 h-16 rounded-full bg-brand-light flex items-center justify-center mb-5">
-          <KeyRound size={28} className="text-brand" />
-        </div>
-        <h2 className="text-xl font-bold text-gray-900 mb-1.5 text-center">Enter Check-In Code</h2>
-        <p className="text-[15px] text-gray-500 text-center leading-relaxed mb-8 max-w-xs">
-          Ask your TMOD or SAA for today's 6-digit code, shown on screen at the meeting.
-        </p>
-
-        <div className="flex gap-2.5 mb-6">
-          {digits.map((d, i) => (
-            <input
-              key={i}
-              ref={(el) => { inputRefs.current[i] = el; }}
-              value={d}
-              onChange={(e) => handleChange(i, e.target.value)}
-              onKeyDown={(e) => handleKeyDown(i, e)}
-              disabled={loading}
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              maxLength={CODE_LENGTH}
-              autoFocus={i === 0}
-              className="w-11 h-14 text-center text-2xl font-bold text-gray-900 bg-white border-2 border-gray-200 rounded-xl outline-none focus:border-brand disabled:opacity-60"
-            />
-          ))}
-        </div>
-
-        {loading ? (
-          <div className="flex items-center gap-2 text-gray-500">
-            <span className="w-4 h-4 border-2 border-brand border-t-transparent rounded-full animate-spin" />
-            <span className="text-sm font-semibold">Checking in…</span>
-          </div>
+        {noMeetingToday ? (
+          <>
+            <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-5">
+              <CalendarX size={28} className="text-gray-400" />
+            </div>
+            <h2 className="text-xl font-bold text-gray-900 mb-1.5 text-center">No Meeting Today</h2>
+            <p className="text-[15px] text-gray-500 text-center leading-relaxed mb-8 max-w-xs">
+              There's no meeting scheduled for today to check in to.
+            </p>
+            <Button onClick={() => navigate('/home')}>Back to Dashboard</Button>
+          </>
         ) : error ? (
-          <div className="flex items-center gap-1.5 text-red-500">
-            <AlertCircle size={16} />
-            <span className="text-[13px] text-center">{error}</span>
+          <>
+            <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mb-5">
+              <AlertCircle size={28} className="text-red-500" />
+            </div>
+            <p className="text-[15px] text-red-600 text-center leading-relaxed mb-8 max-w-xs">{error}</p>
+            <Button onClick={() => navigate('/home')}>Back to Dashboard</Button>
+          </>
+        ) : (
+          <div className="flex flex-col items-center gap-4 pt-8">
+            <span className="w-8 h-8 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+            <p className="text-sm text-gray-500 font-semibold">Checking you in…</p>
           </div>
-        ) : null}
+        )}
       </div>
     </div>
   );

@@ -1,0 +1,17 @@
+name: Keep Backend Warm
+
+# Render's free tier spins the backend down after ~15 minutes of inactivity,
+# and the next request then pays a 30-60s cold-start. Ping the health
+# endpoint often enough that it never gets the chance to sleep.
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping backend health endpoint
+        run: |
+          curl -fsS --max-time 60 https://toastmaster.onrender.com/health

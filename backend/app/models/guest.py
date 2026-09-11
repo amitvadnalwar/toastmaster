@@ -45,8 +45,17 @@ class MeetingCheckinStatusOut(BaseModel):
 # ── Meeting speakers & nominees ───────────────────────────────────────────────
 
 class SpeakerOut(BaseModel):
-    member_id: str
+    # The speaker's own meeting_roles row — stable identity whether or not
+    # they have a member account.
+    role_id: str
+    member_id: str | None = None
     name: str
+
+
+class GuestAddSpeakerIn(BaseModel):
+    """Lets a guest add a speaker the admin missed, so they can rate them —
+    free-text only (guests can't browse the club's member directory)."""
+    guest_name: str
 
 
 class NomineeOut(BaseModel):
@@ -63,7 +72,7 @@ class NomineeCategoryOut(BaseModel):
 # ── Speaker feedback ──────────────────────────────────────────────────────────
 
 class SpeakerFeedbackItem(BaseModel):
-    speaker_member_id: UUID
+    speaker_role_id: UUID
     content_rating: int = Field(..., ge=1, le=3)
     structure_rating: int = Field(..., ge=1, le=3)
     interaction_rating: int = Field(..., ge=1, le=3)
@@ -103,7 +112,7 @@ class GuestVotesIn(BaseModel):
 # ── Resuming a returning guest's previously-submitted feedback ────────────────
 
 class GuestSpeakerFeedbackOut(BaseModel):
-    speaker_member_id: str
+    speaker_role_id: str
     content_rating: int
     structure_rating: int
     interaction_rating: int

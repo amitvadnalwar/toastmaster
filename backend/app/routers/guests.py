@@ -2,6 +2,7 @@ from fastapi import APIRouter
 
 from app.models.common import ApiResponse
 from app.models.guest import (
+    GuestAddSpeakerIn,
     GuestMeetingFeedbackIn,
     GuestProgressOut,
     GuestRegisterIn,
@@ -64,6 +65,16 @@ async def get_nominees(meeting_id: str) -> ApiResponse[list[NomineeCategoryOut]]
     from app.services import guest_service
 
     data = await guest_service.get_meeting_nominees(meeting_id)
+    return ApiResponse(data=data)
+
+
+# A guest can add a speaker the admin missed, so they can rate them too —
+# free-text only, since guests have no way to browse the member directory.
+@router.post("/meetings/{meeting_id}/add-speaker", response_model=ApiResponse[SpeakerOut])
+async def guest_add_speaker(meeting_id: str, body: GuestAddSpeakerIn) -> ApiResponse[SpeakerOut]:
+    from app.services import guest_service
+
+    data = await guest_service.add_speaker_for_guest(meeting_id, body.guest_name)
     return ApiResponse(data=data)
 
 

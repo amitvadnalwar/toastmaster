@@ -14,7 +14,10 @@ export interface GuestRegisterResult {
 }
 
 export interface GuestSpeaker {
-  member_id: string;
+  // The speaker's own meeting_roles row — stable identity whether or not
+  // they have a member account.
+  role_id: string;
+  member_id: string | null;
   name: string;
 }
 
@@ -30,7 +33,7 @@ export interface GuestNomineeCategory {
 }
 
 export interface GuestSpeakerFeedbackItem {
-  speaker_member_id: string;
+  speaker_role_id: string;
   content_rating: number;
   structure_rating: number;
   interaction_rating: number;

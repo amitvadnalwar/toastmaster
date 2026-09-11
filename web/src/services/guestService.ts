@@ -32,6 +32,15 @@ export function getMeetingSpeakers(meetingId: string): Promise<GuestSpeaker[]> {
   return apiRequest<GuestSpeaker[]>(`/guests/meetings/${meetingId}/speakers`);
 }
 
+// Lets a guest add a speaker the admin missed, so they can rate them too —
+// free-text only, since guests can't browse the club's member directory.
+export function addSpeakerForGuest(meetingId: string, guestName: string): Promise<GuestSpeaker> {
+  return apiRequest<GuestSpeaker>(`/guests/meetings/${meetingId}/add-speaker`, {
+    method: 'POST',
+    body: { guest_name: guestName },
+  });
+}
+
 export function getMeetingNominees(meetingId: string): Promise<GuestNomineeCategory[]> {
   return apiRequest<GuestNomineeCategory[]>(`/guests/meetings/${meetingId}/nominees`);
 }

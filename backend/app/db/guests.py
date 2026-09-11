@@ -68,19 +68,23 @@ async def get_guests_for_meeting(meeting_id: str) -> list[dict]:
 async def get_speakers_for_meeting(meeting_id: str) -> list[dict]:
     # Alias + explicit FK hint needed: meeting_roles has two FKs to members
     # (member_id and evaluates_member_id), making the plain join ambiguous.
+    # Includes speakers with no member account (guest_name) — a guest can
+    # give them feedback too, keyed by role id rather than member_id.
     result = (
         supabase.table("meeting_roles")
-        .select("member_id, member:members!member_id(name)")
+        .select("id, member_id, guest_name, member:members!member_id(name)")
         .eq("meeting_id", meeting_id)
         .eq("role", "speaker")
         .eq("disqualified", False)
         .execute()
     )
-    return [
-        {"member_id": row["member_id"], "name": row["member"]["name"]}
-        for row in result.data
-        if row.get("member")
-    ]
+    rows = []
+    for row in result.data:
+        name = (row.get("member") or {}).get("name") or row.get("guest_name")
+        if not name:
+            continue
+        rows.append({"role_id": row["id"], "member_id": row.get("member_id"), "name": name})
+    return rows
 
 
 async def get_nominees_for_meeting(meeting_id: str) -> list[dict]:
@@ -119,7 +123,7 @@ async def get_guest(guest_id: str) -> dict | None:
 async def get_speaker_feedback_for_guest(guest_id: str, meeting_id: str) -> list[dict]:
     result = (
         supabase.table("guest_speaker_feedback")
-        .select("speaker_member_id, content_rating, structure_rating, interaction_rating, confidence_rating, comment")
+        .select("speaker_role_id, content_rating, structure_rating, interaction_rating, confidence_rating, comment")
         .eq("guest_id", guest_id)
         .eq("meeting_id", meeting_id)
         .execute()
@@ -155,7 +159,7 @@ async def upsert_speaker_feedback(
 ) -> None:
     rows = [{"guest_id": guest_id, "meeting_id": meeting_id, **fb} for fb in feedbacks]
     supabase.table("guest_speaker_feedback").upsert(
-        rows, on_conflict="meeting_id,guest_id,speaker_member_id"
+        rows, on_conflict="meeting_id,guest_id,speaker_role_id"
     ).execute()
 
 

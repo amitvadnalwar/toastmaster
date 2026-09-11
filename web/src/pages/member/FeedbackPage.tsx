@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, CheckCircle, MicOff, Frown, Meh, Smile, Star, Clock, Pencil, Check, UserPlus, Search } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CheckCircle, MicOff, Frown, Meh, Smile, Star, Clock, Pencil, Check, UserPlus, Search, Info } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { showAlert } from '@/store/alertStore';
 import { getMeetingById, getMeetingRoster, getMyFeedback, submitFeedback, addSpeakerForFeedback } from '@/services/meetingService';
@@ -627,9 +627,12 @@ export default function MemberFeedbackPage() {
                 className="flex-1 bg-transparent outline-none text-[15px] text-gray-900"
               />
             </div>
-            <p className="mx-4 -mt-1 mb-2 text-[12px] text-gray-400">
-              Not on the list? Type their name above to add them without an account.
-            </p>
+            <div className="mx-4 -mt-1 mb-2 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+              <Info size={13} className="text-amber-500 shrink-0 mt-0.5" />
+              <p className="text-[12px] text-amber-800 font-medium leading-4">
+                Not on the list? Type their name above to add them without an account.
+              </p>
+            </div>
             <div className="overflow-y-auto pb-8">
               {memberSearch.trim().length >= 2 && (
                 <button

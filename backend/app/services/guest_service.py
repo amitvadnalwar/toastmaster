@@ -155,7 +155,34 @@ async def get_meeting_speakers(meeting_id: str) -> list[SpeakerOut]:
     from app.db import guests as db
 
     rows = await db.get_speakers_for_meeting(meeting_id)
-    return [SpeakerOut(member_id=r["member_id"], name=r["name"]) for r in rows]
+    return [SpeakerOut(role_id=r["role_id"], member_id=r["member_id"], name=r["name"]) for r in rows]
+
+
+async def add_speaker_for_guest(meeting_id: str, guest_name: str) -> SpeakerOut:
+    """Lets a guest add a speaker the admin missed, straight from the guest
+    feedback page — free-text only, since guests can't browse the club's
+    member directory. Mirrors meeting_service.member_add_speaker."""
+    from app.db import meetings as db_meetings
+    from app.models.meeting import MeetingRole, MeetingStatus
+
+    name = guest_name.strip()
+    if not name:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Enter the speaker's name")
+
+    meeting_row = await _fetch_current_meeting(meeting_id)
+    if not meeting_row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meeting not found")
+
+    if meeting_row["status"] != MeetingStatus.published:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This meeting is no longer accepting changes",
+        )
+
+    row = await db_meetings.insert_role(
+        meeting_id=meeting_id, member_id=None, role=MeetingRole.speaker, guest_name=name
+    )
+    return SpeakerOut(role_id=row["id"], member_id=None, name=name)
 
 
 async def get_meeting_nominees(meeting_id: str) -> list[NomineeCategoryOut]:
@@ -186,18 +213,28 @@ async def submit_speaker_feedback(guest_id: str, body: GuestSpeakerFeedbackIn) -
     if not body.feedbacks:
         return
     from app.db import guests as db
+    from app.db import meetings as db_meetings
 
-    feedbacks = [
-        {
-            "speaker_member_id": str(fb.speaker_member_id),
+    # Matched by role-assignment id, not member_id — a speaker with no
+    # account (added by name only) can receive feedback too.
+    roster = await db_meetings.get_roster(str(body.meeting_id))
+    feedbacks = []
+    for fb in body.feedbacks:
+        target = next(
+            (r for r in roster if r["id"] == str(fb.speaker_role_id) and r["role"] == "speaker"),
+            None,
+        )
+        if not target or target.get("disqualified"):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Speaker is not eligible for feedback")
+        feedbacks.append({
+            "speaker_role_id": str(fb.speaker_role_id),
+            "speaker_member_id": target.get("member_id"),
             "content_rating": fb.content_rating,
             "structure_rating": fb.structure_rating,
             "interaction_rating": fb.interaction_rating,
             "confidence_rating": fb.confidence_rating,
             "comment": fb.comment,
-        }
-        for fb in body.feedbacks
-    ]
+        })
     await db.upsert_speaker_feedback(guest_id, str(body.meeting_id), feedbacks)
 
 

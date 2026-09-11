@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar, Clock, MapPin, KeyRound, CalendarX2 } from 'lucide-react';
+import { Calendar, Clock, MapPin, KeyRound, CalendarX2, UserPlus } from 'lucide-react';
 import { ApiError } from '@/lib/apiClient';
 import { CLUB_NAME } from '@/lib/constants';
 import { formatDate, formatTime } from '@/lib/utils';
@@ -13,6 +13,7 @@ import MeetingQualityCard, {
 } from './components/MeetingQualityCard';
 import NomineeSection from './components/NomineeSection';
 import {
+  addSpeakerForGuest,
   getGuestProgress,
   getGuestTodaysMeeting,
   getMeetingNominees,
@@ -61,8 +62,12 @@ export default function GuestPage() {
   const [meetingRating, setMeetingRating] = useState<MeetingRatingState>(EMPTY_MEETING_RATING);
   const [votes, setVotes] = useState<Record<string, string>>({});
 
-  function ratingFromProgress(progress: GuestProgress | null, memberId: string): SpeakerRatingState {
-    const fb = progress?.speaker_feedback.find((f) => f.speaker_member_id === memberId);
+  const [addSpeakerOpen, setAddSpeakerOpen] = useState(false);
+  const [newSpeakerName, setNewSpeakerName] = useState('');
+  const [addingSpeaker, setAddingSpeaker] = useState(false);
+
+  function ratingFromProgress(progress: GuestProgress | null, roleId: string): SpeakerRatingState {
+    const fb = progress?.speaker_feedback.find((f) => f.speaker_role_id === roleId);
     if (!fb) return EMPTY_SPEAKER_RATING;
     return {
       content: fb.content_rating,
@@ -82,7 +87,7 @@ export default function GuestPage() {
       getGuestProgress(gId, mId).catch(() => null),
     ]);
     setSpeakers(sp);
-    setSpeakerRatings(Object.fromEntries(sp.map((s) => [s.member_id, ratingFromProgress(progress, s.member_id)])));
+    setSpeakerRatings(Object.fromEntries(sp.map((s) => [s.role_id, ratingFromProgress(progress, s.role_id)])));
     setNomineeCategories(nm);
     if (progress?.meeting_feedback) {
       const mf = progress.meeting_feedback;
@@ -172,8 +177,26 @@ export default function GuestPage() {
     }
   }
 
-  function updateSpeakerRating(memberId: string, field: keyof SpeakerRatingState, value: number | string) {
-    setSpeakerRatings((prev) => ({ ...prev, [memberId]: { ...prev[memberId], [field]: value } }));
+  function updateSpeakerRating(roleId: string, field: keyof SpeakerRatingState, value: number | string) {
+    setSpeakerRatings((prev) => ({ ...prev, [roleId]: { ...prev[roleId], [field]: value } }));
+  }
+
+  async function handleAddSpeaker() {
+    const name = newSpeakerName.trim();
+    if (!name || !meeting) return;
+    setError('');
+    setAddingSpeaker(true);
+    try {
+      const sp = await addSpeakerForGuest(meeting.id, name);
+      setSpeakers((prev) => [...prev, sp]);
+      setSpeakerRatings((prev) => ({ ...prev, [sp.role_id]: EMPTY_SPEAKER_RATING }));
+      setAddSpeakerOpen(false);
+      setNewSpeakerName('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not add speaker. Please try again.');
+    } finally {
+      setAddingSpeaker(false);
+    }
   }
 
   async function handleSpeakersNext() {
@@ -184,7 +207,7 @@ export default function GuestPage() {
     }
 
     for (const s of speakers) {
-      const r = speakerRatings[s.member_id];
+      const r = speakerRatings[s.role_id];
       if (!r.content || !r.structure || !r.interaction || !r.confidence) {
         setError(`Please rate all categories for ${s.name}`);
         return;
@@ -197,9 +220,9 @@ export default function GuestPage() {
         guestId!,
         meeting!.id,
         speakers.map((s) => {
-          const r = speakerRatings[s.member_id];
+          const r = speakerRatings[s.role_id];
           return {
-            speaker_member_id: s.member_id,
+            speaker_role_id: s.role_id,
             content_rating: r.content!,
             structure_rating: r.structure!,
             interaction_rating: r.interaction!,
@@ -408,20 +431,25 @@ export default function GuestPage() {
             {speakers.length === 0 ? (
               <p className="text-center text-[15px] text-gray-500 leading-relaxed py-6">
                 No speakers have been enrolled for this meeting yet.
-                <br />
-                Tap Next to continue.
               </p>
             ) : (
               speakers.map((s, i) => (
                 <SpeakerCard
-                  key={s.member_id}
+                  key={s.role_id}
                   speaker={s}
                   index={i}
-                  rating={speakerRatings[s.member_id] ?? EMPTY_SPEAKER_RATING}
-                  onChange={(field, value) => updateSpeakerRating(s.member_id, field, value)}
+                  rating={speakerRatings[s.role_id] ?? EMPTY_SPEAKER_RATING}
+                  onChange={(field, value) => updateSpeakerRating(s.role_id, field, value)}
                 />
               ))
             )}
+            <button
+              type="button"
+              onClick={() => setAddSpeakerOpen(true)}
+              className="w-full flex items-center justify-center gap-1.5 border border-dashed border-gray-300 rounded-xl py-3 text-brand text-sm font-semibold mb-4"
+            >
+              <UserPlus size={15} /> Add a Speaker
+            </button>
             <Button fullWidth size="lg" loading={loading} onClick={handleSpeakersNext} className="mt-2">
               Next: Meeting Quality
             </Button>
@@ -493,6 +521,46 @@ export default function GuestPage() {
           </Link>
         </p>
       </div>
+
+      {/* Add Speaker bottom sheet — free-text only, guests can't browse the member list */}
+      {addSpeakerOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-end bg-black/40"
+          onClick={() => { setAddSpeakerOpen(false); setNewSpeakerName(''); }}
+        >
+          <div className="w-full max-w-md mx-auto bg-white rounded-t-3xl pb-8" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+              <button
+                onClick={() => { setAddSpeakerOpen(false); setNewSpeakerName(''); }}
+                className="text-gray-500 text-base w-[60px] text-left"
+              >
+                Cancel
+              </button>
+              <h3 className="text-base font-semibold text-gray-900">Add Speaker</h3>
+              <div className="w-[60px] flex justify-end">
+                <button
+                  onClick={handleAddSpeaker}
+                  disabled={!newSpeakerName.trim() || addingSpeaker}
+                  className="text-brand font-semibold text-base disabled:opacity-30"
+                >
+                  Add
+                </button>
+              </div>
+            </div>
+            <div className="px-5 pt-4">
+              <p className="text-[13px] text-gray-500 font-medium mb-2">Enter the speaker&apos;s name as announced at the meeting.</p>
+              <input
+                autoFocus
+                value={newSpeakerName}
+                onChange={(e) => setNewSpeakerName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleAddSpeaker(); }}
+                placeholder="Speaker's name"
+                className="w-full bg-white border border-gray-300 rounded-[10px] px-4 py-3.5 text-base text-gray-900 outline-none focus:border-brand"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

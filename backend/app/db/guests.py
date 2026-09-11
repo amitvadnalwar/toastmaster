@@ -88,9 +88,11 @@ async def get_speakers_for_meeting(meeting_id: str) -> list[dict]:
 
 
 async def get_nominees_for_meeting(meeting_id: str) -> list[dict]:
+    # Includes nominees with no member account (guest_name) — a guest can
+    # vote for them too, keyed by role id rather than member_id.
     result = (
         supabase.table("meeting_roles")
-        .select("member_id, role, member:members!member_id(name)")
+        .select("id, member_id, guest_name, role, member:members!member_id(name)")
         .eq("meeting_id", meeting_id)
         .in_(
             "role",
@@ -146,7 +148,7 @@ async def get_meeting_feedback_for_guest(guest_id: str, meeting_id: str) -> dict
 async def get_votes_for_guest(guest_id: str, meeting_id: str) -> list[dict]:
     result = (
         supabase.table("guest_votes")
-        .select("category, nominee_id")
+        .select("category, nominee_role_id, nominee_id")
         .eq("guest_id", guest_id)
         .eq("meeting_id", meeting_id)
         .execute()

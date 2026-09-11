@@ -18,10 +18,11 @@ const CATEGORIES: { key: VoteCategory; label: string; roles: MeetingRoleAssignme
 ];
 
 interface Participant {
-  memberId: string;
+  roleId: string;
   name: string;
   initials?: MemberInitials | null;
   role: MeetingRoleAssignment['role'];
+  isNoAccount: boolean;
   count: number;
 }
 
@@ -66,21 +67,24 @@ export default function VotingResultsPage() {
 
       <div className="flex-1 overflow-y-auto px-5 pt-5 pb-12 max-w-lg mx-auto w-full">
         {CATEGORIES.map((cat) => {
-          const countByMember = new Map(
-            items.filter((i) => i.category === cat.key).map((i) => [i.nominee_id, i.count]),
+          // Keyed by role-assignment id, not member_id — a nominee with no
+          // account (added by name only) can receive votes too.
+          const countByRole = new Map(
+            items.filter((i) => i.category === cat.key).map((i) => [i.nominee_role_id, i.count]),
           );
 
           const participantMap = new Map<string, Participant>();
           for (const r of roster) {
-            // Guest entries (no member_id) were never voteable candidates.
-            if (!cat.roles.includes(r.role) || r.disqualified || !r.member_id) continue;
-            if (!participantMap.has(r.member_id)) {
-              participantMap.set(r.member_id, {
-                memberId: r.member_id,
-                name: r.member_name ?? '—',
+            const name = r.member_name ?? r.guest_name;
+            if (!cat.roles.includes(r.role) || r.disqualified || !name) continue;
+            if (!participantMap.has(r.id)) {
+              participantMap.set(r.id, {
+                roleId: r.id,
+                name,
                 initials: r.member_initials,
                 role: r.role,
-                count: countByMember.get(r.member_id) ?? 0,
+                isNoAccount: !r.member_id,
+                count: countByRole.get(r.id) ?? 0,
               });
             }
           }
@@ -101,12 +105,19 @@ export default function VotingResultsPage() {
                   {participants.map((p) => {
                     const pct = total === 0 ? 0 : Math.round((p.count / total) * 100);
                     return (
-                      <div key={p.memberId}>
+                      <div key={p.roleId}>
                         <div className="flex items-end justify-between mb-1">
                           <div className="min-w-0">
-                            <span className="text-[13px] font-semibold text-gray-800 truncate block">{formatMemberName(p.name, p.initials)}</span>
+                            <span className="text-[13px] font-semibold text-gray-800 truncate inline-flex items-center gap-1.5">
+                              {formatMemberName(p.name, p.initials)}
+                              {p.isNoAccount && (
+                                <span className="text-[9px] font-bold text-amber-700 bg-amber-100 rounded-full px-1.5 py-0.5 shrink-0">
+                                  No account
+                                </span>
+                              )}
+                            </span>
                             {cat.roles.length > 1 && (
-                              <span className="text-[11px] text-gray-400">{ROLE_LABELS[p.role]}</span>
+                              <span className="text-[11px] text-gray-400 block">{ROLE_LABELS[p.role]}</span>
                             )}
                           </div>
                           <span className="text-[12px] text-gray-500 shrink-0 ml-2">{pct}% · {p.count}</span>

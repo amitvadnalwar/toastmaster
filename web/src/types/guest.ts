@@ -22,7 +22,10 @@ export interface GuestSpeaker {
 }
 
 export interface GuestNominee {
-  member_id: string;
+  // The nominee's own meeting_roles row — stable identity whether or not
+  // they have a member account.
+  role_id: string;
+  member_id: string | null;
   name: string;
 }
 
@@ -53,7 +56,8 @@ export interface GuestMeetingFeedbackPayload {
 
 export interface GuestVoteItem {
   category: string;
-  nominee_id: string;
+  nominee_role_id: string;
+  nominee_id?: string | null;
 }
 
 export interface GuestProgress {

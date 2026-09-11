@@ -15,7 +15,9 @@ class VoteCategory(StrEnum):
 class VoteIn(BaseModel):
     meeting_id: str
     category: VoteCategory
-    nominee_id: str
+    # The nominee's own meeting_roles row, not their member id — works
+    # whether or not the nominee has a member account.
+    nominee_role_id: str
 
 
 class RatingIn(BaseModel):
@@ -26,7 +28,8 @@ class RatingIn(BaseModel):
 
 class VoteSummaryItem(BaseModel):
     category: VoteCategory
-    nominee_id: str
+    nominee_role_id: str
+    nominee_id: str | None = None  # null for a nominee with no account
     nominee_name: str
     nominee_initials: str | None = None
     count: int
@@ -36,7 +39,8 @@ class VoteSummaryItem(BaseModel):
 
 class MyVoteOut(BaseModel):
     category: VoteCategory
-    nominee_id: str
+    nominee_role_id: str
+    nominee_id: str | None = None
 
 
 class MyRatingOut(BaseModel):

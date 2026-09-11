@@ -18,6 +18,7 @@ from app.models.meeting import (
     MeetingRoleAssignmentOut,
     MeetingStatsOut,
     MeetingStatusUpdateIn,
+    MemberAddRoleIn,
     MemberAddSpeakerIn,
     ReceivedFeedbackOut,
     RoleDisqualifyIn,
@@ -210,6 +211,18 @@ async def member_add_speaker(
     user: CurrentUser = Depends(require_member),
 ) -> ApiResponse[MeetingRoleAssignmentOut]:
     result = await meeting_service.member_add_speaker(meeting_id, body, user)
+    return ApiResponse(data=result)
+
+
+# Any member can add a missing nominee straight from the voting screen —
+# generalized version of /roles/add-speaker, covering every votable role.
+@router.post("/{meeting_id}/roles/add", response_model=ApiResponse[MeetingRoleAssignmentOut])
+async def member_add_role(
+    meeting_id: str,
+    body: MemberAddRoleIn,
+    user: CurrentUser = Depends(require_member),
+) -> ApiResponse[MeetingRoleAssignmentOut]:
+    result = await meeting_service.member_add_role(meeting_id, body, user)
     return ApiResponse(data=result)
 
 

@@ -194,10 +194,11 @@ async def get_meeting_nominees(meeting_id: str) -> list[NomineeCategoryOut]:
 
     for row in rows:
         role = row.get("role")
-        member = row.get("member")
-        if not member:
+        member = row.get("member") or {}
+        name = member.get("name") or row.get("guest_name")
+        if not name:
             continue
-        nominee = NomineeOut(member_id=row["member_id"], name=member["name"])
+        nominee = NomineeOut(role_id=row["id"], member_id=row.get("member_id"), name=name)
         for category, roles in _CATEGORY_ROLES.items():
             if role in roles:
                 by_category[category].append(nominee)
@@ -259,9 +260,19 @@ async def submit_votes(guest_id: str, body: GuestVotesIn) -> None:
     if not body.votes:
         return
     from app.db import guests as db
+    from app.db import meetings as db_meetings
 
-    votes = [
-        {"category": v.category, "nominee_id": str(v.nominee_id)}
-        for v in body.votes
-    ]
+    # Matched by role-assignment id, not member_id — a nominee with no
+    # account (added by name only) can be voted for too.
+    roster = await db_meetings.get_roster(str(body.meeting_id))
+    votes = []
+    for v in body.votes:
+        target = next((r for r in roster if r["id"] == str(v.nominee_role_id)), None)
+        if not target or target.get("disqualified"):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Nominee is not eligible")
+        votes.append({
+            "category": v.category,
+            "nominee_role_id": str(v.nominee_role_id),
+            "nominee_id": target.get("member_id"),
+        })
     await db.upsert_guest_votes(guest_id, str(body.meeting_id), votes)

@@ -18,6 +18,7 @@ from app.models.meeting import (
     MeetingCreateIn,
     MeetingFeedbackIn,
     MeetingOut,
+    MemberAddRoleIn,
     MemberAddSpeakerIn,
     MeetingRole,
     MeetingRoleAssignmentOut,
@@ -535,6 +536,79 @@ async def member_add_speaker(
         meeting_id=meeting_id,
         member_id=body.member_id,
         role=MeetingRole.speaker,
+        guest_name=body.guest_name.strip() if body.guest_name else None,
+    )
+    roster_fresh = await db_meetings.get_roster(meeting_id)
+    enriched = next((r for r in roster_fresh if r["id"] == row["id"]), row)
+    return _role_out(enriched)
+
+
+# Roles a member can add themselves as a voting-nominee fallback — every
+# role that feeds one of the award categories. Evaluator is included but
+# added without evaluates_role_id: this is only for nominating them for
+# "Best Evaluator", not a full evaluation assignment.
+_MEMBER_ADDABLE_ROLES = frozenset({
+    MeetingRole.speaker,
+    MeetingRole.table_topics_speaker,
+    MeetingRole.evaluator,
+    MeetingRole.tmod,
+    MeetingRole.general_evaluator,
+    MeetingRole.ah_counter,
+    MeetingRole.timer,
+    MeetingRole.grammarian,
+    MeetingRole.table_topics_master,
+})
+
+
+async def member_add_role(
+    meeting_id: str, body: MemberAddRoleIn, user: CurrentUser
+) -> MeetingRoleAssignmentOut:
+    """Fallback for the voting page: a nominee missing from a category can be
+    added here by any member, so they show up as a candidate to vote for.
+    Mirrors member_add_speaker, generalized to every votable role."""
+    if user.is_guest:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Guests cannot add roles")
+    if body.role not in _MEMBER_ADDABLE_ROLES:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This role can't be added this way")
+
+    meeting = await _require_meeting(meeting_id)
+    if meeting["club_id"] != user.club_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your club")
+    if meeting["status"] == MeetingStatus.completed:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot add a role to a completed meeting",
+        )
+
+    if body.role in (MeetingRole.speaker, MeetingRole.table_topics_speaker):
+        if bool(body.member_id) == bool(body.guest_name):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Provide exactly one of member_id or guest_name",
+            )
+    elif not body.member_id or body.guest_name:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="This role requires picking an existing member",
+        )
+
+    roster = await db_meetings.get_roster(meeting_id)
+
+    if body.role in SINGLETON_ROLES and any(r["role"] == body.role for r in roster):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"'{body.role}' is already assigned in this meeting",
+        )
+    if body.member_id and any(r["role"] == body.role and r["member_id"] == body.member_id for r in roster):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This member already has this role",
+        )
+
+    row = await db_meetings.insert_role(
+        meeting_id=meeting_id,
+        member_id=body.member_id,
+        role=body.role,
         guest_name=body.guest_name.strip() if body.guest_name else None,
     )
     roster_fresh = await db_meetings.get_roster(meeting_id)

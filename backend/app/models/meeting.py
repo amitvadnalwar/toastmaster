@@ -124,6 +124,16 @@ class MemberAddSpeakerIn(BaseModel):
     guest_name: str | None = None  # alternative to member_id
 
 
+class MemberAddRoleIn(BaseModel):
+    """Same fallback as MemberAddSpeakerIn, generalized to any votable role —
+    lets a member add a missing nominee straight from the voting screen.
+    guest_name is only accepted for speaker/table_topics_speaker; every other
+    role requires picking an existing member."""
+    role: MeetingRole
+    member_id: str | None = None
+    guest_name: str | None = None
+
+
 # ── Admin assignment (admin picks any member for any role) ────────────────
 
 class AdminAssignRoleIn(BaseModel):

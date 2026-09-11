@@ -192,6 +192,26 @@ export function addSpeakerForFeedback(
   });
 }
 
+// Same fallback, generalized to any votable role — lets a member add a
+// nominee missing from a voting category straight from the voting screen.
+export interface MemberAddRolePayload {
+  role: MeetingRole;
+  member_id?: string | null;
+  guest_name?: string | null;
+}
+
+export function addNomineeForVoting(
+  meetingId: string,
+  payload: MemberAddRolePayload,
+  token: string,
+): Promise<MeetingRoleAssignment> {
+  return apiRequest<MeetingRoleAssignment>(`/meetings/${meetingId}/roles/add`, {
+    method: 'POST',
+    body: payload,
+    token,
+  });
+}
+
 // ── Check-in (QR scan or 6-digit code) ──────────────────────────────────────
 
 export function checkinMeeting(qrToken: string, token: string): Promise<CheckinResult> {

@@ -3,13 +3,15 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, CheckCircle, MicOff, Frown, Meh, Smile, Star, Clock, Pencil, Check, UserPlus, Search, Info } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { showAlert } from '@/store/alertStore';
-import { getMeetingById, getMeetingRoster, getMyFeedback, submitFeedback, addSpeakerForFeedback } from '@/services/meetingService';
+import { getMeetingById, getMeetingRoster, getMyFeedback, submitFeedback, addSpeakerForFeedback, addNomineeForVoting } from '@/services/meetingService';
 import { getClubMembers } from '@/services/memberService';
 import { submitVote, submitRating, getMyVotingState } from '@/services/voteService';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { formatMemberName, initials } from '@/lib/utils';
+import { ROLE_LABELS } from '@/types';
 import type {
   Meeting,
+  MeetingRole,
   MeetingRoleAssignment,
   MemberInitials,
   SpeakerFeedback,
@@ -191,6 +193,11 @@ export default function MemberFeedbackPage() {
   const [memberSearch, setMemberSearch] = useState('');
   const [addingSpeaker, setAddingSpeaker] = useState(false);
 
+  const [nomineeCategory, setNomineeCategory] = useState<VoteCategory | null>(null);
+  const [nomineeRole, setNomineeRole] = useState<MeetingRole | null>(null);
+  const [nomineeSearch, setNomineeSearch] = useState('');
+  const [addingNominee, setAddingNominee] = useState(false);
+
   const load = useCallback(async () => {
     if (!session || !id) return;
     setFetching(true);
@@ -265,22 +272,40 @@ export default function MemberFeedbackPage() {
     [members, memberSearch, speakers],
   );
 
+  const nomineeAllowsGuestName = nomineeRole === 'speaker' || nomineeRole === 'table_topics_speaker';
+  const availableNomineeMembers = useMemo(
+    () =>
+      members
+        .filter((m) => m.name.toLowerCase().includes(nomineeSearch.toLowerCase()))
+        .filter((m) => !roster.some((r) => r.role === nomineeRole && r.member_id === m.id)),
+    [members, nomineeSearch, roster, nomineeRole],
+  );
+
   const votedMap = useMemo(
-    () => new Map(votingState.votes.map((v) => [v.category, v.nominee_id])),
+    () => new Map(votingState.votes.map((v) => [v.category, v.nominee_role_id])),
     [votingState],
   );
   const nomineesByCategory = useMemo(() => {
     const myEmail = session?.user?.email;
     const map: Partial<Record<VoteCategory, MeetingRoleAssignment[]>> = {};
     for (const cat of VOTE_CATEGORIES) {
-      // Guest entries (no member_id) can't be voted for — there's no member
-      // record to attach the vote to.
-      map[cat.key] = roster.filter((r) => cat.roles.includes(r.role) && !!r.member_id && !r.disqualified && r.member_email !== myEmail);
+      // A nominee with no member account (added by name only) can be voted
+      // for too — matched and stored by role-assignment id, not member_id.
+      map[cat.key] = roster.filter((r) => cat.roles.includes(r.role) && !r.disqualified && r.member_email !== myEmail);
     }
     return map;
   }, [roster, session]);
   const votingOpen = meeting?.voting_status === 'open';
   const allCategoriesVoted = VOTE_CATEGORIES.every((c) => votedMap.has(c.key) || (nomineesByCategory[c.key]?.length ?? 0) === 0);
+
+  // Singleton role-player categories (Best MRP / Best ARP each cover 3
+  // singleton roles) only need an "Add Nominee" fallback while at least one
+  // of their underlying roles is still unfilled — Speaker/Table Topics
+  // Speaker/Evaluator aren't singletons, so they're always addable.
+  const SINGLETON_ROLE_SET = new Set<MeetingRole>(['tmod', 'general_evaluator', 'ah_counter', 'timer', 'grammarian', 'table_topics_master']);
+  function openRolesForCategory(cat: (typeof VOTE_CATEGORIES)[number]): MeetingRole[] {
+    return cat.roles.filter((role) => !SINGLETON_ROLE_SET.has(role) || !roster.some((r) => r.role === role));
+  }
 
   function updateRating(index: number, key: CategoryKey, value: 1 | 2 | 3) {
     setSpeakers((prev) => prev.map((r, i) => (i === index ? { ...r, [key]: value } : r)));
@@ -344,6 +369,30 @@ export default function MemberFeedbackPage() {
     }
   }
 
+  function openNomineePicker(cat: VoteCategory) {
+    const category = VOTE_CATEGORIES.find((c) => c.key === cat)!;
+    const openRoles = openRolesForCategory(category);
+    setNomineeRole(openRoles.length === 1 ? openRoles[0] : null);
+    setNomineeCategory(cat);
+    setNomineeSearch('');
+  }
+
+  async function handleAddNominee(option: { member_id?: string; guest_name?: string }) {
+    if (!session || !id || !nomineeRole) return;
+    setAddingNominee(true);
+    try {
+      const assignment = await addNomineeForVoting(id, { role: nomineeRole, ...option }, session.access_token);
+      setRoster((prev) => [...prev, assignment]);
+      setNomineeCategory(null);
+      setNomineeRole(null);
+      setNomineeSearch('');
+    } catch (e: unknown) {
+      await showAlert(e instanceof Error ? e.message : 'Failed to add nominee.');
+    } finally {
+      setAddingNominee(false);
+    }
+  }
+
   async function handleSubmitVotes() {
     if (!session || !id) return;
     const toSubmit = VOTE_CATEGORIES.filter((c) => !votedMap.has(c.key) && selections[c.key]);
@@ -354,7 +403,7 @@ export default function MemberFeedbackPage() {
     setSubmittingVotes(true);
     try {
       for (const cat of toSubmit) {
-        await submitVote({ meeting_id: id, category: cat.key, nominee_id: selections[cat.key]! }, session.access_token);
+        await submitVote({ meeting_id: id, category: cat.key, nominee_role_id: selections[cat.key]! }, session.access_token);
       }
       const fresh = await getMyVotingState(id, session.access_token);
       setVotingState(fresh);
@@ -511,39 +560,50 @@ export default function MemberFeedbackPage() {
                 {VOTE_CATEGORIES.map((cat) => {
                   const nominees = nomineesByCategory[cat.key] ?? [];
                   const votedNomineeId = votedMap.get(cat.key);
+                  const canAddNominee = openRolesForCategory(cat).length > 0;
                   return (
                     <div key={cat.key} className="bg-white rounded-2xl p-4 mb-3 shadow-sm">
                       <p className="text-[14px] font-bold text-gray-900 mb-3">{cat.label}</p>
                       {nominees.length === 0 ? (
-                        <p className="text-[13px] text-gray-400">No nominees available.</p>
+                        <p className="text-[13px] text-gray-400 mb-1">No nominees available.</p>
                       ) : votedNomineeId ? (
                         <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-3 py-2.5">
                           <CheckCircle size={16} className="text-green-600" />
                           <span className="text-[14px] font-semibold text-green-700">
                             {(() => {
-                              const voted = nominees.find((n) => n.member_id === votedNomineeId);
-                              return voted ? formatMemberName(voted.member_name, voted.member_initials) : 'Voted';
+                              const voted = nominees.find((n) => n.id === votedNomineeId);
+                              return voted ? formatMemberName(voted.member_name ?? voted.guest_name, voted.member_initials) : 'Voted';
                             })()}
                           </span>
                         </div>
                       ) : (
                         <div className="flex flex-col gap-2">
                           {nominees.map((n) => {
-                            const selected = selections[cat.key] === n.member_id;
+                            const selected = selections[cat.key] === n.id;
                             return (
                               <button
                                 key={n.id}
                                 type="button"
-                                onClick={() => setSelections((prev) => ({ ...prev, [cat.key]: n.member_id! }))}
-                                className={`text-left px-3.5 py-2.5 rounded-xl border text-[14px] font-semibold transition-colors ${
+                                onClick={() => setSelections((prev) => ({ ...prev, [cat.key]: n.id }))}
+                                className={`text-left px-3.5 py-2.5 rounded-xl border text-[14px] font-semibold transition-colors flex items-center gap-1.5 ${
                                   selected ? 'border-brand bg-brand/5 text-brand' : 'border-gray-200 text-gray-700'
                                 }`}
                               >
-                                {formatMemberName(n.member_name, n.member_initials)}
+                                {formatMemberName(n.member_name ?? n.guest_name, n.member_initials)}
+                                {!n.member_id && <NoAccountBadge />}
                               </button>
                             );
                           })}
                         </div>
+                      )}
+                      {!votedNomineeId && canAddNominee && (
+                        <button
+                          type="button"
+                          onClick={() => openNomineePicker(cat.key)}
+                          className="w-full flex items-center justify-center gap-1.5 border border-dashed border-gray-300 rounded-xl py-2.5 text-brand text-[13px] font-semibold mt-3"
+                        >
+                          <UserPlus size={14} /> Add Nominee
+                        </button>
                       )}
                     </div>
                   );
@@ -666,6 +726,97 @@ export default function MemberFeedbackPage() {
                 </button>
               ))}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Nominee bottom sheet — role choice (if the category covers more
+          than one role) then pick a member, or fall back to free text for
+          Speaker/Table Topics Speaker */}
+      {nomineeCategory && (
+        <div
+          className="fixed inset-0 z-50 flex items-end bg-black/40"
+          onClick={() => { setNomineeCategory(null); setNomineeRole(null); }}
+        >
+          <div className="w-full bg-white rounded-t-3xl max-h-[75%] flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+              <button
+                onClick={() => { setNomineeCategory(null); setNomineeRole(null); }}
+                className="text-gray-500 text-base w-[60px] text-left"
+              >
+                Cancel
+              </button>
+              <h3 className="text-base font-semibold text-gray-900">Add Nominee</h3>
+              <div className="w-[60px]" />
+            </div>
+
+            {!nomineeRole ? (
+              <div className="overflow-y-auto pb-8">
+                <p className="mx-4 mt-4 mb-2 text-[13px] text-gray-500 font-medium">Which role are they filling?</p>
+                {openRolesForCategory(VOTE_CATEGORIES.find((c) => c.key === nomineeCategory)!).map((role) => (
+                  <button
+                    key={role}
+                    onClick={() => setNomineeRole(role)}
+                    className="w-full flex items-center px-4 py-3.5 border-b border-gray-50 text-left text-[15px] font-medium text-gray-900"
+                  >
+                    {ROLE_LABELS[role]}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <>
+                <div className="mx-4 my-3 flex items-center gap-2 bg-gray-100 rounded-[10px] px-3 py-2.5">
+                  <Search size={15} className="text-gray-400" />
+                  <input
+                    value={nomineeSearch}
+                    onChange={(e) => setNomineeSearch(e.target.value)}
+                    placeholder="Search members…"
+                    className="flex-1 bg-transparent outline-none text-[15px] text-gray-900"
+                  />
+                </div>
+                {nomineeAllowsGuestName && (
+                  <div className="mx-4 -mt-1 mb-2 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                    <Info size={13} className="text-amber-500 shrink-0 mt-0.5" />
+                    <p className="text-[12px] text-amber-800 font-medium leading-4">
+                      Not on the list? Type their name above to add them without an account.
+                    </p>
+                  </div>
+                )}
+                <div className="overflow-y-auto pb-8">
+                  {nomineeAllowsGuestName && nomineeSearch.trim().length >= 2 && (
+                    <button
+                      onClick={() => handleAddNominee({ guest_name: nomineeSearch.trim() })}
+                      disabled={addingNominee}
+                      className="w-full flex items-center gap-3 px-4 py-3.5 border-b border-gray-100 bg-brand/5 disabled:opacity-60"
+                    >
+                      <div className="w-[38px] h-[38px] rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                        <UserPlus size={18} className="text-amber-700" />
+                      </div>
+                      <span className="flex-1 text-left text-[15px] text-gray-900">
+                        Add <span className="font-semibold">&ldquo;{nomineeSearch.trim()}&rdquo;</span> without an account
+                      </span>
+                    </button>
+                  )}
+                  {availableNomineeMembers.length === 0 ? (
+                    <div className="py-10 text-center text-sm text-gray-400">No members found</div>
+                  ) : availableNomineeMembers.map((m) => (
+                    <button
+                      key={m.id}
+                      onClick={() => handleAddNominee({ member_id: m.id })}
+                      disabled={addingNominee}
+                      className="w-full flex items-center gap-3 px-4 py-3.5 border-b border-gray-50 disabled:opacity-60"
+                    >
+                      <div className="w-[38px] h-[38px] rounded-full bg-brand flex items-center justify-center shrink-0">
+                        <span className="text-white text-[13px] font-bold">{initials(m.name)}</span>
+                      </div>
+                      <span className="flex-1 text-left text-[15px] text-gray-900 font-medium">
+                        <span className="text-brand">{m.initials}</span> {m.name}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

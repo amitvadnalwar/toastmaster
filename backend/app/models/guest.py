@@ -59,7 +59,10 @@ class GuestAddSpeakerIn(BaseModel):
 
 
 class NomineeOut(BaseModel):
-    member_id: str
+    # The nominee's own meeting_roles row — stable identity whether or not
+    # they have a member account.
+    role_id: str
+    member_id: str | None = None
     name: str
 
 
@@ -101,7 +104,7 @@ class GuestMeetingFeedbackIn(BaseModel):
 
 class GuestVoteItem(BaseModel):
     category: str
-    nominee_id: UUID
+    nominee_role_id: UUID
 
 
 class GuestVotesIn(BaseModel):
@@ -131,7 +134,8 @@ class GuestMeetingFeedbackOut(BaseModel):
 
 class GuestVoteOut(BaseModel):
     category: str
-    nominee_id: str
+    nominee_role_id: str
+    nominee_id: str | None = None
 
 
 class GuestProgressOut(BaseModel):

@@ -245,7 +245,7 @@ export type VoteCategory = 'best_speaker' | 'best_evaluator' | 'best_mrp' | 'bes
 export interface VotePayload {
   meeting_id: string;
   category: VoteCategory;
-  nominee_id: string;
+  nominee_role_id: string;
 }
 
 export interface RatingPayload {
@@ -256,7 +256,8 @@ export interface RatingPayload {
 
 export interface MyVote {
   category: VoteCategory;
-  nominee_id: string;
+  nominee_role_id: string;
+  nominee_id?: string | null;
 }
 
 export interface MyRating {
@@ -271,7 +272,8 @@ export interface MyVotingState {
 
 export interface VoteSummaryItem {
   category: VoteCategory;
-  nominee_id: string;
+  nominee_role_id: string;
+  nominee_id?: string | null;
   nominee_name: string;
   nominee_initials?: MemberInitials | null;
   count: number;

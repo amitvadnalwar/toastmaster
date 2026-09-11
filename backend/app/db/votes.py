@@ -5,7 +5,8 @@ async def insert_vote(
     meeting_id: str,
     voter_id: str,
     category: str,
-    nominee_id: str,
+    nominee_role_id: str,
+    nominee_id: str | None,
 ) -> None:
     # Unique constraint (meeting_id, voter_id, category) raises on duplicate.
     supabase.table("votes").insert(
@@ -13,6 +14,7 @@ async def insert_vote(
             "meeting_id": meeting_id,
             "voter_id": voter_id,
             "category": category,
+            "nominee_role_id": nominee_role_id,
             "nominee_id": nominee_id,
         }
     ).execute()
@@ -21,7 +23,7 @@ async def insert_vote(
 async def get_my_votes(meeting_id: str, voter_id: str) -> list[dict]:
     result = (
         supabase.table("votes")
-        .select("category, nominee_id")
+        .select("category, nominee_role_id, nominee_id")
         .eq("meeting_id", meeting_id)
         .eq("voter_id", voter_id)
         .execute()
@@ -91,21 +93,25 @@ async def get_distinct_voter_ids(meeting_id: str) -> list[str]:
 
 
 async def get_summary(meeting_id: str) -> list[dict]:
+    # Joins through nominee_role_id (not nominee_id) so a nominee with no
+    # account still gets a name — falling back to meeting_roles.guest_name.
     result = (
         supabase.table("votes")
-        .select("category, nominee_id, members!votes_nominee_id_fkey(name, initials)")
+        .select("category, nominee_role_id, nominee_id, nominee_role:meeting_roles!nominee_role_id(guest_name, member:members!member_id(name, initials))")
         .eq("meeting_id", meeting_id)
         .execute()
     )
     counts: dict[tuple[str, str], dict] = {}
     for row in result.data:
-        key = (row["category"], row["nominee_id"])
+        key = (row["category"], row["nominee_role_id"])
         if key not in counts:
-            member = row.get("members") or {}
+            role = row.get("nominee_role") or {}
+            member = role.get("member") or {}
             counts[key] = {
                 "category": row["category"],
-                "nominee_id": row["nominee_id"],
-                "nominee_name": member.get("name") or "—",
+                "nominee_role_id": row["nominee_role_id"],
+                "nominee_id": row.get("nominee_id"),
+                "nominee_name": member.get("name") or role.get("guest_name") or "—",
                 "nominee_initials": member.get("initials"),
                 "count": 0,
             }

@@ -48,20 +48,24 @@ async def submit_vote(body: VoteIn, user: CurrentUser) -> None:
     if meeting_row["voting_status"] != VotingStatus.open:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Voting is not open")
 
+    # Matched by role-assignment id, not member_id — a nominee with no
+    # account (added by name only) can be voted for too.
     expected_roles = _CATEGORY_ROLES.get(body.category.value, [])
     roster = await db_meetings.get_roster(body.meeting_id)
     nominee = next(
-        (r for r in roster if r["member_id"] == body.nominee_id and r["role"] in expected_roles),
+        (r for r in roster if r["id"] == body.nominee_role_id and r["role"] in expected_roles),
         None,
     )
     if not nominee or nominee.get("disqualified"):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Nominee is not eligible")
 
     member = await _require_member(user)
-    if nominee["member_id"] == member["id"]:
+    if nominee.get("member_id") == member["id"]:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="You cannot vote for yourself")
     try:
-        await db_votes.insert_vote(body.meeting_id, member["id"], body.category.value, body.nominee_id)
+        await db_votes.insert_vote(
+            body.meeting_id, member["id"], body.category.value, body.nominee_role_id, nominee.get("member_id")
+        )
     except APIError as e:
         if e.code == UNIQUE_VIOLATION:
             raise HTTPException(
@@ -96,7 +100,7 @@ async def get_my_voting_state(meeting_id: str, user: CurrentUser) -> MyVotingSta
     rating_row = await db_votes.get_my_rating(meeting_id, member["id"])
 
     return MyVotingStateOut(
-        votes=[MyVoteOut(category=v["category"], nominee_id=v["nominee_id"]) for v in votes],
+        votes=[MyVoteOut(category=v["category"], nominee_role_id=v["nominee_role_id"], nominee_id=v.get("nominee_id")) for v in votes],
         rating=MyRatingOut(**rating_row) if rating_row else None,
     )
 
@@ -110,7 +114,7 @@ async def get_member_voting_state(meeting_id: str, member_id: str, user: Current
     rating_row = await db_votes.get_my_rating(meeting_id, member_id)
 
     return MyVotingStateOut(
-        votes=[MyVoteOut(category=v["category"], nominee_id=v["nominee_id"]) for v in votes],
+        votes=[MyVoteOut(category=v["category"], nominee_role_id=v["nominee_role_id"], nominee_id=v.get("nominee_id")) for v in votes],
         rating=MyRatingOut(**rating_row) if rating_row else None,
     )
 

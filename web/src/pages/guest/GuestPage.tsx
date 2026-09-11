@@ -101,7 +101,7 @@ export default function GuestPage() {
       });
     }
     if (progress?.votes.length) {
-      setVotes(Object.fromEntries(progress.votes.map((v) => [v.category, v.nominee_id])));
+      setVotes(Object.fromEntries(progress.votes.map((v) => [v.category, v.nominee_role_id])));
     }
   }
 
@@ -288,7 +288,7 @@ export default function GuestPage() {
       await submitVotes(
         guestId!,
         meeting!.id,
-        nomineeCategories.map((cat) => ({ category: cat.category, nominee_id: votes[cat.category] })),
+        nomineeCategories.map((cat) => ({ category: cat.category, nominee_role_id: votes[cat.category] })),
       );
       setStep('thanks');
     } catch {
@@ -488,7 +488,7 @@ export default function GuestPage() {
                   key={cat.category}
                   category={cat}
                   selectedNomineeId={votes[cat.category] ?? null}
-                  onSelect={(memberId) => setVotes((prev) => ({ ...prev, [cat.category]: memberId }))}
+                  onSelect={(roleId) => setVotes((prev) => ({ ...prev, [cat.category]: roleId }))}
                 />
               ))
             )}

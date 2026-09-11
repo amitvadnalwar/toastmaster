@@ -25,6 +25,10 @@ export default function MemberFeedbackDetailPage() {
   const [memberName, setMemberName] = useState('');
   const [votingState, setVotingState] = useState<MyVotingState>({ votes: [], rating: null });
   const [memberMap, setMemberMap] = useState<Map<string, { name: string; initials?: MemberInitials | null }>>(new Map());
+  // A vote now targets a role-assignment id, not member_id, since the
+  // nominee might have no account — this resolves the name either way,
+  // falling back to guest_name.
+  const [roleMap, setRoleMap] = useState<Map<string, { name: string; initials?: MemberInitials | null }>>(new Map());
   const [fetching, setFetching] = useState(true);
 
   const load = useCallback(async () => {
@@ -44,6 +48,9 @@ export default function MemberFeedbackDetailPage() {
           .map((r) => [r.member_id, { name: r.member_name ?? '—', initials: r.member_initials }]),
       );
       setMemberMap(map);
+      setRoleMap(new Map(
+        rosterData.roster.map((r) => [r.id, { name: r.member_name ?? r.guest_name ?? '—', initials: r.member_initials }]),
+      ));
       const me = map.get(memberId);
       setMemberName(me ? formatMemberName(me.name, me.initials) : '—');
       setVotingState(voting);
@@ -91,7 +98,7 @@ export default function MemberFeedbackDetailPage() {
                     <div className="flex items-center justify-between px-4 py-3">
                       <span className="text-[13px] text-gray-500 font-medium">{label}</span>
                       <span className={`text-sm font-semibold ${vote ? 'text-gray-900' : 'text-gray-300'}`}>
-                        {vote ? (() => { const n = memberMap.get(vote.nominee_id); return n ? formatMemberName(n.name, n.initials) : '—'; })() : 'Not voted'}
+                        {vote ? (() => { const n = roleMap.get(vote.nominee_role_id); return n ? formatMemberName(n.name, n.initials) : '—'; })() : 'Not voted'}
                       </span>
                     </div>
                   </div>

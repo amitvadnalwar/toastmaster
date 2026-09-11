@@ -297,17 +297,24 @@ async def checkin_member(meeting_id: str, member_id: str) -> dict:
 # ── Speaker feedback ──────────────────────────────────────────────────────
 
 async def get_my_feedback(meeting_id: str, from_member_id: str) -> list[dict]:
+    # Joins through speaker_role_id (not speaker_member_id) so a speaker with
+    # no account still gets a name — falling back to meeting_roles.guest_name.
     result = (
         supabase.table("speaker_feedback")
-        .select("*, members!speaker_feedback_speaker_member_id_fkey(name, initials)")
+        .select("*, speaker_role:meeting_roles!speaker_role_id(guest_name, member:members!member_id(name, initials))")
         .eq("meeting_id", meeting_id)
         .eq("from_member_id", from_member_id)
         .execute()
     )
     rows = []
     for r in result.data:
-        member = r.pop("members", None) or {}
-        rows.append({**r, "speaker_name": member.get("name"), "speaker_initials": member.get("initials")})
+        role = r.pop("speaker_role", None) or {}
+        member = role.get("member") or {}
+        rows.append({
+            **r,
+            "speaker_name": member.get("name") or role.get("guest_name"),
+            "speaker_initials": member.get("initials"),
+        })
     return rows
 
 
@@ -322,10 +329,14 @@ async def publish_speaker_feedback(meeting_id: str, speaker_member_id: str) -> N
 
 
 async def get_speakers_feedback_status(meeting_id: str) -> list[dict]:
+    # Publishing feedback "to the speaker" only makes sense for a speaker who
+    # has an account to view it in, so a no-account speaker's feedback
+    # (speaker_member_id NULL) is excluded from this admin publish-status list.
     result = (
         supabase.table("speaker_feedback")
         .select("speaker_member_id, published")
         .eq("meeting_id", meeting_id)
+        .not_.is_("speaker_member_id", "null")
         .execute()
     )
     status: dict[str, dict] = {}
@@ -395,7 +406,8 @@ async def get_speaking_history(member_id: str) -> list[dict]:
 async def upsert_feedback(
     meeting_id: str,
     from_member_id: str,
-    speaker_member_id: str,
+    speaker_role_id: str,
+    speaker_member_id: str | None,
     content_rating: int,
     structure_rating: int,
     confidence_rating: int,
@@ -408,6 +420,7 @@ async def upsert_feedback(
             {
                 "meeting_id": meeting_id,
                 "from_member_id": from_member_id,
+                "speaker_role_id": speaker_role_id,
                 "speaker_member_id": speaker_member_id,
                 "content_rating": content_rating,
                 "structure_rating": structure_rating,
@@ -415,7 +428,7 @@ async def upsert_feedback(
                 "interaction_rating": interaction_rating,
                 "comment": comment,
             },
-            on_conflict="meeting_id,from_member_id,speaker_member_id",
+            on_conflict="meeting_id,from_member_id,speaker_role_id",
         )
         .execute()
     )

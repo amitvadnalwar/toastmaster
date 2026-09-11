@@ -115,6 +115,15 @@ class EnrollEvaluatorIn(BaseModel):
     evaluates_role_id: str  # id of the speaker's role-assignment row to evaluate
 
 
+class MemberAddSpeakerIn(BaseModel):
+    """Any member can add a speaker the admin missed while giving feedback —
+    either an existing member, or a free-text name for someone with no
+    account. Deliberately no speech_duration: this is a quick fallback for
+    feedback purposes, not full roster management."""
+    member_id: str | None = None
+    guest_name: str | None = None  # alternative to member_id
+
+
 # ── Admin assignment (admin picks any member for any role) ────────────────
 
 class AdminAssignRoleIn(BaseModel):
@@ -172,7 +181,10 @@ class MeetingStatsOut(BaseModel):
 # Rating scale: 1 = Need Improvement, 2 = Ok, 3 = Super
 
 class SpeakerFeedbackIn(BaseModel):
-    speaker_member_id: str
+    # The speaker's own meeting_roles row, not their member id — works
+    # whether or not the speaker has a member account (see
+    # 20260911020000_speaker_feedback_by_role.sql).
+    speaker_role_id: str
     content_rating: int = Field(ge=1, le=3)
     structure_rating: int = Field(ge=1, le=3)
     confidence_rating: int = Field(ge=1, le=3)
@@ -188,7 +200,8 @@ class SpeakerFeedbackOut(BaseModel):
     id: str
     meeting_id: str
     from_member_id: str
-    speaker_member_id: str
+    speaker_role_id: str
+    speaker_member_id: str | None = None  # null for a speaker with no account
     speaker_name: str | None = None
     speaker_initials: str | None = None
     content_rating: int

@@ -154,7 +154,10 @@ export interface SpeakerFeedback {
   id: string;
   meeting_id: string;
   from_member_id: string;
-  speaker_member_id: string;
+  // The speaker's own role-assignment row — works whether or not they have
+  // a member account.
+  speaker_role_id: string;
+  speaker_member_id?: string | null; // null for a speaker with no account
   speaker_name?: string | null;
   speaker_initials?: MemberInitials | null;
   content_rating: number;
@@ -227,7 +230,7 @@ export interface MeetingRating {
 }
 
 export interface SpeakerFeedbackPayload {
-  speaker_member_id: string;
+  speaker_role_id: string;
   content_rating: number;
   structure_rating: number;
   confidence_rating: number;

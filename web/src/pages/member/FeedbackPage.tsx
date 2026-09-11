@@ -1,20 +1,24 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, CheckCircle, MicOff, Frown, Meh, Smile, Star, Clock, Pencil, Check } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CheckCircle, MicOff, Frown, Meh, Smile, Star, Clock, Pencil, Check, UserPlus, Search } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { showAlert } from '@/store/alertStore';
-import { getMeetingById, getMeetingRoster, getMyFeedback, submitFeedback } from '@/services/meetingService';
+import { getMeetingById, getMeetingRoster, getMyFeedback, submitFeedback, addSpeakerForFeedback } from '@/services/meetingService';
+import { getClubMembers } from '@/services/memberService';
 import { submitVote, submitRating, getMyVotingState } from '@/services/voteService';
 import { Skeleton } from '@/components/ui/Skeleton';
-import { formatMemberName } from '@/lib/utils';
+import { formatMemberName, initials } from '@/lib/utils';
 import type {
   Meeting,
   MeetingRoleAssignment,
+  MemberInitials,
   SpeakerFeedback,
   SpeakerFeedbackPayload,
   MyVotingState,
   VoteCategory,
 } from '@/types';
+
+interface MemberOption { id: string; name: string; initials: MemberInitials }
 
 interface SpeakerRow {
   assignment: MeetingRoleAssignment;
@@ -182,6 +186,11 @@ export default function MemberFeedbackPage() {
   const [ratingComment, setRatingComment] = useState('');
   const [exiting, setExiting] = useState(false);
 
+  const [members, setMembers] = useState<MemberOption[]>([]);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [memberSearch, setMemberSearch] = useState('');
+  const [addingSpeaker, setAddingSpeaker] = useState(false);
+
   const load = useCallback(async () => {
     if (!session || !id) return;
     setFetching(true);
@@ -195,13 +204,13 @@ export default function MemberFeedbackPage() {
       setRoster(rosterData.roster);
 
       const myEmail = session.user?.email;
-      const feedbackMap = new Map<string, SpeakerFeedback>(feedback.map((fb) => [fb.speaker_member_id, fb]));
+      // Keyed by role-assignment id, not member_id — a speaker with no
+      // account (added by name only) can receive feedback too.
+      const feedbackMap = new Map<string, SpeakerFeedback>(feedback.map((fb) => [fb.speaker_role_id, fb]));
       const rows: SpeakerRow[] = rosterData.roster
-        // Guest speakers (no member_id — not a registered member) can't
-        // receive written feedback; there's no account to attach it to.
-        .filter((r) => r.role === 'speaker' && !!r.member_id && r.member_email !== myEmail && !r.disqualified)
+        .filter((r) => r.role === 'speaker' && r.member_email !== myEmail && !r.disqualified)
         .map((a) => {
-          const prev = feedbackMap.get(a.member_id!);
+          const prev = feedbackMap.get(a.id);
           return {
             assignment: a,
             content: prev?.content_rating ?? 0,
@@ -227,6 +236,15 @@ export default function MemberFeedbackPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  // For the "Add Speaker" fallback — any member can pick from this list, or
+  // fall back to a free-text name if the speaker isn't a registered member.
+  useEffect(() => {
+    if (!session) return;
+    getClubMembers(session.access_token).then((list) => {
+      setMembers(list.map((m) => ({ id: m.id, name: m.name, initials: m.initials })));
+    }).catch(() => {});
+  }, [session]);
+
   // Poll the meeting's voting_status so this page reflects admin opening/closing
   // voting live, without the member needing to reload or navigate away and back.
   useEffect(() => {
@@ -238,6 +256,14 @@ export default function MemberFeedbackPage() {
   }, [session, id]);
 
   const feedbackDone = speakers.length === 0 || myFeedback.length > 0;
+
+  const availableMembers = useMemo(
+    () =>
+      members
+        .filter((m) => m.name.toLowerCase().includes(memberSearch.toLowerCase()))
+        .filter((m) => !speakers.some((s) => s.assignment.member_id === m.id)),
+    [members, memberSearch, speakers],
+  );
 
   const votedMap = useMemo(
     () => new Map(votingState.votes.map((v) => [v.category, v.nominee_id])),
@@ -275,8 +301,7 @@ export default function MemberFeedbackPage() {
     setSubmittingFeedback(true);
     try {
       const payload: SpeakerFeedbackPayload[] = speakers.map((r) => ({
-        // Non-null: `speakers` already excludes guest (member_id-less) rows.
-        speaker_member_id: r.assignment.member_id!,
+        speaker_role_id: r.assignment.id,
         content_rating: r.content,
         structure_rating: r.structure,
         confidence_rating: r.confidence,
@@ -291,6 +316,31 @@ export default function MemberFeedbackPage() {
       await showAlert(e instanceof Error ? e.message : 'Failed to submit feedback. Please try again.');
     } finally {
       setSubmittingFeedback(false);
+    }
+  }
+
+  function appendNewSpeaker(assignment: MeetingRoleAssignment) {
+    setSpeakers((prev) => [
+      ...prev,
+      { assignment, content: 0, structure: 0, confidence: 0, interaction: 0, comment: '' },
+    ]);
+    // Re-open the rating form even if this member had already submitted —
+    // the new speaker still needs to be rated before resubmitting.
+    setEditingFeedback(true);
+    setPickerOpen(false);
+    setMemberSearch('');
+  }
+
+  async function handleAddSpeaker(option: { member_id?: string; guest_name?: string }) {
+    if (!session || !id) return;
+    setAddingSpeaker(true);
+    try {
+      const assignment = await addSpeakerForFeedback(id, option, session.access_token);
+      appendNewSpeaker(assignment);
+    } catch (e: unknown) {
+      await showAlert(e instanceof Error ? e.message : 'Failed to add speaker.');
+    } finally {
+      setAddingSpeaker(false);
     }
   }
 
@@ -371,34 +421,43 @@ export default function MemberFeedbackPage() {
             speakers.length === 0 ? (
               <div className="flex flex-col items-center gap-3 pt-16">
                 <MicOff size={36} className="text-gray-300" />
-                <p className="text-sm text-gray-400">No speakers to rate for this meeting.</p>
+                <p className="text-sm text-gray-400 text-center">No speakers to rate for this meeting yet.</p>
+                <AddSpeakerButton label="Add a Speaker" onClick={() => setPickerOpen(true)} loading={addingSpeaker} />
               </div>
             ) : editingFeedback ? (
               <>
                 <p className="text-[13px] text-gray-500 mb-4">Rate each speaker's performance and leave optional comments.</p>
-                {speakers.map((row, i) => (
-                  <div key={row.assignment.id} className="bg-white rounded-2xl p-[18px] mb-3.5 shadow-sm">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-[42px] h-[42px] rounded-full bg-blue-50 flex items-center justify-center">
-                        <span className="text-lg font-bold text-blue-500">{(row.assignment.member_name ?? '?').charAt(0).toUpperCase()}</span>
+                {speakers.map((row, i) => {
+                  const displayName = row.assignment.member_name ?? row.assignment.guest_name;
+                  const isNoAccount = !row.assignment.member_id;
+                  return (
+                    <div key={row.assignment.id} className="bg-white rounded-2xl p-[18px] mb-3.5 shadow-sm">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-[42px] h-[42px] rounded-full bg-blue-50 flex items-center justify-center">
+                          <span className="text-lg font-bold text-blue-500">{(displayName ?? '?').charAt(0).toUpperCase()}</span>
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-[15px] font-bold text-gray-900">{formatMemberName(displayName, row.assignment.member_initials)}</p>
+                            {isNoAccount && <NoAccountBadge />}
+                          </div>
+                          {row.assignment.speech_duration && <p className="text-xs text-gray-400 mt-0.5">{row.assignment.speech_duration}</p>}
+                        </div>
                       </div>
-                      <div className="flex-1">
-                        <p className="text-[15px] font-bold text-gray-900">{formatMemberName(row.assignment.member_name, row.assignment.member_initials)}</p>
-                        {row.assignment.speech_duration && <p className="text-xs text-gray-400 mt-0.5">{row.assignment.speech_duration}</p>}
-                      </div>
+                      {CATEGORIES.map(({ key, label }) => (
+                        <SmileyRow key={key} label={label} value={row[key]} onChange={(v) => updateRating(i, key, v)} />
+                      ))}
+                      <textarea
+                        value={row.comment}
+                        onChange={(e) => updateComment(i, e.target.value)}
+                        placeholder="Add a comment (optional)…"
+                        rows={3}
+                        className="w-full mt-3.5 border border-gray-200 rounded-[10px] p-3 text-sm text-gray-900 bg-[#fafafa] outline-none focus:border-brand resize-none"
+                      />
                     </div>
-                    {CATEGORIES.map(({ key, label }) => (
-                      <SmileyRow key={key} label={label} value={row[key]} onChange={(v) => updateRating(i, key, v)} />
-                    ))}
-                    <textarea
-                      value={row.comment}
-                      onChange={(e) => updateComment(i, e.target.value)}
-                      placeholder="Add a comment (optional)…"
-                      rows={3}
-                      className="w-full mt-3.5 border border-gray-200 rounded-[10px] p-3 text-sm text-gray-900 bg-[#fafafa] outline-none focus:border-brand resize-none"
-                    />
-                  </div>
-                ))}
+                  );
+                })}
+                <AddSpeakerButton label="Add Another Speaker" onClick={() => setPickerOpen(true)} loading={addingSpeaker} className="mb-4" />
                 <button
                   onClick={handleSubmitFeedback}
                   disabled={submittingFeedback}
@@ -432,6 +491,7 @@ export default function MemberFeedbackPage() {
                     {fb.comment && <p className="text-[13px] text-gray-600 italic">"{fb.comment}"</p>}
                   </div>
                 ))}
+                <AddSpeakerButton label="Add a Speaker Missed From the List" onClick={() => setPickerOpen(true)} loading={addingSpeaker} />
               </>
             )
           )}
@@ -548,6 +608,86 @@ export default function MemberFeedbackPage() {
           />
         </div>
       )}
+
+      {/* Add Speaker bottom sheet — pick a member, or fall back to a free-text name */}
+      {pickerOpen && (
+        <div className="fixed inset-0 z-50 flex items-end bg-black/40" onClick={() => setPickerOpen(false)}>
+          <div className="w-full bg-white rounded-t-3xl max-h-[75%] flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+              <button onClick={() => setPickerOpen(false)} className="text-gray-500 text-base w-[60px] text-left">Cancel</button>
+              <h3 className="text-base font-semibold text-gray-900">Add Speaker</h3>
+              <div className="w-[60px]" />
+            </div>
+            <div className="mx-4 my-3 flex items-center gap-2 bg-gray-100 rounded-[10px] px-3 py-2.5">
+              <Search size={15} className="text-gray-400" />
+              <input
+                value={memberSearch}
+                onChange={(e) => setMemberSearch(e.target.value)}
+                placeholder="Search members…"
+                className="flex-1 bg-transparent outline-none text-[15px] text-gray-900"
+              />
+            </div>
+            <p className="mx-4 -mt-1 mb-2 text-[12px] text-gray-400">
+              Not on the list? Type their name above to add them without an account.
+            </p>
+            <div className="overflow-y-auto pb-8">
+              {memberSearch.trim().length >= 2 && (
+                <button
+                  onClick={() => handleAddSpeaker({ guest_name: memberSearch.trim() })}
+                  disabled={addingSpeaker}
+                  className="w-full flex items-center gap-3 px-4 py-3.5 border-b border-gray-100 bg-brand/5 disabled:opacity-60"
+                >
+                  <div className="w-[38px] h-[38px] rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                    <UserPlus size={18} className="text-amber-700" />
+                  </div>
+                  <span className="flex-1 text-left text-[15px] text-gray-900">
+                    Add <span className="font-semibold">&ldquo;{memberSearch.trim()}&rdquo;</span> without an account
+                  </span>
+                </button>
+              )}
+              {availableMembers.length === 0 ? (
+                <div className="py-10 text-center text-sm text-gray-400">No members found</div>
+              ) : availableMembers.map((m) => (
+                <button
+                  key={m.id}
+                  onClick={() => handleAddSpeaker({ member_id: m.id })}
+                  disabled={addingSpeaker}
+                  className="w-full flex items-center gap-3 px-4 py-3.5 border-b border-gray-50 disabled:opacity-60"
+                >
+                  <div className="w-[38px] h-[38px] rounded-full bg-brand flex items-center justify-center shrink-0">
+                    <span className="text-white text-[13px] font-bold">{initials(m.name)}</span>
+                  </div>
+                  <span className="flex-1 text-left text-[15px] text-gray-900 font-medium">
+                    <span className="text-brand">{m.initials}</span> {m.name}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+  );
+}
+
+function AddSpeakerButton({ label, onClick, loading, className = '' }: { label: string; onClick: () => void; loading: boolean; className?: string }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={loading}
+      className={`w-full flex items-center justify-center gap-1.5 border border-dashed border-gray-300 rounded-xl py-3 text-brand text-sm font-semibold disabled:opacity-60 ${className}`}
+    >
+      <UserPlus size={15} /> {label}
+    </button>
+  );
+}
+
+function NoAccountBadge() {
+  // Deliberately not "Guest" — this could just as easily be a real club
+  // member who hasn't registered in the app yet.
+  return (
+    <span className="text-[10px] font-bold text-amber-700 bg-amber-100 rounded-full px-1.5 py-0.5 shrink-0">
+      No account
+    </span>
   );
 }

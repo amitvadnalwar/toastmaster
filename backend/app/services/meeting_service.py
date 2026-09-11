@@ -18,6 +18,7 @@ from app.models.meeting import (
     MeetingCreateIn,
     MeetingFeedbackIn,
     MeetingOut,
+    MemberAddSpeakerIn,
     MeetingRole,
     MeetingRoleAssignmentOut,
     MeetingStatsOut,
@@ -496,6 +497,51 @@ async def enroll_evaluator(
     return _role_out({**row, "member_name": member["name"], "member_email": member["email"]})
 
 
+async def member_add_speaker(
+    meeting_id: str, body: MemberAddSpeakerIn, user: CurrentUser
+) -> MeetingRoleAssignmentOut:
+    """Fallback for the feedback page: admins sometimes miss registering a
+    speaker, or the speaker hasn't created an account yet. Any member can add
+    one here — by picking an existing member or typing a free-text name —
+    without the max_speakers cap or speech-duration requirement the admin
+    roster page enforces, since the point is exactly to cover speakers the
+    formal roster is missing."""
+    if user.is_guest:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Guests cannot add speakers")
+
+    meeting = await _require_meeting(meeting_id)
+    if meeting["club_id"] != user.club_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not your club")
+    if meeting["status"] == MeetingStatus.completed:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot add a speaker to a completed meeting",
+        )
+
+    if bool(body.member_id) == bool(body.guest_name):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Provide exactly one of member_id or guest_name",
+        )
+
+    roster = await db_meetings.get_roster(meeting_id)
+    if body.member_id and any(r["role"] == "speaker" and r["member_id"] == body.member_id for r in roster):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This member is already listed as a speaker",
+        )
+
+    row = await db_meetings.insert_role(
+        meeting_id=meeting_id,
+        member_id=body.member_id,
+        role=MeetingRole.speaker,
+        guest_name=body.guest_name.strip() if body.guest_name else None,
+    )
+    roster_fresh = await db_meetings.get_roster(meeting_id)
+    enriched = next((r for r in roster_fresh if r["id"] == row["id"]), row)
+    return _role_out(enriched)
+
+
 async def withdraw_from_role(
     meeting_id: str, role_id: str, user: CurrentUser
 ) -> None:
@@ -691,8 +737,10 @@ async def submit_feedback(
     roster = await db_meetings.get_roster(meeting_id)
     results = []
     for fb in body.feedbacks:
+        # Matched by role-assignment id, not member_id — a speaker with no
+        # account (added by name only) can receive feedback too.
         target = next(
-            (r for r in roster if r["member_id"] == fb.speaker_member_id and r["role"] == "speaker"),
+            (r for r in roster if r["id"] == fb.speaker_role_id and r["role"] == "speaker"),
             None,
         )
         if not target or target.get("disqualified"):
@@ -703,7 +751,8 @@ async def submit_feedback(
         row = await db_meetings.upsert_feedback(
             meeting_id=meeting_id,
             from_member_id=member["id"],
-            speaker_member_id=fb.speaker_member_id,
+            speaker_role_id=fb.speaker_role_id,
+            speaker_member_id=target.get("member_id"),
             content_rating=fb.content_rating,
             structure_rating=fb.structure_rating,
             confidence_rating=fb.confidence_rating,

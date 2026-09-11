@@ -172,6 +172,26 @@ export function enrollAsEvaluator(
   });
 }
 
+// Any member can add a speaker the admin missed — either an existing
+// member, or a free-text name for someone with no account — straight from
+// the feedback page, so they can then rate them.
+export interface MemberAddSpeakerPayload {
+  member_id?: string | null;
+  guest_name?: string | null;
+}
+
+export function addSpeakerForFeedback(
+  meetingId: string,
+  payload: MemberAddSpeakerPayload,
+  token: string,
+): Promise<MeetingRoleAssignment> {
+  return apiRequest<MeetingRoleAssignment>(`/meetings/${meetingId}/roles/add-speaker`, {
+    method: 'POST',
+    body: payload,
+    token,
+  });
+}
+
 // ── Check-in (QR scan or 6-digit code) ──────────────────────────────────────
 
 export function checkinMeeting(qrToken: string, token: string): Promise<CheckinResult> {

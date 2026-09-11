@@ -18,6 +18,7 @@ from app.models.meeting import (
     MeetingRoleAssignmentOut,
     MeetingStatsOut,
     MeetingStatusUpdateIn,
+    MemberAddSpeakerIn,
     ReceivedFeedbackOut,
     RoleDisqualifyIn,
     SpeakerFeedbackOut,
@@ -197,6 +198,18 @@ async def enroll_evaluator(
     user: CurrentUser = Depends(require_member),
 ) -> ApiResponse[MeetingRoleAssignmentOut]:
     result = await meeting_service.enroll_evaluator(meeting_id, body.evaluates_role_id, user)
+    return ApiResponse(data=result)
+
+
+# Any member can add a speaker missed off the roster, so they can give
+# feedback for them — not admin-only like /roles/assign.
+@router.post("/{meeting_id}/roles/add-speaker", response_model=ApiResponse[MeetingRoleAssignmentOut])
+async def member_add_speaker(
+    meeting_id: str,
+    body: MemberAddSpeakerIn,
+    user: CurrentUser = Depends(require_member),
+) -> ApiResponse[MeetingRoleAssignmentOut]:
+    result = await meeting_service.member_add_speaker(meeting_id, body, user)
     return ApiResponse(data=result)
 
 

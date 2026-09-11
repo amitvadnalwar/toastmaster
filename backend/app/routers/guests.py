@@ -12,6 +12,7 @@ from app.models.guest import (
     NomineeCategoryOut,
     SpeakerOut,
 )
+from app.models.meeting import MeetingOut
 
 router = APIRouter()
 
@@ -25,6 +26,14 @@ async def register_guest(body: GuestRegisterIn) -> ApiResponse[GuestRegisterOut]
 
 
 # ── Public endpoints for the guest HTML page (no auth required) ───────────────
+
+@router.get("/meetings/today", response_model=ApiResponse[MeetingOut])
+async def get_todays_meeting_public() -> ApiResponse[MeetingOut]:
+    from app.services import guest_service
+
+    data = await guest_service.get_todays_meeting_public()
+    return ApiResponse(data=data)
+
 
 @router.get("/meetings/{meeting_id}/checkin-status", response_model=ApiResponse[MeetingCheckinStatusOut])
 async def get_checkin_status(meeting_id: str) -> ApiResponse[MeetingCheckinStatusOut]:

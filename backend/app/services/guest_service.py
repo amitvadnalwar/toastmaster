@@ -16,6 +16,7 @@ from app.models.guest import (
     NomineeOut,
     SpeakerOut,
 )
+from app.models.meeting import MeetingOut
 
 # Maps vote category → meeting_roles.role values
 _CATEGORY_ROLES: dict[str, list[str]] = {
@@ -69,6 +70,7 @@ async def register_guest(body: GuestRegisterIn) -> GuestRegisterOut:
     club_id = meeting_row["club_id"]
 
     phone = body.phone.strip() if body.phone else None
+    email = body.email.strip() if body.email else None
 
     existing = await db.find_guest_by_meeting_name_phone(
         str(body.meeting_id), body.name, phone
@@ -81,9 +83,40 @@ async def register_guest(body: GuestRegisterIn) -> GuestRegisterOut:
         meeting_id=str(body.meeting_id),
         name=body.name.strip(),
         phone=phone,
-        source=body.source,
+        email=email,
+        source=str(body.source) if body.source else None,
     )
     return GuestRegisterOut(id=row["id"], name=row["name"])
+
+
+async def get_todays_meeting_public() -> MeetingOut:
+    """The club's published meeting scheduled for today (club-local calendar
+    day), for the guest check-in page — which has no authenticated club
+    context. Mirrors meeting_service.get_todays_meeting, minus the
+    member-only "already checked in" lookup. 404 when nothing is scheduled."""
+    from datetime import datetime, timedelta, timezone
+
+    from app.db import admin_members as db_admin
+    from app.db import meetings as db_meetings
+    from app.services.meeting_service import _CLUB_TZ
+
+    club_id = await db_admin.get_default_club_id()
+    if not club_id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No meeting today")
+
+    now_local = datetime.now(timezone.utc).astimezone(_CLUB_TZ)
+    start_of_day = datetime(now_local.year, now_local.month, now_local.day, tzinfo=_CLUB_TZ)
+    end_of_day = start_of_day + timedelta(days=1)
+
+    meeting_row = await db_meetings.get_scheduled_between(
+        club_id,
+        start_of_day.astimezone(timezone.utc).isoformat(),
+        end_of_day.astimezone(timezone.utc).isoformat(),
+    )
+    if not meeting_row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No meeting today")
+
+    return MeetingOut(**meeting_row)
 
 
 async def get_guest_progress(guest_id: str, meeting_id: str) -> GuestProgressOut:

@@ -79,7 +79,8 @@ export default function MeetingGuestsPage() {
                               <Phone size={11} /> {g.phone}
                             </span>
                           )}
-                          <span className="text-[11px] text-gray-400">via {g.source}</span>
+                          {g.email && <span className="text-[11px] text-gray-400 truncate">{g.email}</span>}
+                          {g.source && <span className="text-[11px] text-gray-400">via {g.source}</span>}
                         </div>
                       </div>
                       <span className="text-[11px] text-gray-400 shrink-0">{formatTime(g.created_at)}</span>

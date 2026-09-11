@@ -185,8 +185,9 @@ export interface MeetingStats {
 export interface Guest {
   id: string;
   name: string;
+  email: string | null;
   phone: string | null;
-  source: string;
+  source: string | null;
   created_at: string;
 }
 

@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import { QrCode } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Calendar, Clock, MapPin, KeyRound, CalendarX2 } from 'lucide-react';
 import { ApiError } from '@/lib/apiClient';
 import { CLUB_NAME } from '@/lib/constants';
+import { formatDate, formatTime } from '@/lib/utils';
 import Button from '@/components/ui/Button';
 import RegisterForm from './components/RegisterForm';
 import SpeakerCard, { EMPTY_SPEAKER_RATING, type SpeakerRatingState } from './components/SpeakerCard';
@@ -11,10 +12,9 @@ import MeetingQualityCard, {
   type MeetingRatingState,
 } from './components/MeetingQualityCard';
 import NomineeSection from './components/NomineeSection';
-import QrScanner from './components/QrScanner';
 import {
   getGuestProgress,
-  getMeetingCheckinStatus,
+  getGuestTodaysMeeting,
   getMeetingNominees,
   getMeetingSpeakers,
   registerGuest,
@@ -23,9 +23,19 @@ import {
   submitVotes,
 } from '@/services/guestService';
 import { getStoredGuest, storeGuest } from './guestStorage';
-import type { GuestNomineeCategory, GuestProgress, GuestSource, GuestSpeaker } from '@/types/guest';
+import type { Meeting } from '@/types';
+import type { GuestNomineeCategory, GuestProgress, GuestSpeaker } from '@/types/guest';
 
-type Step = 'scan-prompt' | 'scanning' | 'checking' | 'register' | 'speakers' | 'meeting' | 'votes' | 'thanks' | 'invalid';
+type Step =
+  | 'loading'
+  | 'no-meeting'
+  | 'error'
+  | 'details'
+  | 'checkin'
+  | 'speakers'
+  | 'meeting'
+  | 'votes'
+  | 'thanks';
 
 const PROGRESS_STEPS: { step: Step; label: string }[] = [
   { step: 'speakers', label: 'Speakers' },
@@ -34,13 +44,14 @@ const PROGRESS_STEPS: { step: Step; label: string }[] = [
 ];
 
 export default function GuestPage() {
-  const [searchParams] = useSearchParams();
-  const [meetingId, setMeetingId] = useState<string | null>(searchParams.get('meeting_id'));
-
-  const [step, setStep] = useState<Step>(meetingId ? 'checking' : 'scan-prompt');
+  const [step, setStep] = useState<Step>('loading');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const [meeting, setMeeting] = useState<Meeting | null>(null);
+
+  const [guestEmail, setGuestEmail] = useState('');
+  const [guestPhone, setGuestPhone] = useState('');
   const [guestId, setGuestId] = useState<string | null>(null);
   const [guestName, setGuestName] = useState('');
 
@@ -89,65 +100,70 @@ export default function GuestPage() {
     }
   }
 
-  async function enterMeeting(id: string) {
-    setMeetingId(id);
-    setStep('checking');
+  // Same interstitial members see after logging in: find today's meeting (if
+  // any), and — on this device — resume a guest who's already checked in
+  // straight into their feedback instead of asking them to register again.
+  async function loadTodaysMeeting() {
+    setStep('loading');
+    setError('');
     try {
-      const { open } = await getMeetingCheckinStatus(id);
-      if (!open) {
-        setStep('invalid');
-        return;
+      const todays = await getGuestTodaysMeeting();
+      setMeeting(todays);
+
+      const stored = getStoredGuest(todays.id);
+      if (stored) {
+        setGuestId(stored.id);
+        setGuestName(stored.name);
+        try {
+          await loadGuestContent(todays.id, stored.id);
+          setStep('speakers');
+          return;
+        } catch {
+          // Fall through to a fresh check-in if resuming their feedback fails.
+        }
       }
-    } catch {
-      setStep('invalid');
-      return;
-    }
-
-    const stored = getStoredGuest(id);
-    if (!stored) {
-      setStep('register');
-      return;
-    }
-
-    // Already checked in on this device — resume straight into their feedback
-    // instead of registering them again.
-    setGuestId(stored.id);
-    setGuestName(stored.name);
-    try {
-      await loadGuestContent(id, stored.id);
-      setStep('speakers');
-    } catch {
-      setStep('invalid');
+      setStep('details');
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 404) {
+        setStep('no-meeting');
+      } else {
+        setStep('error');
+      }
     }
   }
 
-  // Validate a meeting_id that arrived straight from the URL (deep link),
-  // same as a freshly scanned QR code.
   useEffect(() => {
-    const initialMeetingId = searchParams.get('meeting_id');
-    if (initialMeetingId) enterMeeting(initialMeetingId);
+    loadTodaysMeeting();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function handleScan(scannedMeetingId: string) {
-    enterMeeting(scannedMeetingId);
+  function handleDetailsSubmit(email: string, name: string, phone: string) {
+    setGuestEmail(email);
+    setGuestPhone(phone);
+    setGuestName(name);
+    setStep('checkin');
   }
 
-  async function handleRegister(name: string, phone: string | null, source: GuestSource) {
-    if (!meetingId) return;
+  async function handleCheckIn() {
+    if (!meeting) return;
     setError('');
     setLoading(true);
     try {
-      const result = await registerGuest({ meeting_id: meetingId, name, phone, source });
+      const result = await registerGuest({
+        meeting_id: meeting.id,
+        name: guestName,
+        email: guestEmail || null,
+        phone: guestPhone || null,
+      });
       setGuestId(result.id);
       setGuestName(result.name);
-      storeGuest(meetingId, { id: result.id, name: result.name });
+      storeGuest(meeting.id, { id: result.id, name: result.name });
 
-      await loadGuestContent(meetingId, result.id);
+      await loadGuestContent(meeting.id, result.id);
       setStep('speakers');
     } catch (err) {
       if (err instanceof ApiError && err.status === 404) {
-        setStep('invalid');
+        setStep('no-meeting');
       } else {
         setError('Could not connect. Please check your internet and try again.');
       }
@@ -179,7 +195,7 @@ export default function GuestPage() {
     try {
       await submitSpeakerFeedback(
         guestId!,
-        meetingId!,
+        meeting!.id,
         speakers.map((s) => {
           const r = speakerRatings[s.member_id];
           return {
@@ -215,7 +231,7 @@ export default function GuestPage() {
     setLoading(true);
     try {
       await submitMeetingFeedback(guestId!, {
-        meeting_id: meetingId!,
+        meeting_id: meeting!.id,
         punctual_rating: r.punctual,
         agenda_rating: r.agenda,
         inclusive_rating: r.inclusive,
@@ -248,7 +264,7 @@ export default function GuestPage() {
     try {
       await submitVotes(
         guestId!,
-        meetingId!,
+        meeting!.id,
         nomineeCategories.map((cat) => ({ category: cat.category, nominee_id: votes[cat.category] })),
       );
       setStep('thanks');
@@ -303,36 +319,82 @@ export default function GuestPage() {
           </div>
         )}
 
-        {step === 'scan-prompt' && (
+        {step === 'loading' && (
+          <div className="flex flex-col items-center gap-4 py-16">
+            <span className="w-8 h-8 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+            <p className="text-sm text-gray-400">Checking today&apos;s meeting…</p>
+          </div>
+        )}
+
+        {step === 'no-meeting' && (
           <div className="text-center py-2">
             <div className="w-16 h-16 rounded-full bg-brand-light flex items-center justify-center mx-auto mb-5">
-              <QrCode size={30} className="text-brand" />
+              <CalendarX2 size={28} className="text-brand" />
             </div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-1.5">Check In to the Meeting</h1>
-            <p className="text-[15px] text-gray-500 leading-relaxed mb-6">
-              Please scan the QR code at the venue to check in to today&apos;s meeting.
+            <h2 className="text-xl font-bold text-gray-900 mb-2.5">No meeting is scheduled</h2>
+            <p className="text-[15px] text-gray-500 leading-relaxed">
+              There isn&apos;t a meeting scheduled for today.
+              <br />
+              Please check back on the next meeting day.
             </p>
-            <Button fullWidth size="lg" onClick={() => setStep('scanning')}>
-              Scan QR Code
+          </div>
+        )}
+
+        {step === 'error' && (
+          <div className="text-center py-2">
+            <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-5">
+              <p className="text-sm text-red-600 font-medium">Could not connect. Please check your internet and try again.</p>
+            </div>
+            <Button fullWidth size="lg" onClick={loadTodaysMeeting}>
+              Retry
             </Button>
           </div>
         )}
 
-        {step === 'scanning' && (
-          <QrScanner onScan={handleScan} onCancel={() => setStep('scan-prompt')} />
-        )}
-
-        {step === 'checking' && (
-          <div className="flex flex-col items-center gap-4 py-16">
-            <span className="w-8 h-8 border-2 border-brand border-t-transparent rounded-full animate-spin" />
-            <p className="text-sm text-gray-400">Checking meeting…</p>
-          </div>
-        )}
-
-        {step === 'register' && (
+        {step === 'details' && (
           <>
             {error && <ErrorBanner message={error} />}
-            <RegisterForm loading={loading} onSubmit={handleRegister} />
+            <RegisterForm loading={loading} onSubmit={handleDetailsSubmit} />
+          </>
+        )}
+
+        {step === 'checkin' && meeting && (
+          <>
+            <h1 className="text-2xl font-bold text-gray-900 mb-1.5">Today&apos;s Meeting</h1>
+            <p className="text-[15px] text-gray-500 leading-relaxed mb-6">
+              Check in to join and share your feedback.
+            </p>
+            {error && <ErrorBanner message={error} />}
+
+            <div className="bg-gray-50 rounded-2xl overflow-hidden mb-6 border border-gray-100">
+              <div className="p-5">
+                <h2 className="text-lg font-bold text-gray-900 mb-4">{meeting.title}</h2>
+                <div className="flex items-center gap-2.5 mb-2.5">
+                  <Calendar size={16} className="text-gray-400 shrink-0" />
+                  <span className="text-sm text-gray-700 font-medium">{formatDate(meeting.scheduled_at)}</span>
+                </div>
+                <div className="flex items-center gap-2.5 mb-2.5">
+                  <Clock size={16} className="text-gray-400 shrink-0" />
+                  <span className="text-sm text-gray-700 font-medium">{formatTime(meeting.scheduled_at)}</span>
+                </div>
+                {meeting.venue && (
+                  <div className="flex items-center gap-2.5">
+                    <MapPin size={16} className="text-gray-400 shrink-0" />
+                    <span className="text-sm text-gray-700 font-medium">{meeting.venue}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <Button
+              fullWidth
+              size="lg"
+              loading={loading}
+              onClick={handleCheckIn}
+              className="flex items-center justify-center gap-2"
+            >
+              <KeyRound size={18} /> Check In
+            </Button>
           </>
         )}
 
@@ -420,24 +482,6 @@ export default function GuestPage() {
               Your feedback helps make our meetings better.
               <br />
               Enjoy the session!
-            </p>
-          </div>
-        )}
-
-        {step === 'invalid' && (
-          <div className="text-center py-2">
-            <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-5">
-              <svg viewBox="0 0 24 24" className="w-8 h-8 stroke-red-700 fill-none" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10" />
-                <line x1="12" y1="8" x2="12" y2="12" />
-                <line x1="12" y1="16" x2="12.01" y2="16" />
-              </svg>
-            </div>
-            <h2 className="text-xl font-bold text-gray-900 mb-2.5">Invalid link</h2>
-            <p className="text-[15px] text-gray-500 leading-relaxed">
-              This QR code is not valid or the meeting has ended.
-              <br />
-              Please scan the QR code at the venue.
             </p>
           </div>
         )}

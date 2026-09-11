@@ -1,15 +1,11 @@
 // Types for the unauthenticated guest check-in flow (/guest route).
 // Mirrors backend/app/models/guest.py.
 
-export type GuestSource = 'Google' | 'Word of mouth' | 'LinkedIn' | 'Instagram' | 'Other';
-
-export const GUEST_SOURCES: GuestSource[] = ['Google', 'Word of mouth', 'LinkedIn', 'Instagram', 'Other'];
-
 export interface GuestRegisterPayload {
   meeting_id: string;
   name: string;
+  email: string | null;
   phone: string | null;
-  source: GuestSource;
 }
 
 export interface GuestRegisterResult {

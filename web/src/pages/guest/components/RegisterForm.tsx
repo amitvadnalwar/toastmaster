@@ -1,38 +1,40 @@
 import { FormEvent, useState } from 'react';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
-import { GUEST_SOURCES, type GuestSource } from '@/types/guest';
 
 interface Props {
   loading: boolean;
-  onSubmit: (name: string, phone: string | null, source: GuestSource) => void;
+  onSubmit: (email: string, name: string, phone: string) => void;
 }
 
+// Collects the same three details as the member passwordless login screen —
+// Email, Full Name, Mobile Number — so guests and members have one
+// consistent, password-free way in. No "how did you find us?" question, and
+// no option to register as a member from here.
 export default function RegisterForm({ loading, onSubmit }: Props) {
+  const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
-  const [source, setSource] = useState<GuestSource | ''>('');
   const [error, setError] = useState('');
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError('');
 
+    if (!email.trim() || !email.includes('@')) {
+      setError('Please enter a valid email address.');
+      return;
+    }
     if (!name.trim()) {
       setError('Please enter your full name.');
       return;
     }
-    const digits = phone.replace(/\D/g, '');
-    if (phone && digits.length !== 10) {
-      setError('Please enter a valid 10-digit mobile number.');
-      return;
-    }
-    if (!source) {
-      setError('Please select how you found us.');
+    if (!phone.trim()) {
+      setError('Please enter your mobile number.');
       return;
     }
 
-    onSubmit(name.trim(), phone.trim() || null, source);
+    onSubmit(email.trim(), name.trim(), phone.trim());
   }
 
   return (
@@ -50,16 +52,25 @@ export default function RegisterForm({ loading, onSubmit }: Props) {
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <Input
-          label="Full name *"
+          label="Email"
+          type="email"
+          placeholder="you@example.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          autoComplete="email"
+        />
+
+        <Input
+          label="Full Name"
           type="text"
-          placeholder="Your full name"
+          placeholder="e.g. Priya Sharma"
           value={name}
           onChange={(e) => setName(e.target.value)}
           autoComplete="name"
         />
 
         <Input
-          label="Mobile number"
+          label="Mobile Number"
           type="tel"
           placeholder="98765 43210"
           value={phone}
@@ -68,26 +79,8 @@ export default function RegisterForm({ loading, onSubmit }: Props) {
           inputMode="numeric"
         />
 
-        <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-semibold text-gray-700">How did you find us? *</label>
-          <select
-            value={source}
-            onChange={(e) => setSource(e.target.value as GuestSource)}
-            className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-900 text-sm outline-none transition-colors focus:border-brand focus:ring-2 focus:ring-brand/10"
-          >
-            <option value="" disabled>
-              Select an option
-            </option>
-            {GUEST_SOURCES.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
-        </div>
-
         <Button type="submit" fullWidth size="lg" loading={loading} className="mt-2">
-          Register
+          Continue
         </Button>
       </form>
     </>

@@ -34,7 +34,8 @@ async def insert_guest(
     meeting_id: str,
     name: str,
     phone: str | None,
-    source: str,
+    email: str | None = None,
+    source: str | None = None,
 ) -> dict:
     result = (
         supabase.table("guests")
@@ -43,6 +44,7 @@ async def insert_guest(
                 "club_id": club_id,
                 "meeting_id": meeting_id,
                 "name": name,
+                "email": email,
                 "phone": phone,
                 "source": source,
             }
@@ -55,7 +57,7 @@ async def insert_guest(
 async def get_guests_for_meeting(meeting_id: str) -> list[dict]:
     result = (
         supabase.table("guests")
-        .select("id, name, phone, source, created_at")
+        .select("id, name, email, phone, source, created_at")
         .eq("meeting_id", meeting_id)
         .order("created_at", desc=False)
         .execute()

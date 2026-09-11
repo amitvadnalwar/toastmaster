@@ -15,8 +15,11 @@ class GuestSource(StrEnum):
 class GuestRegisterIn(BaseModel):
     meeting_id: UUID
     name: str
+    email: str | None = None
     phone: str | None = None
-    source: GuestSource
+    # The check-in form no longer asks "how did you find us?" — kept optional
+    # so older clients / admin tooling can still set it.
+    source: GuestSource | None = None
 
 
 class GuestRegisterOut(BaseModel):
@@ -29,8 +32,9 @@ class GuestRegisterOut(BaseModel):
 class GuestOut(BaseModel):
     id: str
     name: str
+    email: str | None = None
     phone: str | None = None
-    source: str
+    source: str | None = None
     created_at: str
 
 

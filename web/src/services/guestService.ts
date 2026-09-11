@@ -1,4 +1,5 @@
 import { apiRequest } from '@/lib/apiClient';
+import type { Meeting } from '@/types';
 import type {
   GuestMeetingFeedbackPayload,
   GuestNomineeCategory,
@@ -12,6 +13,11 @@ import type {
 
 export function registerGuest(payload: GuestRegisterPayload): Promise<GuestRegisterResult> {
   return apiRequest<GuestRegisterResult>('/guests/register', { method: 'POST', body: payload });
+}
+
+// Throws a 404 ApiError when there's no meeting scheduled today.
+export function getGuestTodaysMeeting(): Promise<Meeting> {
+  return apiRequest<Meeting>('/guests/meetings/today');
 }
 
 export function getMeetingCheckinStatus(meetingId: string): Promise<{ open: boolean }> {
